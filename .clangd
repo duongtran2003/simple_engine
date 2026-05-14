@@ -1,0 +1,31 @@
+CompileFlags:
+  Add:
+    - -Wall
+    - -Wextra
+    - -Wpedantic
+    - -Wshadow
+    - -Wnon-virtual-dtor
+    - -Wcast-align
+    - -Wunused
+    - -Woverloaded-virtual
+    - -Wconversion
+    - -Wnull-dereference
+    - -Wdouble-promotion
+    - -Wformat=2
+  Remove:
+    - -Werror
+  CompilationDatabase: build
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+
+Completion:
+  AllScopes: Yes
+  ArgumentLists: FullPlaceholders
+  HeaderInsertion: IWYU
+  CodePatterns: All
+  MacroFilter: ExactPrefix
+
+Index:
+  Background: Build
