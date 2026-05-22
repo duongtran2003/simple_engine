@@ -14,7 +14,13 @@ find_package(tinyobjloader CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_program(SLANGC_EXECUTABLE NAMES slangc REQUIRED)
 
-add_executable(${PROJECT_NAME} src/main.cpp)
+file(GLOB_RECURSE SOURCES 
+    CONFIGURE_DEPENDS 
+    "src/**/*.cpp"
+    "src/*.cpp"
+)
+add_executable(${PROJECT_NAME} ${SOURCES})
+target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(SHADERS_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
 set(SHADERS_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
