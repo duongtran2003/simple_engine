@@ -18,9 +18,14 @@ private:
   mutable bool isProjectionDirty = false;
 
 public:
-  void setPerspective(float near, float far, float aspectRatio, float fov);
+  CameraComponent *setNear(float near);
+  CameraComponent *setFar(float far);
+  CameraComponent *setAspectRatio(float ratio);
+  CameraComponent *setFov(float fov);
+
   glm::mat4 getProjectionMatrix() const;
   glm::mat4 getViewMatrix() const;
+
   float getFar() const;
   float getNear() const;
   float getFov() const;

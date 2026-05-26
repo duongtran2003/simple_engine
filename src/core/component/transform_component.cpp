@@ -7,19 +7,25 @@
 
 namespace SimpleEngine {
 namespace Core {
-void TransformComponent::setPosition(glm::vec3 pos) {
+TransformComponent *TransformComponent::setPosition(glm::vec3 pos) {
   position = pos;
   isTransformDirty = true;
+
+  return this;
 }
 
-void TransformComponent::setRotation(glm::quat quat) {
+TransformComponent *TransformComponent::setRotation(glm::quat quat) {
   rotation = quat;
   isTransformDirty = true;
+
+  return this;
 }
 
-void TransformComponent::setScale(glm::vec3 s) {
+TransformComponent *TransformComponent::setScale(glm::vec3 s) {
   scale = s;
   isTransformDirty = true;
+
+  return this;
 }
 
 glm::vec3 TransformComponent::getPosition() const { return position; }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/component/component.hpp"
+
 #include <glm/ext/vector_float3.hpp>
 #include <glm/fwd.hpp>
 #include <glm/glm.hpp>
@@ -18,9 +19,9 @@ private:
   bool mutable isTransformDirty = false;
 
 public:
-  void setPosition(glm::vec3 pos);
-  void setRotation(glm::quat rot);
-  void setScale(glm::vec3 s);
+  TransformComponent *setPosition(glm::vec3 pos);
+  TransformComponent *setRotation(glm::quat rot);
+  TransformComponent *setScale(glm::vec3 s);
 
   glm::mat4 getTransformMatrix() const;
   glm::vec3 getPosition() const;
