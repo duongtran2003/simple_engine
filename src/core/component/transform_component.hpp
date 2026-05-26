@@ -12,20 +12,20 @@ class TransformComponent : public Component {
 private:
   glm::vec3 position = glm::vec3(0.0f);
   glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-  float scale = 1.0f;
+  glm::vec3 scale = glm::vec3(0.0f);
 
   glm::mat4 transformMatrix = glm::mat4(1.0f);
-  bool isTransformDirty = false;
+  bool mutable isTransformDirty = false;
 
 public:
   void setPosition(glm::vec3 pos);
   void setRotation(glm::quat rot);
-  void setScale(float s);
+  void setScale(glm::vec3 s);
 
   glm::mat4 getTransformMatrix() const;
   glm::vec3 getPosition() const;
   glm::quat getRotation() const;
-  float getScale() const;
+  glm::vec3 getScale() const;
 };
 } // namespace Core
 } // namespace SimpleEngine
