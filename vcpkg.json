@@ -14,6 +14,7 @@
     "tinyobjloader",
     "vulkan-headers",
     "vulkan-loader",
-    "stb"
+    "stb",
+    "catch2"
   ]
 }
