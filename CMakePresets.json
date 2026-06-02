@@ -6,7 +6,8 @@
       "binaryDir": "${sourceDir}/build",
       "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_PRINT_USAGE": "OFF"
       }
     }
   ]

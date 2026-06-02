@@ -65,7 +65,6 @@ foreach(SHADER_PATH ${SLANG_SOURCES})
 endforeach()
 
 add_custom_target(CompileShaders ALL DEPENDS ${SPV_OUTPUTS})
-add_dependencies(EngineCore CompileShaders) # Attached to core library
 
 set(RES_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources")
 set(RES_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
@@ -96,4 +95,6 @@ foreach(RES_PATH ${RESOURCE_FILES})
 endforeach()
 
 add_custom_target(CopyResources ALL DEPENDS ${RES_OUTPUTS})
+
 add_dependencies(EngineCore CopyResources)
+add_dependencies(EngineCore CompileShaders)

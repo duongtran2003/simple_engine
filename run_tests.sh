@@ -7,4 +7,6 @@ if [ ! -d "build" ]; then
 fi
 
 cd build
-ninja SimpleEngine && ./SimpleEngine
+
+echo "Building test suite with Ninja..."
+ninja Tests && ./Tests -s
