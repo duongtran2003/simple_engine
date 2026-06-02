@@ -3,6 +3,34 @@
 #include <catch2/catch_test_macros.hpp>
 #include <glm/ext/vector_float3.hpp>
 
+TEST_CASE("Entity components", "[entity]") {
+  SimpleEngine::Core::Entity entity("test_entity");
+
+  SECTION("Getting nullptr when fetching non existent component") {
+    SimpleEngine::Core::TransformComponent *transformComponent =
+        entity.getComponent<SimpleEngine::Core::TransformComponent>();
+
+    REQUIRE(transformComponent == nullptr);
+  }
+
+  SECTION("Getting component") {
+    entity.addComponent<SimpleEngine::Core::TransformComponent>();
+    SimpleEngine::Core::TransformComponent *transformComponent =
+        entity.getComponent<SimpleEngine::Core::TransformComponent>();
+
+    REQUIRE(transformComponent != nullptr);
+  }
+
+  SECTION("Removing component") {
+    entity.addComponent<SimpleEngine::Core::TransformComponent>();
+    entity.removeComponent<SimpleEngine::Core::TransformComponent>();
+    SimpleEngine::Core::TransformComponent *transformComponent =
+        entity.getComponent<SimpleEngine::Core::TransformComponent>();
+
+    REQUIRE(transformComponent == nullptr);
+  }
+}
+
 TEST_CASE("Entity position and some maths", "[entity]") {
   SimpleEngine::Core::Entity entity("test_entity");
   SimpleEngine::Core::TransformComponent *transformComponent =
