@@ -1,5 +1,8 @@
 #pragma once
 
+#include "core/system/component_type_id_system.hpp"
+#include <cstddef>
+
 namespace SimpleEngine {
 namespace Core {
 class Entity;
@@ -27,6 +30,10 @@ public:
   void setOwner(Entity *entity);
 
   bool isActive() const;
+
+  template <typename T> static size_t getTypeId() {
+    return ComponentTypeIdSystem::getId<T>();
+  }
 
 protected:
   virtual void onInitialize();

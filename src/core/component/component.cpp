@@ -27,6 +27,8 @@ void Component::destroy() {
   }
 }
 
+void Component::onInitialize() {};
+void Component::onDestroy() {};
 void Component::update(float deltaTime) {};
 void Component::render() {};
 
