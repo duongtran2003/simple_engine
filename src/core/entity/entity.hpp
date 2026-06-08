@@ -64,7 +64,7 @@ template <typename T> bool Entity::removeComponent() {
     return false;
   }
 
-  T *componentPtr = static_cast<T *>(mapIt->second);
+  Component *componentPtr = mapIt->second;
   componentsMap.erase(mapIt);
 
   for (auto listIt = components.begin(); listIt < components.end(); listIt++) {
