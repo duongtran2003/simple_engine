@@ -1,0 +1,26 @@
+#pragma once
+
+#include <string>
+namespace SimpleEngine {
+namespace Core {
+class Resource {
+private:
+  std::string resourceId;
+  bool loaded = false;
+
+public:
+  Resource(const std::string &id);
+  virtual ~Resource() = default;
+
+  const std::string &getId() const;
+  bool isLoaded() const;
+
+  bool load();
+  void unload();
+
+protected:
+  virtual bool doLoad() = 0;
+  virtual bool doUnload() = 0;
+};
+} // namespace Core
+} // namespace SimpleEngine
