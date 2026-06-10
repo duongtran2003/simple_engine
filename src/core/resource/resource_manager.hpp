@@ -21,6 +21,7 @@ private:
 public:
   template <typename T> ResourceHandle<T> load(const std::string &resourceId);
   template <typename T> void release(const std::string &resourceId);
+  void releaseAll();
   template <typename T> T *getResource(const std::string &resourceId);
   template <typename T> bool hasResource(const std::string &resourceId);
 };
