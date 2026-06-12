@@ -1,3 +1,4 @@
+#include "core/resource/resource_manager.hpp"
 #include "core/resource/resource.hpp"
 #include "core/resource/resource_handle.hpp"
 #include <memory>

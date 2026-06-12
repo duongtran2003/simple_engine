@@ -1,3 +1,5 @@
+#pragma once
+
 #include "core/resource/resource.hpp"
 #include <memory>
 #include <string>
