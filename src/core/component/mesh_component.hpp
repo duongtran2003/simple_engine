@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/common/material.hpp"
 #include "core/component/component.hpp"
+#include "core/material.hpp"
 #include "core/resource/mesh.hpp"
 #include "core/resource/resource_handle.hpp"
 

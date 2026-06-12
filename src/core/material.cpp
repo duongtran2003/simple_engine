@@ -1,4 +1,4 @@
-#include "core/common/material.hpp"
+#include "core/material.hpp"
 #include "core/resource/resource_handle.hpp"
 #include "core/resource/shader.hpp"
 #include "core/resource/texture.hpp"

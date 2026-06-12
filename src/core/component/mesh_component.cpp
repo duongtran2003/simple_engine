@@ -1,5 +1,5 @@
 #include "core/component/mesh_component.hpp"
-#include "core/common/material.hpp"
+#include "core/material.hpp"
 #include "core/resource/mesh.hpp"
 #include "core/resource/resource_handle.hpp"
 
