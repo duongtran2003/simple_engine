@@ -1,7 +1,9 @@
 #pragma once
 
+#include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -11,7 +13,7 @@
 namespace SimpleEngine {
 namespace Core {
 class RenderGraph {
-private:
+public:
   struct Resource {
     std::string name;
     vk::Format format;
@@ -32,6 +34,7 @@ private:
     std::function<void(vk::CommandBuffer &)> executeFunction;
   };
 
+private:
   std::unordered_map<std::string, Resource> resources;
   std::vector<Pass> passes;
   std::vector<size_t> executionOrder;
@@ -39,10 +42,33 @@ private:
   std::vector<vk::Semaphore> semaphores;
   std::vector<std::pair<size_t, size_t>> semaphoreSignalWaitPairs;
 
-  vk::Device &device;
+  const RenderContext &renderContext;
+
+  void resolveDependencies(std::vector<std::vector<size_t>> &dependencies,
+                           std::vector<std::vector<size_t>> &dependents);
+
+  void resolveExecutionOrder(std::vector<std::vector<size_t>> &dependencies,
+                             std::vector<std::vector<size_t>> &dependents);
+
+  void createSemaphores(std::vector<vk::Semaphore> &waits,
+                        std::vector<vk::Semaphore> &signals,
+                        std::vector<vk::PipelineStageFlags> &waitStages,
+                        size_t passIndex);
+
+  void createSyncObjects(std::vector<std::vector<size_t>> &dependencies);
+
+  void allocateResources();
+
+  uint32_t findMemoryType(uint32_t memoryTypeBits, vk::MemoryPropertyFlags);
+
+  void transitionInputsLayout(const Pass &pass,
+                              vk::CommandBuffer &commandBuffer);
+
+  void transitionOutputsLayout(const Pass &pass,
+                              vk::CommandBuffer &commandBuffer);
 
 public:
-  RenderGraph(vk::Device &device);
+  RenderGraph(const RenderContext &renderContext);
 
   void addResource(const std::string &name, vk::Format format,
                    vk::Extent2D extent, vk::ImageUsageFlags usage,
@@ -53,6 +79,9 @@ public:
                std::function<void(vk::CommandBuffer &)> executeFunction);
 
   void compile();
+  void execute(vk::CommandBuffer &commandBuffer);
+
+  Resource *getResource(const std::string &name);
 };
 } // namespace Core
 } // namespace SimpleEngine

@@ -1,14 +1,20 @@
 #include "core/render_graph.hpp"
+#include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
+#include <queue>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace SimpleEngine {
 namespace Core {
-RenderGraph::RenderGraph(vk::Device &device) : device(device) {};
+RenderGraph::RenderGraph(const RenderContext &renderContext)
+    : renderContext(renderContext) {};
 
 void RenderGraph::addResource(const std::string &name, vk::Format format,
                               vk::Extent2D extent, vk::ImageUsageFlags usage,
@@ -36,14 +42,11 @@ void RenderGraph::addPass(
   passes.push_back(pass);
 }
 
-void RenderGraph::compile() {
-  std::vector<std::vector<size_t>>
-      dependencies; // For each member, it stores the indices of the passes that
-                    // it depends on
-  std::vector<std::vector<size_t>>
-      dependents; // For each member, it stores the indices of the passes that
-                  // depends on it
-  std::pmr::unordered_map<std::string, size_t>
+void RenderGraph::resolveDependencies(
+    std::vector<std::vector<size_t>> &dependencies,
+    std::vector<std::vector<size_t>> &dependents) {
+
+  std::unordered_map<std::string, size_t>
       resourceWriters; // The key represents resource name, value is the index
                        // of the pass that output the specific resource
 
@@ -59,6 +62,242 @@ void RenderGraph::compile() {
 
     for (const auto &output : pass.outputs) {
       resourceWriters[output] = i;
+    }
+  }
+}
+
+void RenderGraph::resolveExecutionOrder(
+    std::vector<std::vector<size_t>> &dependencies,
+    std::vector<std::vector<size_t>> &dependents) {
+  // Topology sort
+  std::queue<size_t> queue;
+  std::vector<bool> visited(passes.size(), false);
+  for (size_t i = 0; i < passes.size(); i++) {
+    if (dependencies[i].size() == 0) {
+      queue.push(i);
+    }
+  }
+
+  if (queue.empty()) {
+    throw std::runtime_error(
+        "RenderGraph::compile()::ERROR: Cycle detected. Aborting.");
+  }
+
+  while (!queue.empty()) {
+    size_t currentNode = queue.front();
+    visited[currentNode] = true;
+    queue.pop();
+    executionOrder.push_back(currentNode);
+
+    for (const auto nextNode : dependents[currentNode]) {
+      std::erase_if(dependencies[nextNode],
+                    [&](size_t node) { return node == currentNode; });
+      if (visited[nextNode] || dependencies[nextNode].size()) {
+        continue;
+      }
+
+      queue.push(nextNode);
+    }
+  }
+
+  bool isAllVisited =
+      std::none_of(visited.begin(), visited.end(), [&](size_t isNodeVisited) {
+        return isNodeVisited == false;
+      });
+  if (!isAllVisited) {
+    throw std::runtime_error(
+        "RenderGraph::compile()::ERROR: Cycle detected. Aborting.");
+  }
+}
+
+void RenderGraph::createSyncObjects(
+    std::vector<std::vector<size_t>> &dependencies) {
+  for (size_t i = 0; i < passes.size(); i++) {
+    for (const auto dependency : dependencies[i]) {
+      semaphores.emplace_back(renderContext.device.createSemaphore({}));
+      semaphoreSignalWaitPairs.emplace_back(dependency, i);
+    }
+  }
+}
+
+uint32_t RenderGraph::findMemoryType(uint32_t memoryTypeBits,
+                                     vk::MemoryPropertyFlags properties) {
+  vk::PhysicalDeviceMemoryProperties memoryProperties =
+      renderContext.physicalDevice.getMemoryProperties();
+
+  for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
+    if ((memoryTypeBits & (1 << i)) &&
+        (memoryProperties.memoryTypes[i].propertyFlags & properties) ==
+            properties) {
+      return i;
+    }
+  }
+
+  throw std::runtime_error(
+      "RenderGraph::findMemoryType()::ERROR: Cannot find memory type.");
+}
+
+void RenderGraph::allocateResources() {
+  for (auto &[name, resource] : resources) {
+    vk::ImageCreateInfo imageInfo{
+        .imageType = vk::ImageType::e2D,
+        .format = resource.format,
+        .extent = {resource.extent.width, resource.extent.height, 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = vk::SampleCountFlagBits::e1,
+        .tiling = vk::ImageTiling::eOptimal,
+        .usage = resource.usage,
+        .sharingMode = vk::SharingMode::eExclusive,
+        .initialLayout = vk::ImageLayout::eUndefined};
+    resource.image = renderContext.device.createImage(imageInfo);
+
+    vk::MemoryRequirements memoryRequirement;
+    renderContext.device.getImageMemoryRequirements(resource.image,
+                                                    &memoryRequirement);
+    vk::MemoryAllocateInfo allocateInfo{
+        .allocationSize = memoryRequirement.size,
+        .memoryTypeIndex =
+            findMemoryType(memoryRequirement.memoryTypeBits,
+                           vk::MemoryPropertyFlagBits::eDeviceLocal)};
+    resource.memory = renderContext.device.allocateMemory(allocateInfo);
+    renderContext.device.bindImageMemory(resource.image, resource.memory, 0);
+
+    vk::ImageViewCreateInfo viewInfo{
+        .image = resource.image,
+        .viewType = vk::ImageViewType::e2D,
+        .format = resource.format,
+        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                             .baseMipLevel = 0,
+                             .levelCount = 1,
+                             .baseArrayLayer = 0,
+                             .layerCount = 1}};
+    resource.view = renderContext.device.createImageView(viewInfo);
+  }
+}
+
+void RenderGraph::compile() {
+  std::vector<std::vector<size_t>>
+      dependencies; // For each member, it stores the indices of the passes that
+                    // it depends on
+  std::vector<std::vector<size_t>>
+      dependents; // For each member, it stores the indices of the passes that
+                  // depends on it
+  resolveDependencies(dependencies, dependents);
+  resolveExecutionOrder(dependencies, dependents);
+  createSyncObjects(dependencies);
+  allocateResources();
+}
+
+RenderGraph::Resource *RenderGraph::getResource(const std::string &name) {
+  auto it = resources.find(name);
+  if (it == resources.end()) {
+    return nullptr;
+  }
+
+  return &it->second;
+}
+
+void RenderGraph::createSemaphores(
+    std::vector<vk::Semaphore> &waits, std::vector<vk::Semaphore> &signals,
+    std::vector<vk::PipelineStageFlags> &waitStages, size_t passIndex) {
+  waits.clear();
+  waitStages.clear();
+
+  for (size_t i = 0; i < semaphoreSignalWaitPairs.size(); i++) {
+    if (semaphoreSignalWaitPairs[i].second == passIndex) {
+      // The pass index i should signal this pass, so add that pass' semaphore
+      // to the wait list
+      waits.push_back(semaphores[i]);
+      waitStages.push_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+    }
+  }
+
+  signals.clear();
+  for (size_t i = 0; i < semaphoreSignalWaitPairs.size(); i++) {
+    if (semaphoreSignalWaitPairs[i].first == passIndex) {
+      // The pass index i waits for this pass' signal, so add that pass'
+      // semaphore to the signal list
+      signals.push_back(semaphores[i]);
+    }
+  }
+}
+
+void RenderGraph::transitionInputsLayout(const Pass &pass,
+                                         vk::CommandBuffer &commandBuffer) {
+  for (const auto &input : pass.inputs) {
+    auto &resource = resources[input];
+
+    vk::ImageMemoryBarrier barrier{
+        .srcAccessMask = vk::AccessFlagBits::eMemoryWrite,
+        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+        .oldLayout = resource.initialLayout,
+        .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+        .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
+        .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
+        .image = resource.image,
+        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                             .baseMipLevel = 0,
+                             .levelCount = 1,
+                             .baseArrayLayer = 0,
+                             .layerCount = 1}};
+
+    commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+                                  vk::PipelineStageFlagBits::eFragmentShader,
+                                  vk::DependencyFlagBits::eByRegion, 0, nullptr,
+                                  0, nullptr, 1, &barrier);
+  }
+}
+
+void RenderGraph::transitionOutputsLayout(const Pass &pass,
+                                          vk::CommandBuffer &commandBuffer) {
+  for (const auto &output : pass.outputs) {
+    auto &resource = resources[output];
+
+    vk::ImageMemoryBarrier barrier{
+        .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+        .dstAccessMask = vk::AccessFlagBits::eMemoryRead,
+        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+        .newLayout = resource.finalLayout,
+        .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
+        .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
+        .image = resource.image,
+        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                             .baseMipLevel = 0,
+                             .levelCount = 1,
+                             .baseArrayLayer = 0,
+                             .layerCount = 1}};
+
+    commandBuffer.pipelineBarrier(
+        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        vk::PipelineStageFlagBits::eAllCommands,
+        vk::DependencyFlagBits::eByRegion, 0, nullptr, 0, nullptr, 1, &barrier);
+  }
+}
+
+void RenderGraph::execute(vk::CommandBuffer &commandBuffer) {
+  std::vector<vk::CommandBuffer> commandBuffers;
+  std::vector<vk::Semaphore> waitSemaphores;
+  std::vector<vk::Semaphore> signalSemaphores;
+  std::vector<vk::PipelineStageFlags> waitStages;
+
+  for (const auto passIndex : executionOrder) {
+    createSemaphores(waitSemaphores, signalSemaphores, waitStages, passIndex);
+
+    const auto &pass = passes[passIndex];
+
+    commandBuffer.begin({});
+    transitionInputsLayout(pass, commandBuffer);
+    pass.executeFunction(commandBuffer);
+    transitionOutputsLayout(pass, commandBuffer);
+    commandBuffer.end();
+
+    vk::SubmitInfo submitInfo{
+      .waitSemaphoreCount = waitSemaphores.size(),
+      .pWaitSemaphores = waitSemaphores.data(),
+      .signalSemaphoreCount = signalSemaphores.size(),
+      .pSignalSemaphores = signalSemaphores.data(),
+      .
     }
   }
 }
