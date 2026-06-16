@@ -9,6 +9,7 @@ struct RenderContext {
   vk::PhysicalDevice physicalDevice;
   vk::Instance instance;
   vk::Queue graphicsQueue;
+  vk::CommandPool commandPool;
   uint32_t graphicsQueueFamilyIndex;
 };
 } // namespace Core

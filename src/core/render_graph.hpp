@@ -38,6 +38,7 @@ private:
   std::unordered_map<std::string, Resource> resources;
   std::vector<Pass> passes;
   std::vector<size_t> executionOrder;
+  std::vector<vk::CommandBuffer> commandBuffers;
 
   std::vector<vk::Semaphore> semaphores;
   std::vector<std::pair<size_t, size_t>> semaphoreSignalWaitPairs;
@@ -58,6 +59,8 @@ private:
   void createSyncObjects(std::vector<std::vector<size_t>> &dependencies);
 
   void allocateResources();
+  void allocateCommandBuffers();
+  
 
   uint32_t findMemoryType(uint32_t memoryTypeBits, vk::MemoryPropertyFlags);
 
@@ -65,7 +68,11 @@ private:
                               vk::CommandBuffer &commandBuffer);
 
   void transitionOutputsLayout(const Pass &pass,
-                              vk::CommandBuffer &commandBuffer);
+                               vk::CommandBuffer &commandBuffer);
+
+  void transitionImageLayout(vk::CommandBuffer &commandBuffer, vk::Image image,
+                             vk::ImageLayout srcLayout,
+                             vk::ImageLayout dstLayout);
 
 public:
   RenderGraph(const RenderContext &renderContext);
@@ -79,7 +86,7 @@ public:
                std::function<void(vk::CommandBuffer &)> executeFunction);
 
   void compile();
-  void execute(vk::CommandBuffer &commandBuffer);
+  void execute();
 
   Resource *getResource(const std::string &name);
 };

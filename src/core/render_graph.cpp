@@ -176,6 +176,14 @@ void RenderGraph::allocateResources() {
   }
 }
 
+void RenderGraph::allocateCommandBuffers() {
+  vk::CommandBufferAllocateInfo allocateInfo{
+      .commandPool = renderContext.commandPool,
+      .level = vk::CommandBufferLevel::ePrimary,
+      .commandBufferCount = static_cast<uint32_t>(executionOrder.size())};
+  commandBuffers = renderContext.device.allocateCommandBuffers(allocateInfo);
+}
+
 void RenderGraph::compile() {
   std::vector<std::vector<size_t>>
       dependencies; // For each member, it stores the indices of the passes that
@@ -187,6 +195,7 @@ void RenderGraph::compile() {
   resolveExecutionOrder(dependencies, dependents);
   createSyncObjects(dependencies);
   allocateResources();
+  allocateCommandBuffers();
 }
 
 RenderGraph::Resource *RenderGraph::getResource(const std::string &name) {
@@ -227,25 +236,8 @@ void RenderGraph::transitionInputsLayout(const Pass &pass,
                                          vk::CommandBuffer &commandBuffer) {
   for (const auto &input : pass.inputs) {
     auto &resource = resources[input];
-
-    vk::ImageMemoryBarrier barrier{
-        .srcAccessMask = vk::AccessFlagBits::eMemoryWrite,
-        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
-        .oldLayout = resource.initialLayout,
-        .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-        .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
-        .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
-        .image = resource.image,
-        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                             .baseMipLevel = 0,
-                             .levelCount = 1,
-                             .baseArrayLayer = 0,
-                             .layerCount = 1}};
-
-    commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-                                  vk::PipelineStageFlagBits::eFragmentShader,
-                                  vk::DependencyFlagBits::eByRegion, 0, nullptr,
-                                  0, nullptr, 1, &barrier);
+    transitionImageLayout(commandBuffer, resource.image, resource.initialLayout,
+                          vk::ImageLayout::eShaderReadOnlyOptimal);
   }
 }
 
@@ -253,30 +245,66 @@ void RenderGraph::transitionOutputsLayout(const Pass &pass,
                                           vk::CommandBuffer &commandBuffer) {
   for (const auto &output : pass.outputs) {
     auto &resource = resources[output];
-
-    vk::ImageMemoryBarrier barrier{
-        .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
-        .dstAccessMask = vk::AccessFlagBits::eMemoryRead,
-        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
-        .newLayout = resource.finalLayout,
-        .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
-        .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
-        .image = resource.image,
-        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                             .baseMipLevel = 0,
-                             .levelCount = 1,
-                             .baseArrayLayer = 0,
-                             .layerCount = 1}};
-
-    commandBuffer.pipelineBarrier(
-        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        vk::PipelineStageFlagBits::eAllCommands,
-        vk::DependencyFlagBits::eByRegion, 0, nullptr, 0, nullptr, 1, &barrier);
+    transitionImageLayout(commandBuffer, resource.image,
+                          vk::ImageLayout::eColorAttachmentOptimal,
+                          resource.finalLayout);
   }
 }
 
-void RenderGraph::execute(vk::CommandBuffer &commandBuffer) {
-  std::vector<vk::CommandBuffer> commandBuffers;
+void RenderGraph::transitionImageLayout(vk::CommandBuffer &commandBuffer,
+                                        vk::Image image,
+                                        vk::ImageLayout srcLayout,
+                                        vk::ImageLayout dstLayout) {
+  vk::ImageMemoryBarrier barrier{
+      .oldLayout = srcLayout,
+      .newLayout = dstLayout,
+      .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
+      .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
+      .image = image,
+      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                           .baseMipLevel = 0,
+                           .levelCount = 1,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1}};
+
+  vk::PipelineStageFlags srcStage;
+  vk::PipelineStageFlags dstStage;
+
+  if (srcLayout == vk::ImageLayout::eUndefined &&
+      dstLayout == vk::ImageLayout::eTransferDstOptimal) {
+    barrier.setSrcAccessMask(vk::AccessFlagBits::eNone);
+    barrier.setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
+
+    srcStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    dstStage = vk::PipelineStageFlagBits::eTransfer;
+  } else if (srcLayout == vk::ImageLayout::eTransferDstOptimal &&
+             dstLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+    barrier.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite);
+    barrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+
+    srcStage = vk::PipelineStageFlagBits::eTransfer;
+    dstStage = vk::PipelineStageFlagBits::eFragmentShader;
+  } else if (dstLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+    barrier.setSrcAccessMask(vk::AccessFlagBits::eMemoryWrite);
+    barrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+    srcStage = vk::PipelineStageFlagBits::eAllCommands;
+    dstStage = vk::PipelineStageFlagBits::eFragmentShader;
+  } else if (dstLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+    barrier.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+    barrier.setDstAccessMask(vk::AccessFlagBits::eMemoryRead);
+    srcStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    dstStage = vk::PipelineStageFlagBits::eAllCommands;
+  } else {
+    throw std::runtime_error("RenderGraph::transitionImageLayout::ERROR: "
+                             "Unsupport layout transition.");
+  }
+
+  commandBuffer.pipelineBarrier(srcStage, dstStage,
+                                vk::DependencyFlagBits::eByRegion, 0, nullptr,
+                                0, nullptr, 1, &barrier);
+}
+
+void RenderGraph::execute() {
   std::vector<vk::Semaphore> waitSemaphores;
   std::vector<vk::Semaphore> signalSemaphores;
   std::vector<vk::PipelineStageFlags> waitStages;
@@ -285,6 +313,7 @@ void RenderGraph::execute(vk::CommandBuffer &commandBuffer) {
     createSemaphores(waitSemaphores, signalSemaphores, waitStages, passIndex);
 
     const auto &pass = passes[passIndex];
+    auto &commandBuffer = commandBuffers[passIndex];
 
     commandBuffer.begin({});
     transitionInputsLayout(pass, commandBuffer);
@@ -293,12 +322,15 @@ void RenderGraph::execute(vk::CommandBuffer &commandBuffer) {
     commandBuffer.end();
 
     vk::SubmitInfo submitInfo{
-      .waitSemaphoreCount = waitSemaphores.size(),
-      .pWaitSemaphores = waitSemaphores.data(),
-      .signalSemaphoreCount = signalSemaphores.size(),
-      .pSignalSemaphores = signalSemaphores.data(),
-      .
-    }
+        .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
+        .pWaitSemaphores = waitSemaphores.data(),
+        .pWaitDstStageMask = waitStages.data(),
+        .commandBufferCount = 1,
+        .pCommandBuffers = &commandBuffer,
+        .signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size()),
+        .pSignalSemaphores = signalSemaphores.data()};
+
+    renderContext.graphicsQueue.submit(1, &submitInfo, nullptr);
   }
 }
 } // namespace Core
