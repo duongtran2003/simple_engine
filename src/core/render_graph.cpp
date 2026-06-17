@@ -232,25 +232,6 @@ void RenderGraph::createSemaphores(
   }
 }
 
-void RenderGraph::transitionInputsLayout(const Pass &pass,
-                                         vk::CommandBuffer &commandBuffer) {
-  for (const auto &input : pass.inputs) {
-    auto &resource = resources[input];
-    transitionImageLayout(commandBuffer, resource.image, resource.initialLayout,
-                          vk::ImageLayout::eShaderReadOnlyOptimal);
-  }
-}
-
-void RenderGraph::transitionOutputsLayout(const Pass &pass,
-                                          vk::CommandBuffer &commandBuffer) {
-  for (const auto &output : pass.outputs) {
-    auto &resource = resources[output];
-    transitionImageLayout(commandBuffer, resource.image,
-                          vk::ImageLayout::eColorAttachmentOptimal,
-                          resource.finalLayout);
-  }
-}
-
 void RenderGraph::transitionImageLayout(vk::CommandBuffer &commandBuffer,
                                         vk::Image image,
                                         vk::ImageLayout srcLayout,
@@ -287,11 +268,19 @@ void RenderGraph::transitionImageLayout(vk::CommandBuffer &commandBuffer,
   } else if (dstLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
     barrier.setSrcAccessMask(vk::AccessFlagBits::eMemoryWrite);
     barrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+
     srcStage = vk::PipelineStageFlagBits::eAllCommands;
     dstStage = vk::PipelineStageFlagBits::eFragmentShader;
-  } else if (dstLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+  } else if (dstLayout == vk::ImageLayout::eColorAttachmentOptimal) {
+    barrier.setSrcAccessMask(vk::AccessFlagBits::eMemoryRead);
+    barrier.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+
+    srcStage = vk::PipelineStageFlagBits::eAllCommands;
+    dstStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+  } else if (srcLayout == vk::ImageLayout::eColorAttachmentOptimal) {
     barrier.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
     barrier.setDstAccessMask(vk::AccessFlagBits::eMemoryRead);
+
     srcStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
     dstStage = vk::PipelineStageFlagBits::eAllCommands;
   } else {
@@ -315,11 +304,31 @@ void RenderGraph::execute() {
     const auto &pass = passes[passIndex];
     auto &commandBuffer = commandBuffers[passIndex];
 
-    commandBuffer.begin({});
-    transitionInputsLayout(pass, commandBuffer);
+    vk::Result bufferStartResult = commandBuffer.begin({});
+
+    for (const auto &input : pass.inputs) {
+      auto &resource = resources[input];
+      transitionImageLayout(commandBuffer, resource.image,
+                            resource.initialLayout,
+                            vk::ImageLayout::eShaderReadOnlyOptimal);
+    }
+
+    for (const auto &output : pass.outputs) {
+      auto &resource = resources[output];
+      transitionImageLayout(commandBuffer, resource.image,
+                            resource.initialLayout,
+                            vk::ImageLayout::eColorAttachmentOptimal);
+    }
+
     pass.executeFunction(commandBuffer);
-    transitionOutputsLayout(pass, commandBuffer);
     commandBuffer.end();
+
+    for (const auto &output : pass.outputs) {
+      auto &resource = resources[output];
+      transitionImageLayout(commandBuffer, resource.image,
+                            vk::ImageLayout::eColorAttachmentOptimal,
+                            resource.finalLayout);
+    }
 
     vk::SubmitInfo submitInfo{
         .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
@@ -330,7 +339,8 @@ void RenderGraph::execute() {
         .signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size()),
         .pSignalSemaphores = signalSemaphores.data()};
 
-    renderContext.graphicsQueue.submit(1, &submitInfo, nullptr);
+    vk::Result submitResult =
+        renderContext.graphicsQueue.submit(1, &submitInfo, nullptr);
   }
 }
 } // namespace Core

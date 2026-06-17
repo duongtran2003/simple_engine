@@ -64,12 +64,6 @@ private:
 
   uint32_t findMemoryType(uint32_t memoryTypeBits, vk::MemoryPropertyFlags);
 
-  void transitionInputsLayout(const Pass &pass,
-                              vk::CommandBuffer &commandBuffer);
-
-  void transitionOutputsLayout(const Pass &pass,
-                               vk::CommandBuffer &commandBuffer);
-
   void transitionImageLayout(vk::CommandBuffer &commandBuffer, vk::Image image,
                              vk::ImageLayout srcLayout,
                              vk::ImageLayout dstLayout);
