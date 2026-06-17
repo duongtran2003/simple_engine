@@ -227,11 +227,13 @@ void Engine::createSwapChain() {
   } else {
     int w, h;
     glfwGetFramebufferSize(renderContext.window, &w, &h);
-    swapChainExtent = {
-        std::clamp<uint32_t>(w, surfaceCapabilities.minImageExtent.width,
-                             surfaceCapabilities.maxImageExtent.width),
-        std::clamp<uint32_t>(h, surfaceCapabilities.minImageExtent.height,
-                             surfaceCapabilities.maxImageExtent.height)};
+    uint32_t clampedW = std::clamp<uint32_t>(
+        static_cast<uint32_t>(w), surfaceCapabilities.minImageExtent.width,
+        surfaceCapabilities.maxImageExtent.width);
+    uint32_t clampedH = std::clamp<uint32_t>(
+        static_cast<uint32_t>(h), surfaceCapabilities.minImageExtent.height,
+        surfaceCapabilities.maxImageExtent.height);
+    swapChainExtent = vk::Extent2D({.width = clampedW, .height = clampedH});
   }
   renderContext.swapChainExtent = swapChainExtent;
 
@@ -433,7 +435,7 @@ void Engine::setupDeferredRenderer(uint32_t w, uint32_t h) {
         // Bind stuff and render stuff here
         commandBuffer.endRendering();
       });
-  // renderGraph->compile();
+  renderGraph->compile();
 }
 
 void Engine::run() {
