@@ -6,16 +6,25 @@
 
 namespace SimpleEngine {
 namespace Core {
-class App {
+class Engine {
 private:
   RenderContext renderContext;
   RenderGraph *renderGraph = nullptr;
 
   void setupDeferredRenderer(uint32_t width, uint32_t height);
-  void initRenderContext();
+
+  void initWindow();
+  void initVulkan();
+  void createInstance();
+  void createSurface();
+  void pickPhysicalDevice();
+  void createDevice();
+  void createSwapChain();
+
+  void renderFrame();
 
 public:
-  App();
+  Engine();
   void run();
 };
 } // namespace Core
