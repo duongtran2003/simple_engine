@@ -163,11 +163,15 @@ void RenderGraph::allocateResources() {
     resource.memory = renderContext.device.allocateMemory(allocateInfo);
     renderContext.device.bindImageMemory(resource.image, resource.memory, 0);
 
+    vk::ImageAspectFlagBits aspectMask =
+        resource.format == vk::Format::eD32Sfloat
+            ? vk::ImageAspectFlagBits::eDepth
+            : vk::ImageAspectFlagBits::eColor;
     vk::ImageViewCreateInfo viewInfo{
         .image = resource.image,
         .viewType = vk::ImageViewType::e2D,
         .format = resource.format,
-        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+        .subresourceRange = {.aspectMask = aspectMask,
                              .baseMipLevel = 0,
                              .levelCount = 1,
                              .baseArrayLayer = 0,
@@ -185,12 +189,12 @@ void RenderGraph::allocateCommandBuffers() {
 }
 
 void RenderGraph::compile() {
-  std::vector<std::vector<size_t>>
-      dependencies; // For each member, it stores the indices of the passes that
-                    // it depends on
-  std::vector<std::vector<size_t>>
-      dependents; // For each member, it stores the indices of the passes that
-                  // depends on it
+  std::vector<std::vector<size_t>> dependencies(
+      passes.size()); // For each member, it stores the indices of the passes
+                      // that it depends on
+  std::vector<std::vector<size_t>> dependents(
+      passes.size()); // For each member, it stores the indices of the passes
+                      // that depends on it
   resolveDependencies(dependencies, dependents);
   resolveExecutionOrder(dependencies, dependents);
   createSyncObjects(dependencies);
