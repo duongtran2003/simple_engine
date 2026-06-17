@@ -21,6 +21,7 @@ private:
   void createDevice();
   void createSwapChain();
   void createSwapChainImageViews();
+  void createCommandPool();
 
   void renderFrame();
 

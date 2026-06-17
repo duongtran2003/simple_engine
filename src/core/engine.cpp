@@ -182,7 +182,7 @@ void Engine::createDevice() {
     throw std::runtime_error(
         "Engine::createDevice::ERROR: Couldn't find graphics queue.");
   }
-  renderContext.queueIndex = static_cast<uint32_t>(index);
+  renderContext.graphicsQueueFamilyIndex = static_cast<uint32_t>(index);
 
   vk::StructureChain<vk::PhysicalDeviceFeatures2,
                      vk::PhysicalDeviceVulkan11Features,
@@ -212,7 +212,7 @@ void Engine::createDevice() {
       deviceCreateInfo, nullptr, vk::detail::defaultDispatchLoaderDynamic);
   vk::detail::defaultDispatchLoaderDynamic.init(renderContext.device);
   renderContext.graphicsQueue =
-      renderContext.device.getQueue(renderContext.queueIndex, 0);
+      renderContext.device.getQueue(renderContext.graphicsQueueFamilyIndex, 0);
 }
 
 void Engine::createSwapChain() {
@@ -309,6 +309,15 @@ void Engine::createSwapChainImageViews() {
   }
 }
 
+void Engine::createCommandPool() {
+  vk::CommandPoolCreateInfo createInfo{
+      .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+      .queueFamilyIndex = renderContext.graphicsQueueFamilyIndex};
+
+  renderContext.commandPool =
+      renderContext.device.createCommandPool(createInfo);
+}
+
 void Engine::initVulkan() {
   createInstance();
   createSurface();
@@ -316,6 +325,7 @@ void Engine::initVulkan() {
   createDevice();
   createSwapChain();
   createSwapChainImageViews();
+  createCommandPool();
 }
 
 void Engine::setupDeferredRenderer(uint32_t w, uint32_t h) {

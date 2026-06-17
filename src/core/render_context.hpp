@@ -14,7 +14,7 @@ struct RenderContext {
   vk::PhysicalDevice physicalDevice;
   vk::Device device;
 
-  uint32_t queueIndex = 0;
+  uint32_t graphicsQueueFamilyIndex;
   vk::Queue graphicsQueue;
 
   vk::SurfaceKHR surface;
@@ -25,7 +25,6 @@ struct RenderContext {
   std::vector<vk::ImageView> swapChainImageViews;
 
   vk::CommandPool commandPool;
-  uint32_t graphicsQueueFamilyIndex;
 
   std::vector<vk::Semaphore> presentCompleteSemaphores;
   std::vector<vk::Semaphore> renderFinishedSemaphores;
