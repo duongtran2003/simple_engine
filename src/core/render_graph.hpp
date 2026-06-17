@@ -31,7 +31,7 @@ public:
     std::string name;
     std::vector<std::string> inputs;
     std::vector<std::string> outputs;
-    std::function<void(vk::CommandBuffer &)> executeFunction;
+    std::function<void(vk::CommandBuffer &, RenderGraph &)> executeFunction;
   };
 
 private:
@@ -60,7 +60,6 @@ private:
 
   void allocateResources();
   void allocateCommandBuffers();
-  
 
   uint32_t findMemoryType(uint32_t memoryTypeBits, vk::MemoryPropertyFlags);
 
@@ -75,9 +74,10 @@ public:
                    vk::Extent2D extent, vk::ImageUsageFlags usage,
                    vk::ImageLayout initialLayout, vk::ImageLayout finalLayout);
 
-  void addPass(const std::string &name, const std::vector<std::string> &inputs,
-               const std::vector<std::string> &outputs,
-               std::function<void(vk::CommandBuffer &)> executeFunction);
+  void addPass(
+      const std::string &name, const std::vector<std::string> &inputs,
+      const std::vector<std::string> &outputs,
+      std::function<void(vk::CommandBuffer &, RenderGraph &)> executeFunction);
 
   void compile();
   void execute();

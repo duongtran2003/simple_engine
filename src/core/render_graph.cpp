@@ -33,7 +33,7 @@ void RenderGraph::addResource(const std::string &name, vk::Format format,
 void RenderGraph::addPass(
     const std::string &name, const std::vector<std::string> &inputs,
     const std::vector<std::string> &outputs,
-    std::function<void(vk::CommandBuffer &)> executeFunction) {
+    std::function<void(vk::CommandBuffer &, RenderGraph &)> executeFunction) {
   Pass pass{.name = name,
             .inputs = inputs,
             .outputs = outputs,
@@ -320,7 +320,7 @@ void RenderGraph::execute() {
                             vk::ImageLayout::eColorAttachmentOptimal);
     }
 
-    pass.executeFunction(commandBuffer);
+    pass.executeFunction(commandBuffer, *this);
     commandBuffer.end();
 
     for (const auto &output : pass.outputs) {
