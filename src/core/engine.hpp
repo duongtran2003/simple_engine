@@ -20,6 +20,7 @@ private:
   void pickPhysicalDevice();
   void createDevice();
   void createSwapChain();
+  void createSwapChainImageViews();
 
   void renderFrame();
 

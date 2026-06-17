@@ -271,9 +271,41 @@ void Engine::createSwapChain() {
   vk::PresentModeKHR presentMode =
       hasMailbox ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
 
-  vk::SwapchainCreateInfoKHR swapChainCreateInfo {
-    .surface = renderContext.surface, .minImageCount = minImageCount,
-    .imageFormat = renderContext.swapChainSurfaceFormat.format,
+  vk::SwapchainCreateInfoKHR swapChainCreateInfo{
+      .surface = renderContext.surface,
+      .minImageCount = minImageCount,
+      .imageFormat = renderContext.swapChainSurfaceFormat.format,
+      .imageColorSpace = renderContext.swapChainSurfaceFormat.colorSpace,
+      .imageExtent = renderContext.swapChainExtent,
+      .imageArrayLayers = 1,
+      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+      .imageSharingMode = vk::SharingMode::eExclusive,
+      .preTransform = surfaceCapabilities.currentTransform,
+      .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+      .presentMode = presentMode,
+      .clipped = true};
+
+  renderContext.swapChain =
+      renderContext.device.createSwapchainKHR(swapChainCreateInfo);
+  renderContext.swapChainImages =
+      renderContext.device.getSwapchainImagesKHR(renderContext.swapChain);
+}
+
+void Engine::createSwapChainImageViews() {
+  renderContext.swapChainImageViews.clear();
+
+  vk::ImageViewCreateInfo createInfo{
+      .viewType = vk::ImageViewType::e2D,
+      .format = renderContext.swapChainSurfaceFormat.format,
+      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                           .baseMipLevel = 0,
+                           .levelCount = 1,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1}};
+  for (const auto &image : renderContext.swapChainImages) {
+    createInfo.image = image;
+    vk::ImageView imageView = renderContext.device.createImageView(createInfo);
+    renderContext.swapChainImageViews.push_back(imageView);
   }
 }
 
@@ -282,6 +314,8 @@ void Engine::initVulkan() {
   createSurface();
   pickPhysicalDevice();
   createDevice();
+  createSwapChain();
+  createSwapChainImageViews();
 }
 
 void Engine::setupDeferredRenderer(uint32_t w, uint32_t h) {
