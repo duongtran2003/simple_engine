@@ -329,16 +329,23 @@ void RenderGraph::execute(uint32_t frameIndex) {
 
     for (const auto &output : pass.outputs) {
       auto &resource = resources[output];
+      vk::ImageLayout targetLayout =
+          resource.getAspectMask() == vk::ImageAspectFlagBits::eColor
+              ? vk::ImageLayout::eColorAttachmentOptimal
+              : vk::ImageLayout::eDepthStencilAttachmentOptimal;
       transitionImageLayout(commandBuffer, resource, resource.initialLayout,
-                            vk::ImageLayout::eColorAttachmentOptimal);
+                            targetLayout);
     }
 
     pass.executeFunction(commandBuffer, *this);
 
     for (const auto &output : pass.outputs) {
       auto &resource = resources[output];
-      transitionImageLayout(commandBuffer, resource,
-                            vk::ImageLayout::eColorAttachmentOptimal,
+      vk::ImageLayout sourceLayout =
+          resource.getAspectMask() == vk::ImageAspectFlagBits::eColor
+              ? vk::ImageLayout::eColorAttachmentOptimal
+              : vk::ImageLayout::eDepthStencilAttachmentOptimal;
+      transitionImageLayout(commandBuffer, resource, sourceLayout,
                             resource.finalLayout);
     }
 
