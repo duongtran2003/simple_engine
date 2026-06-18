@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
 #include "vulkan/vulkan.hpp"
 #include <string>
@@ -13,7 +14,7 @@ private:
   vk::ShaderStageFlagBits stage;
 
 public:
-  Shader(const std::string &id, vk::ShaderStageFlagBits shaderStage);
+  Shader(const std::string &id, const RenderContext &renderContext, vk::ShaderStageFlagBits shaderStage);
   ~Shader() override;
 
   bool doLoad() override;

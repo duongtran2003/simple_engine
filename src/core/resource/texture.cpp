@@ -1,13 +1,14 @@
 #include "core/resource/texture.hpp"
+#include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
-#include "vulkan/vulkan.hpp"
 #include <stb_image.h>
 #include <string>
 #include <vulkan/vulkan_core.h>
 
 namespace SimpleEngine {
 namespace Core {
-Texture::Texture(const std::string &id) : Resource(id) {}
+Texture::Texture(const std::string &id, const RenderContext &renderContext)
+    : Resource(id, renderContext) {}
 
 Texture::~Texture() {
   // TODO: Proper texture unload

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
 #include <string>
 namespace SimpleEngine {
@@ -9,13 +10,15 @@ private:
   std::string resourceId;
   bool loaded = false;
 
-  vk::Device device;
+  const RenderContext &renderContext;
 
 public:
-  Resource(const std::string &id);
+  Resource(const std::string &id, const RenderContext &renderContext);
   virtual ~Resource() = default;
 
   const std::string &getId() const;
+  const RenderContext &getRenderContext() const;
+
   bool isLoaded() const;
 
   bool load();

@@ -1,38 +1,26 @@
 #include "core/resource/shader.hpp"
+#include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
 #include <fstream>
 #include <ios>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace SimpleEngine {
 namespace Core {
-Shader::Shader(const std::string &id, vk::ShaderStageFlagBits shaderStage)
-    : Resource(id) {
+Shader::Shader(const std::string &id, const RenderContext &renderContext,
+               vk::ShaderStageFlagBits shaderStage)
+    : Resource(id, renderContext) {
   stage = shaderStage;
 }
 Shader::~Shader() { unload(); }
 
 bool Shader::doLoad() {
-  std::string extension;
-  switch (stage) {
-  case vk::ShaderStageFlagBits::eVertex:
-    extension = ".vert";
-    break;
-  case vk::ShaderStageFlagBits::eFragment:
-    extension = ".frag";
-    break;
-  case vk::ShaderStageFlagBits::eCompute:
-    extension = ".comp";
-    break;
-  default:
-    return false;
-  }
-
-  std::string filePath = "shaders/" + getId() + extension + ".spv";
+  std::string filePath = "shaders/" + getId() + ".spv";
 
   std::vector<char> shaderCode;
   if (!readShaderFile(filePath, shaderCode)) {
@@ -58,7 +46,7 @@ bool Shader::readShaderFile(const std::string &path,
                             std::vector<char> &buffer) {
   std::ifstream file(path, std::ios::ate | std::ios::binary);
   if (!file.is_open()) {
-    throw std::runtime_error("Failed to open shader file");
+    throw std::runtime_error("Failed to open shader file with path " + path);
   }
 
   buffer.reserve(file.tellg());
@@ -74,8 +62,8 @@ void Shader::createShaderModule(const std::vector<char> &shaderCode) {
       .codeSize = shaderCode.size(),
       .pCode = reinterpret_cast<const uint32_t *>(shaderCode.data())};
 
-  vk::Device device = getDevice();
-  shaderModule = device.createShaderModule(createInfo);
+  const RenderContext &renderContext = getRenderContext();
+  shaderModule = renderContext.device.createShaderModule(createInfo);
 }
 
 } // namespace Core

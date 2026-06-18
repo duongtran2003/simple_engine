@@ -1,4 +1,5 @@
 #include "core/resource/mesh.hpp"
+#include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
@@ -7,7 +8,8 @@
 
 namespace SimpleEngine {
 namespace Core {
-Mesh::Mesh(const std::string &id) : Resource(id) {}
+Mesh::Mesh(const std::string &id, const RenderContext &renderContext)
+    : Resource(id, renderContext) {}
 
 Mesh::~Mesh() { unload(); }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
 #include "vulkan/vulkan.hpp"
 #include <string>
@@ -25,7 +26,7 @@ private:
                          int &channels);
 
 public:
-  Texture(const std::string &id);
+  Texture(const std::string &id, const RenderContext &renderContext);
   ~Texture() override;
 
 protected:

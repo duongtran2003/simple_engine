@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
@@ -35,7 +36,7 @@ private:
   void createIndexBuffer(std::vector<uint32_t> &indices);
 
 public:
-  Mesh(const std::string &id);
+  Mesh(const std::string &id, const RenderContext& renderContext);
   ~Mesh() override;
 
   vk::Buffer getVertexBuffer() const;

@@ -25,6 +25,7 @@ struct RenderContext {
   std::vector<vk::ImageView> swapChainImageViews;
 
   vk::CommandPool commandPool;
+  std::vector<vk::CommandBuffer> commandBuffers;
 
   std::vector<vk::Semaphore> presentCompleteSemaphores;
   std::vector<vk::Semaphore> renderFinishedSemaphores;

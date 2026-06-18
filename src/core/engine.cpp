@@ -9,6 +9,8 @@
 #include "core/engine.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph.hpp"
+#include "core/resource/resource_manager.hpp"
+#include "core/resource/shader.hpp"
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "vulkan/vulkan.hpp"
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
@@ -36,6 +38,14 @@ Engine::Engine() {
   initVulkan();
 
   renderGraph = new RenderGraph(renderContext);
+  resourceManager = new ResourceManager(renderContext);
+
+  ResourceHandle<Shader> vertexShaderHandle = resourceManager->load<Shader>(
+      "test.vert", vk::ShaderStageFlagBits::eVertex);
+  ResourceHandle<Shader> fragmentShaderHandle = resourceManager->load<Shader>(
+      "test.frag", vk::ShaderStageFlagBits::eFragment);
+
+  // mainLoop();
 }
 
 void Engine::initWindow() {
@@ -325,6 +335,21 @@ void Engine::createCommandPool() {
       renderContext.device.createCommandPool(createInfo);
 }
 
+void Engine::allocateCommandBuffers() {
+  if (!renderContext.commandBuffers.empty()) {
+    renderContext.device.freeCommandBuffers(renderContext.commandPool,
+                                            renderContext.commandBuffers);
+  }
+
+  vk::CommandBufferAllocateInfo allocateInfo{
+      .commandPool = renderContext.commandPool,
+      .level = vk::CommandBufferLevel::ePrimary,
+      .commandBufferCount = MAX_FRAME_IN_FLIGHTS};
+
+  renderContext.commandBuffers =
+      renderContext.device.allocateCommandBuffers(allocateInfo);
+}
+
 void Engine::createSyncObjects() {
   for (const auto &semaphore : renderContext.presentCompleteSemaphores) {
     renderContext.device.destroySemaphore(semaphore);
@@ -352,6 +377,8 @@ void Engine::createSyncObjects() {
   }
 }
 
+void Engine::createGraphicsPipeline() {}
+
 void Engine::initVulkan() {
   createInstance();
   createSurface();
@@ -360,7 +387,18 @@ void Engine::initVulkan() {
   createSwapChain();
   createSwapChainImageViews();
   createCommandPool();
+  allocateCommandBuffers();
   createSyncObjects();
+}
+
+void Engine::renderFrame() { std::cout << "Main loop...\n"; }
+
+void Engine::mainLoop() {
+  while (!glfwWindowShouldClose(renderContext.window)) {
+    renderFrame();
+  }
+
+  renderContext.device.waitIdle();
 }
 
 void Engine::setupDeferredRenderer(uint32_t w, uint32_t h) {
