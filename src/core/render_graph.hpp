@@ -2,6 +2,7 @@
 
 #include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -38,7 +39,7 @@ private:
   std::unordered_map<std::string, Resource> resources;
   std::vector<Pass> passes;
   std::vector<size_t> executionOrder;
-  std::vector<vk::CommandBuffer> commandBuffers;
+  std::vector<std::vector<vk::CommandBuffer>> frameCommandBuffers;
 
   std::vector<vk::Semaphore> semaphores;
   std::vector<std::pair<size_t, size_t>> semaphoreSignalWaitPairs;
@@ -80,7 +81,7 @@ public:
       std::function<void(vk::CommandBuffer &, RenderGraph &)> executeFunction);
 
   void compile();
-  void execute();
+  void execute(uint32_t frameIndex);
 
   Resource *getResource(const std::string &name);
 };

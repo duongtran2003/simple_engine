@@ -15,6 +15,7 @@ private:
   ResourceManager *resourceManager = nullptr;
 
   void setupDeferredRenderer(uint32_t width, uint32_t height);
+  void setupHelloTriangleGraph();
 
   void initWindow();
   void initVulkan();

@@ -185,10 +185,16 @@ void RenderGraph::allocateCommandBuffers() {
       .commandPool = renderContext.commandPool,
       .level = vk::CommandBufferLevel::ePrimary,
       .commandBufferCount = static_cast<uint32_t>(executionOrder.size())};
-  commandBuffers = renderContext.device.allocateCommandBuffers(allocateInfo);
+  frameCommandBuffers.resize(renderContext.inFlightFrame);
+  for (size_t i = 0; i < frameCommandBuffers.size(); i++) {
+    frameCommandBuffers[i] =
+        renderContext.device.allocateCommandBuffers(allocateInfo);
+  }
 }
 
 void RenderGraph::compile() {
+  // TODO: Clean up last compilation memory
+
   std::vector<std::vector<size_t>> dependencies(
       passes.size()); // For each member, it stores the indices of the passes
                       // that it depends on
@@ -297,7 +303,7 @@ void RenderGraph::transitionImageLayout(vk::CommandBuffer &commandBuffer,
                                 0, nullptr, 1, &barrier);
 }
 
-void RenderGraph::execute() {
+void RenderGraph::execute(uint32_t frameIndex) {
   std::vector<vk::Semaphore> waitSemaphores;
   std::vector<vk::Semaphore> signalSemaphores;
   std::vector<vk::PipelineStageFlags> waitStages;
@@ -306,9 +312,12 @@ void RenderGraph::execute() {
     createSemaphores(waitSemaphores, signalSemaphores, waitStages, passIndex);
 
     const auto &pass = passes[passIndex];
-    auto &commandBuffer = commandBuffers[passIndex];
+    auto &commandBuffer = frameCommandBuffers[frameIndex][passIndex];
+    commandBuffer.reset();
 
-    vk::Result bufferStartResult = commandBuffer.begin({});
+    vk::CommandBufferBeginInfo beginInfo{
+        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+    commandBuffer.begin(beginInfo);
 
     for (const auto &input : pass.inputs) {
       auto &resource = resources[input];

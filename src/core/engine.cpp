@@ -1,6 +1,8 @@
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <vector>
@@ -34,13 +36,13 @@ namespace Core {
 
 Engine::Engine() {
   renderContext = RenderContext();
+  renderContext.inFlightFrame = MAX_FRAME_IN_FLIGHTS;
   resourceManager = new ResourceManager(renderContext);
 
   initWindow();
   initVulkan();
 
   renderGraph = new RenderGraph(renderContext);
-  // mainLoop();
 }
 
 void Engine::initWindow() {
@@ -339,7 +341,7 @@ void Engine::allocateCommandBuffers() {
   vk::CommandBufferAllocateInfo allocateInfo{
       .commandPool = renderContext.commandPool,
       .level = vk::CommandBufferLevel::ePrimary,
-      .commandBufferCount = MAX_FRAME_IN_FLIGHTS};
+      .commandBufferCount = renderContext.inFlightFrame};
 
   renderContext.commandBuffers =
       renderContext.device.allocateCommandBuffers(allocateInfo);
@@ -361,7 +363,7 @@ void Engine::createSyncObjects() {
     renderContext.renderFinishedSemaphores.emplace_back(semaphore);
   }
 
-  for (size_t i = 0; i < MAX_FRAME_IN_FLIGHTS; i++) {
+  for (size_t i = 0; i < renderContext.inFlightFrame; i++) {
     vk::Semaphore semaphore = renderContext.device.createSemaphore({});
     renderContext.presentCompleteSemaphores.emplace_back(semaphore);
 
@@ -402,9 +404,11 @@ void Engine::createGraphicsPipeline() {
       .height = static_cast<float>(renderContext.swapChainExtent.height),
       .minDepth = 0.0f,
       .maxDepth = 1.0f};
+  renderContext.viewport = viewport;
 
   vk::Rect2D scissor{.offset = {.x = 0, .y = 0},
                      .extent = renderContext.swapChainExtent};
+  renderContext.scissor = scissor;
 
   std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport,
                                                  vk::DynamicState::eScissor};
@@ -476,6 +480,7 @@ void Engine::createGraphicsPipeline() {
 
   if (result == vk::Result::eSuccess) {
     vk::Pipeline pipeline = pipelines[0];
+    renderContext.graphicsPipeline = pipeline;
   }
 }
 
@@ -492,7 +497,127 @@ void Engine::initVulkan() {
   createGraphicsPipeline();
 }
 
-void Engine::renderFrame() { std::cout << "Main loop...\n"; }
+void Engine::renderFrame() {
+  auto fenceResult = renderContext.device.waitForFences(
+      renderContext.inFlightFences[renderContext.frameIndex], vk::True,
+      UINT64_MAX);
+  if (fenceResult != vk::Result::eSuccess) {
+    throw std::runtime_error(
+        "Engine::renderFrame::ERROR: Failed to wait for render fence.");
+  }
+
+  auto [result, imageIndex] = renderContext.device.acquireNextImageKHR(
+      renderContext.swapChain, UINT64_MAX,
+      renderContext.presentCompleteSemaphores[renderContext.frameIndex],
+      nullptr);
+
+  if (result == vk::Result::eErrorOutOfDateKHR) {
+    return;
+  }
+  if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+    throw std::runtime_error(
+        "Engine::renderFrame::ERROR: Failed to acquire next swap chain image.");
+  }
+
+  renderContext.device.resetFences(
+      renderContext.inFlightFences[renderContext.frameIndex]);
+  renderGraph->execute(renderContext.frameIndex);
+
+  vk::CommandBuffer commandBuffer =
+      renderContext.commandBuffers[renderContext.frameIndex];
+  commandBuffer.reset();
+  vk::CommandBufferBeginInfo beginInfo{
+      .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+  commandBuffer.begin(beginInfo);
+
+  vk::ImageMemoryBarrier copyTarget{
+      .srcAccessMask = vk::AccessFlagBits::eNone,
+      .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+      .oldLayout = vk::ImageLayout::eUndefined,
+      .newLayout = vk::ImageLayout::eTransferDstOptimal,
+      .image = renderContext.swapChainImages[imageIndex],
+      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                           .baseMipLevel = 0,
+                           .levelCount = 1,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1}};
+
+  commandBuffer.pipelineBarrier(
+      vk::PipelineStageFlagBits::eColorAttachmentOutput,
+      vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits::eByRegion,
+      0, nullptr, 0, nullptr, 1, &copyTarget);
+
+  vk::ImageCopy copyRegion{
+      .srcSubresource = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                         .baseArrayLayer = 0,
+                         .layerCount = 1},
+      .dstSubresource = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                         .baseArrayLayer = 0,
+                         .layerCount = 1},
+      .extent = vk::Extent3D(renderContext.swapChainExtent.width,
+                             renderContext.swapChainExtent.height, 1)};
+
+  commandBuffer.copyImage(renderGraph->getResource("FinalColor")->image,
+                          vk::ImageLayout::eTransferSrcOptimal,
+                          renderContext.swapChainImages[imageIndex],
+                          vk::ImageLayout::eTransferDstOptimal, 1, &copyRegion);
+
+  vk::ImageMemoryBarrier presentTarget{
+      .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+      .dstAccessMask = vk::AccessFlagBits::eNone,
+      .oldLayout = vk::ImageLayout::eTransferDstOptimal,
+      .newLayout = vk::ImageLayout::ePresentSrcKHR,
+      .image = renderContext.swapChainImages[imageIndex],
+      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                           .baseMipLevel = 0,
+                           .levelCount = 1,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1}};
+
+  commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                                vk::PipelineStageFlagBits::eBottomOfPipe,
+                                vk::DependencyFlagBits::eByRegion, 0, nullptr,
+                                0, nullptr, 1, &presentTarget);
+
+  commandBuffer.end();
+
+  vk::PipelineStageFlags waitDestinationStageMask =
+      vk::PipelineStageFlagBits::eColorAttachmentOutput;
+  vk::SubmitInfo submitInfo{
+      .waitSemaphoreCount = 1,
+      .pWaitSemaphores =
+          &renderContext.presentCompleteSemaphores[renderContext.frameIndex],
+      .pWaitDstStageMask = &waitDestinationStageMask,
+      .commandBufferCount = 1,
+      .pCommandBuffers = &commandBuffer,
+      .signalSemaphoreCount = 1,
+      .pSignalSemaphores =
+          &renderContext.renderFinishedSemaphores[renderContext.frameIndex]};
+
+  vk::Result submitResult = renderContext.graphicsQueue.submit(
+      1, &submitInfo, renderContext.inFlightFences[renderContext.frameIndex]);
+
+  vk::PresentInfoKHR presentInfoKHR{
+      .waitSemaphoreCount = 1,
+      .pWaitSemaphores =
+          &renderContext.renderFinishedSemaphores[renderContext.frameIndex],
+      .swapchainCount = 1,
+      .pSwapchains = &renderContext.swapChain,
+      .pImageIndices = &imageIndex};
+
+  vk::Result presentResult =
+      renderContext.graphicsQueue.presentKHR(presentInfoKHR);
+  if (presentResult == vk::Result::eSuboptimalKHR ||
+      result == vk::Result::eErrorOutOfDateKHR) {
+    // TODO: This is caused by resizing window => Swapchain outdate => Need
+    // recreating
+  } else {
+    assert(presentResult == vk::Result::eSuccess);
+  }
+
+  renderContext.frameIndex =
+      (renderContext.frameIndex + 1) % renderContext.inFlightFrame;
+}
 
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(renderContext.window)) {
@@ -500,6 +625,44 @@ void Engine::mainLoop() {
   }
 
   renderContext.device.waitIdle();
+}
+
+void Engine::setupHelloTriangleGraph() {
+  std::cout << "Beginning setting up hello triangle graph\n";
+  renderGraph->addResource(
+      "FinalColor", renderContext.swapChainSurfaceFormat.format,
+      {.width = WIDTH, .height = HEIGHT},
+      vk::ImageUsageFlagBits::eColorAttachment |
+          vk::ImageUsageFlagBits::eTransferSrc,
+      vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferSrcOptimal);
+  renderGraph->addPass(
+      "RenderPass", {}, {"FinalColor"},
+      [&](vk::CommandBuffer &commandBuffer, RenderGraph &renderGraph) {
+        std::array<vk::RenderingAttachmentInfoKHR, 3> colorAttachments;
+        vk::RenderingAttachmentInfoKHR colorAttachment{
+            .imageView = renderGraph.getResource("FinalColor")->view,
+            .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+            .loadOp = vk::AttachmentLoadOp::eClear,
+            .storeOp = vk::AttachmentStoreOp::eStore};
+
+        vk::RenderingInfoKHR renderingInfo{
+            .renderArea = {.offset = {.x = 0, .y = 0},
+                           .extent = {.width = WIDTH, .height = HEIGHT}},
+            .layerCount = 1,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &colorAttachment,
+        };
+
+        commandBuffer.beginRendering(renderingInfo);
+        // Bind stuff and render stuff here
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+                                   renderContext.graphicsPipeline);
+        commandBuffer.setViewport(0, renderContext.viewport);
+        commandBuffer.setScissor(0, renderContext.scissor);
+        commandBuffer.draw(3, 1, 0, 0);
+
+        commandBuffer.endRendering();
+      });
 }
 
 void Engine::setupDeferredRenderer(uint32_t w, uint32_t h) {
@@ -612,7 +775,9 @@ void Engine::setupDeferredRenderer(uint32_t w, uint32_t h) {
 
 void Engine::run() {
   std::cout << "App run\n";
-  setupDeferredRenderer(800, 600);
+  setupHelloTriangleGraph();
+  renderGraph->compile();
+  mainLoop();
 }
 } // namespace Core
 } // namespace SimpleEngine
