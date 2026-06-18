@@ -2,7 +2,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring>
-#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <vector>
@@ -289,7 +288,8 @@ void Engine::createSwapChain() {
       .imageColorSpace = renderContext.swapChainSurfaceFormat.colorSpace,
       .imageExtent = renderContext.swapChainExtent,
       .imageArrayLayers = 1,
-      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment |
+                    vk::ImageUsageFlagBits::eTransferDst,
       .imageSharingMode = vk::SharingMode::eExclusive,
       .preTransform = surfaceCapabilities.currentTransform,
       .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
@@ -591,16 +591,14 @@ void Engine::renderFrame() {
       .commandBufferCount = 1,
       .pCommandBuffers = &commandBuffer,
       .signalSemaphoreCount = 1,
-      .pSignalSemaphores =
-          &renderContext.renderFinishedSemaphores[renderContext.frameIndex]};
+      .pSignalSemaphores = &renderContext.renderFinishedSemaphores[imageIndex]};
 
   vk::Result submitResult = renderContext.graphicsQueue.submit(
       1, &submitInfo, renderContext.inFlightFences[renderContext.frameIndex]);
 
   vk::PresentInfoKHR presentInfoKHR{
       .waitSemaphoreCount = 1,
-      .pWaitSemaphores =
-          &renderContext.renderFinishedSemaphores[renderContext.frameIndex],
+      .pWaitSemaphores = &renderContext.renderFinishedSemaphores[imageIndex],
       .swapchainCount = 1,
       .pSwapchains = &renderContext.swapChain,
       .pImageIndices = &imageIndex};
@@ -621,6 +619,7 @@ void Engine::renderFrame() {
 
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(renderContext.window)) {
+    glfwPollEvents();
     renderFrame();
   }
 

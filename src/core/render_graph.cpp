@@ -334,7 +334,6 @@ void RenderGraph::execute(uint32_t frameIndex) {
     }
 
     pass.executeFunction(commandBuffer, *this);
-    commandBuffer.end();
 
     for (const auto &output : pass.outputs) {
       auto &resource = resources[output];
@@ -342,6 +341,8 @@ void RenderGraph::execute(uint32_t frameIndex) {
                             vk::ImageLayout::eColorAttachmentOptimal,
                             resource.finalLayout);
     }
+
+    commandBuffer.end();
 
     vk::SubmitInfo submitInfo{
         .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
