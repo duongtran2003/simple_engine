@@ -637,7 +637,6 @@ void Engine::setupHelloTriangleGraph() {
   renderGraph->addPass(
       "RenderPass", {}, {"FinalColor"},
       [&](vk::CommandBuffer &commandBuffer, RenderGraph &renderGraph) {
-        std::array<vk::RenderingAttachmentInfoKHR, 3> colorAttachments;
         vk::RenderingAttachmentInfoKHR colorAttachment{
             .imageView = renderGraph.getResource("FinalColor")->view,
             .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
