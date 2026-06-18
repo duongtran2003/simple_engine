@@ -22,6 +22,7 @@ private:
   void createSwapChain();
   void createSwapChainImageViews();
   void createCommandPool();
+  void createSyncObjects();
 
   void renderFrame();
 

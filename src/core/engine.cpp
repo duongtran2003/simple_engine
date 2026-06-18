@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 #include <limits>
 #include <stdexcept>
@@ -20,6 +21,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
+constexpr uint32_t MAX_FRAME_IN_FLIGHTS = 2;
 
 std::vector<const char *> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName};
@@ -294,6 +296,9 @@ void Engine::createSwapChain() {
 }
 
 void Engine::createSwapChainImageViews() {
+  for (const auto &imageView : renderContext.swapChainImageViews) {
+    renderContext.device.destroyImageView(imageView);
+  }
   renderContext.swapChainImageViews.clear();
 
   vk::ImageViewCreateInfo createInfo{
@@ -320,6 +325,33 @@ void Engine::createCommandPool() {
       renderContext.device.createCommandPool(createInfo);
 }
 
+void Engine::createSyncObjects() {
+  for (const auto &semaphore : renderContext.presentCompleteSemaphores) {
+    renderContext.device.destroySemaphore(semaphore);
+  }
+  for (const auto &semaphore : renderContext.renderFinishedSemaphores) {
+    renderContext.device.destroySemaphore(semaphore);
+  }
+
+  renderContext.presentCompleteSemaphores.clear();
+  renderContext.renderFinishedSemaphores.clear();
+
+  for (size_t i = 0; i < renderContext.swapChainImages.size(); i++) {
+    vk::Semaphore semaphore = renderContext.device.createSemaphore({});
+    renderContext.renderFinishedSemaphores.emplace_back(semaphore);
+  }
+
+  for (size_t i = 0; i < MAX_FRAME_IN_FLIGHTS; i++) {
+    vk::Semaphore semaphore = renderContext.device.createSemaphore({});
+    renderContext.presentCompleteSemaphores.emplace_back(semaphore);
+
+    vk::FenceCreateInfo fenceCreateInfo{.flags =
+                                            vk::FenceCreateFlagBits::eSignaled};
+    vk::Fence fence = renderContext.device.createFence(fenceCreateInfo);
+    renderContext.inFlightFences.emplace_back(fence);
+  }
+}
+
 void Engine::initVulkan() {
   createInstance();
   createSurface();
@@ -328,6 +360,7 @@ void Engine::initVulkan() {
   createSwapChain();
   createSwapChainImageViews();
   createCommandPool();
+  createSyncObjects();
 }
 
 void Engine::setupDeferredRenderer(uint32_t w, uint32_t h) {
