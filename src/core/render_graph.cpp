@@ -163,15 +163,11 @@ void RenderGraph::allocateResources() {
     resource.memory = renderContext.device.allocateMemory(allocateInfo);
     renderContext.device.bindImageMemory(resource.image, resource.memory, 0);
 
-    vk::ImageAspectFlagBits aspectMask =
-        resource.format == vk::Format::eD32Sfloat
-            ? vk::ImageAspectFlagBits::eDepth
-            : vk::ImageAspectFlagBits::eColor;
     vk::ImageViewCreateInfo viewInfo{
         .image = resource.image,
         .viewType = vk::ImageViewType::e2D,
         .format = resource.format,
-        .subresourceRange = {.aspectMask = aspectMask,
+        .subresourceRange = {.aspectMask = resource.getAspectMask(),
                              .baseMipLevel = 0,
                              .levelCount = 1,
                              .baseArrayLayer = 0,
@@ -243,7 +239,7 @@ void RenderGraph::createSemaphores(
 }
 
 void RenderGraph::transitionImageLayout(vk::CommandBuffer &commandBuffer,
-                                        vk::Image image,
+                                        Resource &resource,
                                         vk::ImageLayout srcLayout,
                                         vk::ImageLayout dstLayout) {
   vk::ImageMemoryBarrier barrier{
@@ -251,8 +247,8 @@ void RenderGraph::transitionImageLayout(vk::CommandBuffer &commandBuffer,
       .newLayout = dstLayout,
       .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
       .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
-      .image = image,
-      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+      .image = resource.image,
+      .subresourceRange = {.aspectMask = resource.getAspectMask(),
                            .baseMipLevel = 0,
                            .levelCount = 1,
                            .baseArrayLayer = 0,
@@ -275,6 +271,12 @@ void RenderGraph::transitionImageLayout(vk::CommandBuffer &commandBuffer,
 
     srcStage = vk::PipelineStageFlagBits::eTransfer;
     dstStage = vk::PipelineStageFlagBits::eFragmentShader;
+  } else if (dstLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
+    barrier.setSrcAccessMask(vk::AccessFlagBits::eNone);
+    barrier.setDstAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentWrite |
+                             vk::AccessFlagBits::eDepthStencilAttachmentRead);
+    srcStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    dstStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
   } else if (dstLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
     barrier.setSrcAccessMask(vk::AccessFlagBits::eMemoryWrite);
     barrier.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
@@ -321,15 +323,13 @@ void RenderGraph::execute(uint32_t frameIndex) {
 
     for (const auto &input : pass.inputs) {
       auto &resource = resources[input];
-      transitionImageLayout(commandBuffer, resource.image,
-                            resource.initialLayout,
+      transitionImageLayout(commandBuffer, resource, resource.initialLayout,
                             vk::ImageLayout::eShaderReadOnlyOptimal);
     }
 
     for (const auto &output : pass.outputs) {
       auto &resource = resources[output];
-      transitionImageLayout(commandBuffer, resource.image,
-                            resource.initialLayout,
+      transitionImageLayout(commandBuffer, resource, resource.initialLayout,
                             vk::ImageLayout::eColorAttachmentOptimal);
     }
 
@@ -337,7 +337,7 @@ void RenderGraph::execute(uint32_t frameIndex) {
 
     for (const auto &output : pass.outputs) {
       auto &resource = resources[output];
-      transitionImageLayout(commandBuffer, resource.image,
+      transitionImageLayout(commandBuffer, resource,
                             vk::ImageLayout::eColorAttachmentOptimal,
                             resource.finalLayout);
     }

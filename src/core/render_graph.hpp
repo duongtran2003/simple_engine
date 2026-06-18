@@ -2,7 +2,6 @@
 
 #include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -26,6 +25,15 @@ public:
     vk::Image image = nullptr;
     vk::DeviceMemory memory = nullptr;
     vk::ImageView view = nullptr;
+
+    vk::ImageAspectFlags getAspectMask() const {
+      if (format == vk::Format::eD32Sfloat || format == vk::Format::eD16Unorm ||
+          format == vk::Format::eD32SfloatS8Uint) {
+        return vk::ImageAspectFlagBits::eDepth;
+      }
+
+      return vk::ImageAspectFlagBits::eColor;
+    }
   };
 
   struct Pass {
@@ -64,8 +72,8 @@ private:
 
   uint32_t findMemoryType(uint32_t memoryTypeBits, vk::MemoryPropertyFlags);
 
-  void transitionImageLayout(vk::CommandBuffer &commandBuffer, vk::Image image,
-                             vk::ImageLayout srcLayout,
+  void transitionImageLayout(vk::CommandBuffer &commandBuffer,
+                             Resource &resource, vk::ImageLayout srcLayout,
                              vk::ImageLayout dstLayout);
 
 public:
