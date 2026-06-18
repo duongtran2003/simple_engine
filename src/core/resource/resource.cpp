@@ -24,10 +24,5 @@ void Resource::unload() {
   doUnload();
   loaded = false;
 }
-
-vk::Device Resource::getDevice() {
-  // TODO: Implement service locator to get device (or dependancy injection)
-  return vk::Device();
-}
 } // namespace Core
 } // namespace SimpleEngine

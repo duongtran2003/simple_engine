@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/render_context.hpp"
-#include "vulkan/vulkan.hpp"
 #include <string>
 namespace SimpleEngine {
 namespace Core {
@@ -23,8 +22,6 @@ public:
 
   bool load();
   void unload();
-
-  vk::Device getDevice();
 
 protected:
   virtual bool doLoad() = 0;

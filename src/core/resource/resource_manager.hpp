@@ -3,6 +3,7 @@
 #include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <typeindex>

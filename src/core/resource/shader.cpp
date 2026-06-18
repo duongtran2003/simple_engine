@@ -34,7 +34,7 @@ bool Shader::doLoad() {
 
 void Shader::doUnload() {
   if (isLoaded()) {
-    vk::Device device = getDevice();
+    vk::Device device = getRenderContext().device;
     device.destroyShaderModule(shaderModule);
   }
 }
@@ -49,7 +49,7 @@ bool Shader::readShaderFile(const std::string &path,
     throw std::runtime_error("Failed to open shader file with path " + path);
   }
 
-  buffer.reserve(file.tellg());
+  buffer.resize(file.tellg());
   file.seekg(0, std::ios::beg);
   file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
   file.close();

@@ -57,7 +57,7 @@ bool Mesh::doLoad() {
 
 void Mesh::doUnload() {
   if (isLoaded()) {
-    vk::Device device = getDevice();
+    vk::Device device = getRenderContext().device;
 
     device.destroyBuffer(indexBuffer);
     device.freeMemory(indexBufferMemory);
