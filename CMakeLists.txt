@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(SimpleEngine LANGUAGES CXX)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to 'Debug' as none was specified.")
+  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,13 +57,30 @@ file(GLOB_RECURSE SLANG_SOURCES "${SHADERS_SRC_DIR}/*.slang")
 set(SPV_OUTPUTS "")
 
 foreach(SHADER_PATH ${SLANG_SOURCES})
-  get_filename_component(SHADER_NAME ${SHADER_PATH} NAME_WE)
-  set(OUTPUT_SPV "${SHADERS_OUT_DIR}/${SHADER_NAME}.spv")
+  get_filename_component(SHADER_FULL_NAME ${SHADER_PATH} NAME)
+
+  string(REGEX REPLACE "\\.slang$" ".spv" SHADER_OUTPUT_NAME ${SHADER_FULL_NAME})
+  set(OUTPUT_SPV "${SHADERS_OUT_DIR}/${SHADER_OUTPUT_NAME}")
+
+  if(SHADER_FULL_NAME MATCHES "\\.vert\\.slang$")
+    set(ENTRY_POINT_FLAG "-entry;vertMain")
+  elseif(SHADER_FULL_NAME MATCHES "\\.frag\\.slang$")
+    set(ENTRY_POINT_FLAG "-entry;fragMain")
+  else()
+    set(ENTRY_POINT_FLAG "-entry;main")
+  endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(SLANG_DEBUG_FLAGS "-g2;-O0")
+  else()
+    set(SLANG_DEBUG_FLAGS "-O3")
+  endif()
+
   add_custom_command(
     OUTPUT ${OUTPUT_SPV}
-    COMMAND ${SLANGC_EXECUTABLE} ${SHADER_PATH} -target spirv -profile spirv_1_4 -emit-spirv-directly -fvk-use-entrypoint-name -entry vertMain -entry fragMain -o ${OUTPUT_SPV}
+    COMMAND ${SLANGC_EXECUTABLE} ${SHADER_PATH} -target spirv -profile spirv_1_4 -emit-spirv-directly -fvk-use-entrypoint-name ${ENTRY_POINT_FLAG} ${SLANG_DEBUG_FLAGS} -o ${OUTPUT_SPV}
     DEPENDS ${SHADER_PATH}
-    COMMENT "Compiling shader: ${SHADER_NAME}.slang"
+    COMMENT "Compiling shader: ${SHADER_FULL_NAME}"
     VERBATIM
   )
   list(APPEND SPV_OUTPUTS ${OUTPUT_SPV})

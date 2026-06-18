@@ -34,17 +34,12 @@ namespace Core {
 
 Engine::Engine() {
   renderContext = RenderContext();
+  resourceManager = new ResourceManager(renderContext);
+
   initWindow();
   initVulkan();
 
   renderGraph = new RenderGraph(renderContext);
-  resourceManager = new ResourceManager(renderContext);
-
-  ResourceHandle<Shader> vertexShaderHandle = resourceManager->load<Shader>(
-      "test.vert", vk::ShaderStageFlagBits::eVertex);
-  ResourceHandle<Shader> fragmentShaderHandle = resourceManager->load<Shader>(
-      "test.frag", vk::ShaderStageFlagBits::eFragment);
-
   // mainLoop();
 }
 
@@ -377,7 +372,112 @@ void Engine::createSyncObjects() {
   }
 }
 
-void Engine::createGraphicsPipeline() {}
+void Engine::createGraphicsPipeline() {
+  ResourceHandle<Shader> vertexShaderHandle = resourceManager->load<Shader>(
+      "test.vert", vk::ShaderStageFlagBits::eVertex);
+  ResourceHandle<Shader> fragmentShaderHandle = resourceManager->load<Shader>(
+      "test.frag", vk::ShaderStageFlagBits::eFragment);
+
+  vk::PipelineShaderStageCreateInfo vertexShaderStageInfo{
+      .stage = vk::ShaderStageFlagBits::eVertex,
+      .module = vertexShaderHandle->getShaderModule(),
+      .pName = "vertMain"};
+
+  vk::PipelineShaderStageCreateInfo fragmentShaderStageInfo{
+      .stage = vk::ShaderStageFlagBits::eFragment,
+      .module = fragmentShaderHandle->getShaderModule(),
+      .pName = "fragMain"};
+
+  vk::PipelineShaderStageCreateInfo shaderStages[] = {vertexShaderStageInfo,
+                                                      fragmentShaderStageInfo};
+
+  vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+  vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
+      .topology = vk::PrimitiveTopology::eTriangleList};
+
+  vk::Viewport viewport{
+      .x = 0.0f,
+      .y = 0.0f,
+      .width = static_cast<float>(renderContext.swapChainExtent.width),
+      .height = static_cast<float>(renderContext.swapChainExtent.height),
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f};
+
+  vk::Rect2D scissor{.offset = {.x = 0, .y = 0},
+                     .extent = renderContext.swapChainExtent};
+
+  std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport,
+                                                 vk::DynamicState::eScissor};
+
+  vk::PipelineDynamicStateCreateInfo dynamicState{
+      .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+      .pDynamicStates = dynamicStates.data()};
+
+  vk::PipelineViewportStateCreateInfo viewportState{.viewportCount = 1,
+                                                    .pViewports = &viewport,
+                                                    .scissorCount = 1,
+                                                    .pScissors = &scissor};
+
+  vk::PipelineRasterizationStateCreateInfo rasterizer{
+      .rasterizerDiscardEnable = vk::False,
+      .polygonMode = vk::PolygonMode::eFill,
+      .cullMode = vk::CullModeFlagBits::eBack,
+      .frontFace = vk::FrontFace::eClockwise,
+      .depthBiasEnable = vk::False,
+      .depthBiasClamp = vk::False,
+      .lineWidth = 1.0f};
+
+  vk::PipelineMultisampleStateCreateInfo multisampling{
+      .rasterizationSamples = vk::SampleCountFlagBits::e1,
+      .sampleShadingEnable = vk::False};
+
+  vk::PipelineColorBlendAttachmentState colorBlendAttachment{
+      .blendEnable = vk::False,
+      .colorWriteMask =
+          vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+          vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+
+  vk::PipelineColorBlendStateCreateInfo colorBlending{
+      .logicOpEnable = vk::False,
+      .logicOp = vk::LogicOp::eCopy,
+      .attachmentCount = 1,
+      .pAttachments = &colorBlendAttachment};
+
+  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0,
+                                                  .pushConstantRangeCount = 0};
+
+  vk::PipelineLayout pipelineLayout =
+      renderContext.device.createPipelineLayout(pipelineLayoutInfo);
+
+  vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
+      .stageCount = 2,
+      .pStages = shaderStages,
+      .pVertexInputState = &vertexInputInfo,
+      .pInputAssemblyState = &inputAssembly,
+      .pViewportState = &viewportState,
+      .pRasterizationState = &rasterizer,
+      .pMultisampleState = &multisampling,
+      .pColorBlendState = &colorBlending,
+      .pDynamicState = &dynamicState,
+      .layout = pipelineLayout,
+      .renderPass = nullptr};
+
+  vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo{
+      .colorAttachmentCount = 1,
+      .pColorAttachmentFormats = &renderContext.swapChainSurfaceFormat.format};
+
+  vk::StructureChain<vk::GraphicsPipelineCreateInfo,
+                     vk::PipelineRenderingCreateInfo>
+      pipelineCreateInfoChain = {graphicsPipelineCreateInfo,
+                                 pipelineRenderingCreateInfo};
+
+  auto [result, pipelines] = renderContext.device.createGraphicsPipelines(
+      nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
+
+  if (result == vk::Result::eSuccess) {
+    vk::Pipeline pipeline = pipelines[0];
+  }
+}
 
 void Engine::initVulkan() {
   createInstance();
@@ -389,6 +489,7 @@ void Engine::initVulkan() {
   createCommandPool();
   allocateCommandBuffers();
   createSyncObjects();
+  createGraphicsPipeline();
 }
 
 void Engine::renderFrame() { std::cout << "Main loop...\n"; }

@@ -1,10 +1,23 @@
 #!/bin/zsh
+set -e
 
-if [ ! -d "build" ]; then
-    chmod +x init.sh
-    echo "Build directory not found. Running init.sh ..."
-    ./init.sh
+PRESET="debug"
+if [[ "$1" == "release" ]]; then
+    PRESET="release"
 fi
 
-cd build
-ninja SimpleEngine && ./SimpleEngine
+TARGET_DIR="build_${PRESET}"
+
+if [ ! -d "$TARGET_DIR" ]; then
+    chmod +x init.sh
+    echo "${TARGET_DIR} directory not found. Bootstrapping via init.sh ..."
+    ./init.sh "$PRESET"
+fi
+
+cd "$TARGET_DIR"
+ninja SimpleEngine 
+
+echo "--------------------------------------------------"
+echo "Launching SimpleEngine (${PRESET})..."
+echo "--------------------------------------------------"
+./SimpleEngine

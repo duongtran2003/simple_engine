@@ -14,7 +14,7 @@ CompileFlags:
     - -Wformat=2
   Remove:
     - -Werror
-  CompilationDatabase: build
+  CompilationDatabase: build_debug
 
 Diagnostics:
   UnusedIncludes: Strict
