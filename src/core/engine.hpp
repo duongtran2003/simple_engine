@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/render/render_pass_manager.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph.hpp"
 #include "core/resource/resource_manager.hpp"
@@ -11,11 +12,13 @@ class Engine {
 private:
   RenderContext renderContext;
   RenderGraph *renderGraph = nullptr;
+  RenderPassManager *renderPassManager = nullptr;
 
   ResourceManager *resourceManager = nullptr;
 
   void setupDeferredRenderer(uint32_t width, uint32_t height);
   void setupHelloTriangleGraph();
+  void setupRenderPasses();
 
   void initWindow();
   void initVulkan();

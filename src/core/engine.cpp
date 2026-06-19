@@ -8,10 +8,13 @@
 #include <vulkan/vulkan_core.h>
 
 #include "core/engine.hpp"
+#include "core/render/render_pass_manager.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph.hpp"
+#include "core/render_pass/example_render_pass.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
+#include "helpers/vulkan_helper.hpp"
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "vulkan/vulkan.hpp"
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
@@ -42,6 +45,7 @@ Engine::Engine() {
   initVulkan();
 
   renderGraph = new RenderGraph(renderContext);
+  renderPassManager = new RenderPassManager(renderContext);
 }
 
 void Engine::initWindow() {
@@ -256,7 +260,7 @@ void Engine::createSwapChain() {
   vk::SurfaceFormatKHR swapChainSurfaceFormat;
   const auto formatIt = std::ranges::find_if(
       availableFormats, [](const vk::SurfaceFormatKHR &format) {
-        return format.format == vk::Format::eB8G8R8A8Srgb &&
+        return format.format == vk::Format::eR16G16B16A16Sfloat &&
                format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear;
       });
 
@@ -447,6 +451,13 @@ void Engine::createGraphicsPipeline() {
       .attachmentCount = 1,
       .pAttachments = &colorBlendAttachment};
 
+  vk::PipelineDepthStencilStateCreateInfo depthStencil{
+      .depthTestEnable = vk::False,
+      .depthWriteEnable = vk::False,
+      .depthCompareOp = vk::CompareOp::eLess,
+      .depthBoundsTestEnable = vk::False,
+      .stencilTestEnable = vk::False};
+
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0,
                                                   .pushConstantRangeCount = 0};
 
@@ -461,6 +472,7 @@ void Engine::createGraphicsPipeline() {
       .pViewportState = &viewportState,
       .pRasterizationState = &rasterizer,
       .pMultisampleState = &multisampling,
+      .pDepthStencilState = &depthStencil,
       .pColorBlendState = &colorBlending,
       .pDynamicState = &dynamicState,
       .layout = pipelineLayout,
@@ -468,7 +480,8 @@ void Engine::createGraphicsPipeline() {
 
   vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo{
       .colorAttachmentCount = 1,
-      .pColorAttachmentFormats = &renderContext.swapChainSurfaceFormat.format};
+      .pColorAttachmentFormats = &renderContext.swapChainSurfaceFormat.format,
+      .depthAttachmentFormat = vk::Format::eD32Sfloat};
 
   vk::StructureChain<vk::GraphicsPipelineCreateInfo,
                      vk::PipelineRenderingCreateInfo>
@@ -521,7 +534,6 @@ void Engine::renderFrame() {
 
   renderContext.device.resetFences(
       renderContext.inFlightFences[renderContext.frameIndex]);
-  renderGraph->execute(renderContext.frameIndex);
 
   vk::CommandBuffer commandBuffer =
       renderContext.commandBuffers[renderContext.frameIndex];
@@ -530,22 +542,12 @@ void Engine::renderFrame() {
       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
   commandBuffer.begin(beginInfo);
 
-  vk::ImageMemoryBarrier copyTarget{
-      .srcAccessMask = vk::AccessFlagBits::eNone,
-      .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
-      .oldLayout = vk::ImageLayout::eUndefined,
-      .newLayout = vk::ImageLayout::eTransferDstOptimal,
-      .image = renderContext.swapChainImages[imageIndex],
-      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                           .baseMipLevel = 0,
-                           .levelCount = 1,
-                           .baseArrayLayer = 0,
-                           .layerCount = 1}};
+  renderPassManager->execute(commandBuffer);
 
-  commandBuffer.pipelineBarrier(
-      vk::PipelineStageFlagBits::eColorAttachmentOutput,
-      vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits::eByRegion,
-      0, nullptr, 0, nullptr, 1, &copyTarget);
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer, renderContext.swapChainImages[imageIndex],
+      vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+      vk::ImageAspectFlagBits::eColor);
 
   vk::ImageCopy copyRegion{
       .srcSubresource = {.aspectMask = vk::ImageAspectFlagBits::eColor,
@@ -557,27 +559,25 @@ void Engine::renderFrame() {
       .extent = vk::Extent3D(renderContext.swapChainExtent.width,
                              renderContext.swapChainExtent.height, 1)};
 
-  commandBuffer.copyImage(renderGraph->getResource("FinalColor")->image,
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer,
+      renderPassManager->getRenderPass("ExampleRenderPass")
+          ->getRenderTarget()
+          ->getColorImage(),
+      vk::ImageLayout::eColorAttachmentOptimal,
+      vk::ImageLayout::eTransferSrcOptimal, vk::ImageAspectFlagBits::eColor);
+
+  commandBuffer.copyImage(renderPassManager->getRenderPass("ExampleRenderPass")
+                              ->getRenderTarget()
+                              ->getColorImage(),
                           vk::ImageLayout::eTransferSrcOptimal,
                           renderContext.swapChainImages[imageIndex],
                           vk::ImageLayout::eTransferDstOptimal, 1, &copyRegion);
 
-  vk::ImageMemoryBarrier presentTarget{
-      .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
-      .dstAccessMask = vk::AccessFlagBits::eNone,
-      .oldLayout = vk::ImageLayout::eTransferDstOptimal,
-      .newLayout = vk::ImageLayout::ePresentSrcKHR,
-      .image = renderContext.swapChainImages[imageIndex],
-      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                           .baseMipLevel = 0,
-                           .levelCount = 1,
-                           .baseArrayLayer = 0,
-                           .layerCount = 1}};
-
-  commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-                                vk::PipelineStageFlagBits::eBottomOfPipe,
-                                vk::DependencyFlagBits::eByRegion, 0, nullptr,
-                                0, nullptr, 1, &presentTarget);
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer, renderContext.swapChainImages[imageIndex],
+      vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::ePresentSrcKHR,
+      vk::ImageAspectFlagBits::eColor);
 
   commandBuffer.end();
 
@@ -771,10 +771,15 @@ void Engine::setupDeferredRenderer(uint32_t w, uint32_t h) {
   renderGraph->compile();
 }
 
+void Engine::setupRenderPasses() {
+  renderPassManager->addRenderPass<ExampleRenderPass>("ExampleRenderPass");
+}
+
 void Engine::run() {
   std::cout << "App run\n";
-  setupHelloTriangleGraph();
-  renderGraph->compile();
+  // setupHelloTriangleGraph();
+  // renderGraph->compile();
+  setupRenderPasses();
   mainLoop();
 }
 } // namespace Core

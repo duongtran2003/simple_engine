@@ -1,6 +1,5 @@
 #include "core/resource/resource.hpp"
 #include "core/render_context.hpp"
-#include "vulkan/vulkan.hpp"
 #include <string>
 
 namespace SimpleEngine {

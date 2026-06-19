@@ -44,11 +44,33 @@ RenderTarget::~RenderTarget() {
 vk::ImageView RenderTarget::getColorImageView() const { return colorImageView; }
 vk::ImageView RenderTarget::getDepthImageView() const { return depthImageView; }
 
+vk::Image RenderTarget::getColorImage() const { return colorImage; }
+vk::Image RenderTarget::getDepthImage() const { return depthImage; }
+
+vk::ImageLayout RenderTarget::getColorLayout() const { return colorLayout; }
+vk::ImageLayout RenderTarget::getDepthLayout() const { return depthLayout; }
+
 uint32_t RenderTarget::getWidth() const { return width; }
 uint32_t RenderTarget::getHeight() const { return height; }
 
+void RenderTarget::transitionColorLayout(vk::CommandBuffer &commandBuffer,
+                                         vk::ImageLayout dstLayout) {
+  Helper::VulkanHelper::transitionImageLayout(commandBuffer, colorImage,
+                                              colorLayout, dstLayout,
+                                              vk::ImageAspectFlagBits::eColor);
+  colorLayout = dstLayout;
+}
+
+void RenderTarget::transitionDepthLayout(vk::CommandBuffer &commandBuffer,
+                                         vk::ImageLayout dstLayout) {
+  Helper::VulkanHelper::transitionImageLayout(commandBuffer, depthImage,
+                                              depthLayout, dstLayout,
+                                              vk::ImageAspectFlagBits::eDepth);
+  depthLayout = dstLayout;
+}
+
 void RenderTarget::createColorResources() {
-  vk::Format colorFormat = vk::Format::eR16G16B16A16Sfloat;
+  vk::Format colorFormat = context.swapChainSurfaceFormat.format;
 
   vk::ImageCreateInfo imageInfo{.imageType = vk::ImageType::e2D,
                                 .format = colorFormat,
@@ -59,7 +81,8 @@ void RenderTarget::createColorResources() {
                                 .tiling = vk::ImageTiling::eOptimal,
                                 .usage =
                                     vk::ImageUsageFlagBits::eColorAttachment |
-                                    vk::ImageUsageFlagBits::eSampled,
+                                    vk::ImageUsageFlagBits::eSampled |
+                                    vk::ImageUsageFlagBits::eTransferSrc,
                                 .sharingMode = vk::SharingMode::eExclusive,
                                 .initialLayout = vk::ImageLayout::eUndefined};
   colorImage = context.device.createImage(imageInfo);
@@ -98,7 +121,8 @@ void RenderTarget::createDepthResources() {
       .samples = vk::SampleCountFlagBits::e1,
       .tiling = vk::ImageTiling::eOptimal,
       .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment |
-               vk::ImageUsageFlagBits::eSampled,
+               vk::ImageUsageFlagBits::eSampled |
+               vk::ImageUsageFlagBits::eTransferSrc,
       .sharingMode = vk::SharingMode::eExclusive,
       .initialLayout = vk::ImageLayout::eUndefined};
   depthImage = context.device.createImage(imageInfo);
