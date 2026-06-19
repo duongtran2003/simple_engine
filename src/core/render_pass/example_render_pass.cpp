@@ -7,14 +7,18 @@
 
 #include <array>
 #include <string>
+#include <vector>
 
 namespace SimpleEngine {
 namespace Core {
 ExampleRenderPass::ExampleRenderPass(const std::string &name,
                                      const RenderContext &context)
     : RenderPass(name, context) {
-  RenderTarget *renderTarget = new RenderTarget(
-      context.swapChainExtent.width, context.swapChainExtent.height, context);
+  std::vector<vk::Format> colorFormats = {
+      context.swapChainSurfaceFormat.format};
+  RenderTarget *renderTarget =
+      new RenderTarget(context.swapChainExtent.width,
+                       context.swapChainExtent.height, colorFormats, context);
 
   setRenderTarget(renderTarget);
 }
@@ -23,7 +27,7 @@ ExampleRenderPass::~ExampleRenderPass() { delete target; }
 
 void ExampleRenderPass::beginPass(vk::CommandBuffer &commandBuffer) {
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, target->getColorImage(), target->getColorLayout(),
+      commandBuffer, target->getColorImages()[0], target->getColorLayouts()[0],
       vk::ImageLayout::eColorAttachmentOptimal,
       vk::ImageAspectFlagBits::eColor);
 
@@ -33,7 +37,7 @@ void ExampleRenderPass::beginPass(vk::CommandBuffer &commandBuffer) {
       vk::ImageAspectFlagBits::eDepth);
 
   vk::RenderingAttachmentInfoKHR colorAttachment{
-      .imageView = target->getColorImageView(),
+      .imageView = target->getColorImageViews()[0],
       .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
       .loadOp = vk::AttachmentLoadOp::eClear,
       .storeOp = vk::AttachmentStoreOp::eStore,

@@ -563,13 +563,13 @@ void Engine::renderFrame() {
       commandBuffer,
       renderPassManager->getRenderPass("ExampleRenderPass")
           ->getRenderTarget()
-          ->getColorImage(),
+          ->getColorImage(0),
       vk::ImageLayout::eColorAttachmentOptimal,
       vk::ImageLayout::eTransferSrcOptimal, vk::ImageAspectFlagBits::eColor);
 
   commandBuffer.copyImage(renderPassManager->getRenderPass("ExampleRenderPass")
                               ->getRenderTarget()
-                              ->getColorImage(),
+                              ->getColorImage(0),
                           vk::ImageLayout::eTransferSrcOptimal,
                           renderContext.swapChainImages[imageIndex],
                           vk::ImageLayout::eTransferDstOptimal, 1, &copyRegion);
