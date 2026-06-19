@@ -1,12 +1,16 @@
-#include "core/render/render_pass.h"
+#include "core/render/render_pass.hpp"
 #include "core/render/render_target.hpp"
+#include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
 #include <string>
 #include <vector>
 
 namespace SimpleEngine {
 namespace Core {
-RenderPass::RenderPass(const std::string &name) { this->name = name; }
+RenderPass::RenderPass(const std::string &name, const RenderContext &rContext)
+    : context(rContext) {
+  this->name = name;
+}
 
 const std::vector<std::string> &RenderPass::getDependencies() const {
   return dependencies;

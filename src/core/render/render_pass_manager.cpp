@@ -1,8 +1,11 @@
-#include "core/render/render_pass_manager.h"
-#include "core/render/render_pass.h"
+#include "core/render/render_pass_manager.hpp"
+#include "core/render/render_pass.hpp"
+#include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
+#include <iostream>
 #include <queue>
+#include <semaphore>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -12,6 +15,9 @@
 
 namespace SimpleEngine {
 namespace Core {
+RenderPassManager::RenderPassManager(const RenderContext &rContext)
+    : context(rContext) {}
+
 RenderPass *RenderPassManager::getRenderPass(const std::string &name) {
   auto passIt = passes.find(name);
   if (passIt == passes.end()) {
@@ -60,8 +66,8 @@ void RenderPassManager::sortPasses() {
     depMap[name].first = passPtr->getDependencies().size();
   }
   if (queue.empty()) {
-    throw std::runtime_error(
-        "RenderPassManager::sortPasses()::ERROR: Cycle detected. Aborting.");
+    throw std::runtime_error("RenderPassManager::sortPasses()::ERROR: Cycle "
+                             "detected (queue empty). Aborting.");
   }
 
   for (const auto &[name, passPtr] : passes) {
@@ -88,8 +94,8 @@ void RenderPassManager::sortPasses() {
   };
 
   if (sortedNames.size() != passes.size()) {
-    throw std::runtime_error(
-        "RenderPassManager::sortPasses()::ERROR: Cycle detected. Aborting.");
+    throw std::runtime_error("RenderPassManager::sortPasses()::ERROR: Cycle "
+                             "detected (stray passes). Aborting.");
   }
 
   for (const auto &name : sortedNames) {

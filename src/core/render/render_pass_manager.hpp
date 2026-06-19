@@ -1,7 +1,9 @@
 #pragma once
 
-#include "core/render/render_pass.h"
+#include "core/render/render_pass.hpp"
+#include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
+#include <iostream>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -17,8 +19,12 @@ private:
   std::vector<RenderPass *> sorted;
 
   bool isDirty = true;
+  const RenderContext &context;
 
 public:
+  RenderPassManager(const RenderContext &rContext);
+  ~RenderPassManager() = default;
+
   // Need to implement it here
   template <typename T, typename... Args>
   T *addRenderPass(const std::string &name, Args &&...args) {
@@ -27,12 +33,12 @@ public:
 
     auto renderPassIt = passes.find(name);
     if (renderPassIt != passes.end()) {
-      return dynamic_cast<T *>(renderPassIt->second);
+      return dynamic_cast<T *>(renderPassIt->second.get());
     }
 
-    auto pass = std::make_unique<T>(std::forward<Args>(args)...);
+    auto pass = std::make_unique<T>(name, context, std::forward<Args>(args)...);
     T *passPtr = pass.get();
-    pass[name] = std::move(pass);
+    passes[name] = std::move(pass);
     isDirty = true;
 
     return passPtr;
