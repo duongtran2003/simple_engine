@@ -3,12 +3,22 @@
 #include "vulkan/vulkan.hpp"
 #include <GLFW/glfw3.h>
 #include <cstdint>
+#include <string>
 #include <sys/types.h>
 #include <vector>
 
 namespace SimpleEngine {
 namespace Core {
-struct RenderContext {
+
+class RenderContext {
+public:
+  struct RenderContextCreateInfo {
+    std::string appName;
+    uint32_t inFlightFrame;
+    uint32_t width;
+    uint32_t height;
+  };
+
   GLFWwindow *window;
 
   vk::Instance instance;
@@ -38,6 +48,21 @@ struct RenderContext {
 
   vk::Viewport viewport;
   vk::Rect2D scissor;
+
+  RenderContext() = default;
+  RenderContext(const RenderContextCreateInfo &createInfo);
+  void initWindow(const RenderContextCreateInfo &createInfo);
+  void createInstance(const RenderContextCreateInfo &createInfo);
+  void createSurface();
+  void pickPhysicalDevice();
+  void createDevice();
+  void createSwapChain();
+  void createSwapChainImageViews();
+  void createCommandPool();
+  void allocateCommandBuffers();
+  void createSyncObjects();
+  void createViewport();
+  void createScissor();
 };
 } // namespace Core
 } // namespace SimpleEngine
