@@ -5,6 +5,8 @@
 #include <vulkan/vulkan_core.h>
 
 #include "core/engine.hpp"
+#include "core/input/input.hpp"
+#include "core/input/key_code.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/graph_resource.hpp"
 #include "core/render_graph/render_graph.hpp"
@@ -35,6 +37,7 @@ Engine::Engine() {
                                                     .height = 600};
   renderContext = RenderContext(createInfo);
   resourceManager = new ResourceManager(renderContext);
+  input = new Input(renderContext.window);
 
   createGraphicsPipeline();
   renderGraph = new RenderGraph(renderContext);
@@ -257,6 +260,8 @@ void Engine::renderFrame() {
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(renderContext.window)) {
     glfwPollEvents();
+    input->update();
+    handleInput();
     renderFrame();
   }
 
@@ -310,6 +315,12 @@ void Engine::setupExampleRenderGraph() {
   pass->setExecuteCallbackFn(passCallback);
   renderGraph->addPass(pass);
   renderGraph->compile();
+}
+
+void Engine::handleInput() {
+  if (input->isKeyHeld(Key::W)) {
+    std::cout << "W is being held down\n";
+  }
 }
 
 void Engine::run() {

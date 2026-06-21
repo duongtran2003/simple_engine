@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/input/input.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/render_graph.hpp"
 #include "core/resource/resource_manager.hpp"
@@ -10,8 +11,8 @@ class Engine {
 private:
   RenderContext renderContext;
   RenderGraph *renderGraph = nullptr;
-
   ResourceManager *resourceManager = nullptr;
+  Input *input = nullptr;
 
   void setupExampleRenderGraph();
 
@@ -20,6 +21,8 @@ private:
 
   void mainLoop();
   void renderFrame();
+
+  void handleInput();
 
 public:
   Engine();
