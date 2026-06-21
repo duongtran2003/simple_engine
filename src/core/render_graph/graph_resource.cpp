@@ -1,4 +1,4 @@
-#include "core/render_graph/render_resource.hpp"
+#include "core/render_graph/graph_resource.hpp"
 #include "core/render_context.hpp"
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
@@ -32,6 +32,11 @@ vk::ImageView GraphResource::getView() { return view; }
 vk::DeviceMemory GraphResource::getMemory() { return memory; }
 vk::Format GraphResource::getFormat() { return format; }
 vk::ImageLayout GraphResource::getLayout() { return layout; }
+vk::ImageAspectFlags GraphResource::getAspectMask() { return aspectMask; }
+
+uint32_t GraphResource::getWidth() const { return width; }
+
+uint32_t GraphResource::getHeight() const { return height; }
 
 void GraphResource::createImage() {
   vk::ImageCreateInfo createInfo{.imageType = vk::ImageType::e2D,
@@ -43,7 +48,7 @@ void GraphResource::createImage() {
                                  .tiling = vk::ImageTiling::eOptimal,
                                  .usage = usage,
                                  .sharingMode = vk::SharingMode::eExclusive,
-                                 .initialLayout = layout};
+                                 .initialLayout = vk::ImageLayout::eUndefined};
 
   image = context.device.createImage(createInfo);
 }

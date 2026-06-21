@@ -30,6 +30,9 @@ void VulkanHelper::transitionImageLayout(vk::CommandBuffer &commandBuffer,
                                          vk::ImageLayout oldLayout,
                                          vk::ImageLayout newLayout,
                                          vk::ImageAspectFlags aspectMask) {
+  if (oldLayout == newLayout) {
+    return;
+  }
 
   vk::ImageMemoryBarrier2 barrier{.oldLayout = oldLayout,
                                   .newLayout = newLayout,

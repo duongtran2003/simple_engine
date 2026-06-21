@@ -8,6 +8,8 @@
 
 namespace SimpleEngine {
 namespace Core {
+class RenderGraph;
+
 class RenderPass {
 private:
   const RenderContext &context;
@@ -39,6 +41,8 @@ public:
   const std::unordered_set<std::string> &getOutputs() const;
 
   bool getIsActive() const;
+
+  void execute(vk::CommandBuffer &commandBuffer);
 };
 } // namespace Core
 } // namespace SimpleEngine

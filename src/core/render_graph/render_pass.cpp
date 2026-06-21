@@ -7,6 +7,8 @@
 
 namespace SimpleEngine {
 namespace Core {
+class RenderGraph;
+
 RenderPass::RenderPass(const std::string &name, const RenderContext &context)
     : context(context) {
   this->name = name;
@@ -66,5 +68,9 @@ const std::unordered_set<std::string> &RenderPass::getOutputs() const {
 }
 
 bool RenderPass::getIsActive() const { return active; }
+
+void RenderPass::execute(vk::CommandBuffer &commandBuffer) {
+  executeCallback(commandBuffer);
+}
 } // namespace Core
 } // namespace SimpleEngine

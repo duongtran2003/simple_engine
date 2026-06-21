@@ -1,8 +1,7 @@
 #pragma once
 
-#include "core/render/render_pass_manager.hpp"
 #include "core/render_context.hpp"
-#include "core/render_graph.hpp"
+#include "core/render_graph/render_graph.hpp"
 #include "core/resource/resource_manager.hpp"
 
 namespace SimpleEngine {
@@ -11,11 +10,10 @@ class Engine {
 private:
   RenderContext renderContext;
   RenderGraph *renderGraph = nullptr;
-  RenderPassManager *renderPassManager = nullptr;
 
   ResourceManager *resourceManager = nullptr;
 
-  void setupRenderPasses();
+  void setupExampleRenderGraph();
 
   // For demo only
   void createGraphicsPipeline();

@@ -1,7 +1,8 @@
 #pragma once
 
+#include "core/render_context.hpp"
 #include "core/render_graph/render_pass.hpp"
-#include "core/render_graph/render_resource.hpp"
+#include "core/render_graph/graph_resource.hpp"
 #include "vulkan/vulkan.hpp"
 #include <string>
 #include <unordered_map>
@@ -15,10 +16,18 @@ private:
   std::unordered_map<std::string, RenderPass *> passes;
 
   std::vector<std::string> executionOrder;
+  std::string outputResource;
+
+  const RenderContext &context;
 
 public:
-  RenderGraph();
+  RenderGraph() = delete;
+  RenderGraph(const RenderContext &context);
   ~RenderGraph();
+
+  void setOutputResource(const std::string &resourceName);
+  GraphResource *getOutputResource();
+  GraphResource *getResource(const std::string &resourceName);
 
   void addResource(GraphResource *resource);
   void removeResource(const std::string &resourceName);

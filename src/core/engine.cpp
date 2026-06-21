@@ -1,13 +1,14 @@
+#include <array>
 #include <cassert>
-#include <cstring>
 #include <stdexcept>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
 #include "core/engine.hpp"
-#include "core/render/render_pass_manager.hpp"
 #include "core/render_context.hpp"
-#include "core/render_pass/example_render_pass.hpp"
+#include "core/render_graph/graph_resource.hpp"
+#include "core/render_graph/render_graph.hpp"
+#include "core/render_graph/render_pass.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
 #include "helpers/vulkan_helper.hpp"
@@ -36,8 +37,7 @@ Engine::Engine() {
   resourceManager = new ResourceManager(renderContext);
 
   createGraphicsPipeline();
-
-  renderPassManager = new RenderPassManager(renderContext);
+  renderGraph = new RenderGraph(renderContext);
 }
 
 void Engine::createGraphicsPipeline() {
@@ -175,41 +175,39 @@ void Engine::renderFrame() {
   vk::CommandBuffer commandBuffer =
       renderContext.commandBuffers[renderContext.frameIndex];
   commandBuffer.reset();
+
   vk::CommandBufferBeginInfo beginInfo{
       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
   commandBuffer.begin(beginInfo);
 
-  renderPassManager->execute(commandBuffer);
+  renderGraph->execute(commandBuffer);
 
   Helper::VulkanHelper::transitionImageLayout(
       commandBuffer, renderContext.swapChainImages[imageIndex],
       vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageAspectFlagBits::eColor);
 
+  GraphResource *outputResource = renderGraph->getOutputResource();
+  outputResource->transitionLayout(commandBuffer,
+                                   vk::ImageLayout::eTransferSrcOptimal);
+
   vk::ImageCopy copyRegion{
-      .srcSubresource = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+      .srcSubresource = {.aspectMask = outputResource->getAspectMask(),
+                         .mipLevel = 0,
                          .baseArrayLayer = 0,
                          .layerCount = 1},
       .dstSubresource = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                         .mipLevel = 0,
                          .baseArrayLayer = 0,
                          .layerCount = 1},
-      .extent = vk::Extent3D(renderContext.swapChainExtent.width,
-                             renderContext.swapChainExtent.height, 1)};
+      .extent = {.width = renderContext.swapChainExtent.width,
+                 .height = renderContext.swapChainExtent.height,
+                 .depth = 1}};
 
-  Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer,
-      renderPassManager->getRenderPass("ExampleRenderPass")
-          ->getRenderTarget()
-          ->getColorImage(0),
-      vk::ImageLayout::eColorAttachmentOptimal,
-      vk::ImageLayout::eTransferSrcOptimal, vk::ImageAspectFlagBits::eColor);
-
-  commandBuffer.copyImage(renderPassManager->getRenderPass("ExampleRenderPass")
-                              ->getRenderTarget()
-                              ->getColorImage(0),
-                          vk::ImageLayout::eTransferSrcOptimal,
+  commandBuffer.copyImage(outputResource->getImage(),
+                          outputResource->getLayout(),
                           renderContext.swapChainImages[imageIndex],
-                          vk::ImageLayout::eTransferDstOptimal, 1, &copyRegion);
+                          vk::ImageLayout::eTransferDstOptimal, copyRegion);
 
   Helper::VulkanHelper::transitionImageLayout(
       commandBuffer, renderContext.swapChainImages[imageIndex],
@@ -220,6 +218,7 @@ void Engine::renderFrame() {
 
   vk::PipelineStageFlags waitDestinationStageMask =
       vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
   vk::SubmitInfo submitInfo{
       .waitSemaphoreCount = 1,
       .pWaitSemaphores =
@@ -233,7 +232,7 @@ void Engine::renderFrame() {
   vk::Result submitResult = renderContext.graphicsQueue.submit(
       1, &submitInfo, renderContext.inFlightFences[renderContext.frameIndex]);
 
-  vk::PresentInfoKHR presentInfoKHR{
+  vk::PresentInfoKHR presentInfo{
       .waitSemaphoreCount = 1,
       .pWaitSemaphores = &renderContext.renderFinishedSemaphores[imageIndex],
       .swapchainCount = 1,
@@ -241,7 +240,8 @@ void Engine::renderFrame() {
       .pImageIndices = &imageIndex};
 
   vk::Result presentResult =
-      renderContext.graphicsQueue.presentKHR(presentInfoKHR);
+      renderContext.graphicsQueue.presentKHR(presentInfo);
+
   if (presentResult == vk::Result::eSuboptimalKHR ||
       result == vk::Result::eErrorOutOfDateKHR) {
     // TODO: This is caused by resizing window => Swapchain outdate => Need
@@ -263,13 +263,58 @@ void Engine::mainLoop() {
   renderContext.device.waitIdle();
 }
 
-void Engine::setupRenderPasses() {
-  renderPassManager->addRenderPass<ExampleRenderPass>("ExampleRenderPass");
+void Engine::setupExampleRenderGraph() {
+  GraphResource *resource = new GraphResource(
+      "final_color", renderContext.swapChainExtent.width,
+      renderContext.swapChainExtent.height, vk::Format::eB8G8R8A8Srgb,
+      vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
+      vk::ImageUsageFlagBits::eColorAttachment |
+          vk::ImageUsageFlagBits::eTransferSrc,
+      renderContext);
+  renderGraph->addResource(resource);
+  renderGraph->setOutputResource("final_color");
+
+  RenderPass *pass = new RenderPass("example_pass", renderContext);
+  pass->addOutput("final_color");
+  const auto passCallback = [&](vk::CommandBuffer &commandBuffer) {
+    GraphResource *finalColor = renderGraph->getResource("final_color");
+    finalColor->transitionLayout(commandBuffer,
+                                 vk::ImageLayout::eColorAttachmentOptimal);
+
+    vk::RenderingAttachmentInfoKHR colorAttachment{
+        .imageView = finalColor->getView(),
+        .imageLayout = finalColor->getLayout(),
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .clearValue =
+            vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
+
+    vk::RenderingInfoKHR renderingInfo{
+        .renderArea = {.offset = {.x = 0, .y = 0},
+                       .extent = {.width = finalColor->getWidth(),
+                                  .height = finalColor->getHeight()}},
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachment};
+
+    commandBuffer.beginRendering(renderingInfo);
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+                               renderContext.graphicsPipeline);
+    commandBuffer.setViewport(0, renderContext.viewport);
+    commandBuffer.setScissor(0, renderContext.scissor);
+    commandBuffer.draw(3, 1, 0, 0);
+
+    commandBuffer.endRendering();
+  };
+  pass->setExecuteCallbackFn(passCallback);
+  renderGraph->addPass(pass);
+  renderGraph->compile();
 }
 
 void Engine::run() {
   std::cout << "App run\n";
-  setupRenderPasses();
+  setupExampleRenderGraph();
   mainLoop();
 }
 } // namespace Core

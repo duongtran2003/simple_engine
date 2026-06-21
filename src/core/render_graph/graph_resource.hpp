@@ -48,6 +48,10 @@ public:
   vk::DeviceMemory getMemory();
   vk::Format getFormat();
   vk::ImageLayout getLayout();
+  vk::ImageAspectFlags getAspectMask();
+
+  uint32_t getWidth() const;
+  uint32_t getHeight() const;
 
   void transitionLayout(vk::CommandBuffer &commandBuffer,
                         vk::ImageLayout dstLayout);
