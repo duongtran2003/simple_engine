@@ -1,5 +1,6 @@
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <stdexcept>
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -42,6 +43,8 @@ Engine::Engine() {
 
   createGraphicsPipeline();
   renderGraph = new RenderGraph(renderContext);
+
+  lastFrameTime = std::chrono::high_resolution_clock::now();
 }
 
 void Engine::createGraphicsPipeline() {
@@ -258,12 +261,26 @@ void Engine::renderFrame() {
       (renderContext.frameIndex + 1) % renderContext.inFlightFrame;
 }
 
+void Engine::updateFrameTime() {
+  auto currentFrameTime = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<float> elapsed = currentFrameTime - lastFrameTime;
+  deltaTime = elapsed.count();
+
+  lastFrameTime = currentFrameTime;
+  if (deltaTime > 0.1f) {
+    deltaTime = 0.1f;
+  }
+
+  std::cout << "Delta time: " << deltaTime << "\n";
+}
+
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(renderContext.window)) {
+    updateFrameTime();
     glfwPollEvents();
     input->update();
     handleInput();
-    camera->update(0.5);
+    camera->update(deltaTime);
     renderFrame();
   }
 

@@ -5,6 +5,7 @@
 #include "core/render_context.hpp"
 #include "core/render_graph/render_graph.hpp"
 #include "core/resource/resource_manager.hpp"
+#include <chrono>
 
 namespace SimpleEngine {
 namespace Core {
@@ -16,6 +17,9 @@ private:
   Input *input = nullptr;
   Camera *camera = nullptr;
 
+  std::chrono::high_resolution_clock::time_point lastFrameTime;
+  float deltaTime = 0.0f;
+
   void setupExampleRenderGraph();
 
   // For demo only
@@ -25,6 +29,7 @@ private:
   void renderFrame();
 
   void handleInput();
+  void updateFrameTime();
 
 public:
   Engine();

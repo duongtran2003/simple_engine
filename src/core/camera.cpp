@@ -15,7 +15,7 @@ Camera::Camera(const Input &input) : Entity("g_camera"), input(input) {
 
 void Camera::handleInput(float delta) {
   if (input.isKeyHeld(Key::W)) {
-    std::cout << "Move forward with delta" << delta << "\n";
+    std::cout << "Move forward with delta " << delta << "\n";
   }
 }
 
