@@ -80,9 +80,6 @@ void Camera::update(float delta) {
   glm::mat4 modelMatrix = transform->getTransformMatrix();
   glm::mat4 viewMatrix = camera->getViewMatrix();
   glm::mat4 projectionMatrix = camera->getProjectionMatrix();
-
-  std::cout << "Camera position: " << modelMatrix[3][0] << "; "
-            << modelMatrix[3][1] << "; " << modelMatrix[3][2] << ";\n";
 }
 } // namespace Core
 } // namespace SimpleEngine

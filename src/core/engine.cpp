@@ -13,6 +13,8 @@
 #include "core/render_graph/graph_resource.hpp"
 #include "core/render_graph/render_graph.hpp"
 #include "core/render_graph/render_pass.hpp"
+#include "core/resource/mesh.hpp"
+#include "core/resource/resource_handle.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
 #include "helpers/vulkan_helper.hpp"
@@ -39,6 +41,11 @@ Engine::Engine() {
                                                     .height = 600};
   renderContext = RenderContext(createInfo);
   resourceManager = new ResourceManager(renderContext);
+  ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
+      "model_damaged_helmet",
+      "resources/models/damaged_helmet/DamagedHelmet.glb");
+  uint32_t verticesCount = meshResource.get()->getVertexCount();
+  std::cout << verticesCount << "\n";
   input = new Input(renderContext.window);
   camera = new Camera(*input);
 

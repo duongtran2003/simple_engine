@@ -1,6 +1,7 @@
 #include "core/resource/mesh.hpp"
 #include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
+#include "helpers/model_loader.hpp"
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
@@ -11,17 +12,17 @@
 
 namespace SimpleEngine {
 namespace Core {
-Mesh::Mesh(const std::string &id, const RenderContext &renderContext)
-    : Resource(id, renderContext) {}
+Mesh::Mesh(const std::string &id, const RenderContext &renderContext,
+           const std::string &modelPath)
+    : Resource(id, renderContext), modelPath(modelPath) {}
 
 Mesh::~Mesh() { unload(); }
 
 bool Mesh::loadMeshData(const std::string &path,
                         std::vector<Mesh::Vertex> &vertices,
                         std::vector<uint32_t> &indices) {
-  // TODO: Implement later
-
-  return false;
+  Helper::ModelLoader::loadglTF(path, vertices, indices);
+  return true;
 };
 
 void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &vertices) {
@@ -93,11 +94,10 @@ uint32_t Mesh::getVertexCount() const { return vertexCount; }
 uint32_t Mesh::getIndexCount() const { return indexCount; }
 
 bool Mesh::doLoad() {
-  std::string filePath = "models/" + getId() + ".gltf";
   std::vector<Vertex> _vertices;
   std::vector<uint32_t> _indices;
 
-  if (!loadMeshData(filePath, _vertices, _indices)) {
+  if (!loadMeshData(modelPath, _vertices, _indices)) {
     return false;
   }
 

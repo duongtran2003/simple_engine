@@ -12,13 +12,14 @@
 namespace SimpleEngine {
 namespace Core {
 class Mesh : public Resource {
-private:
+public:
   struct Vertex {
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec2 uv;
   };
 
+private:
   vk::Buffer vertexBuffer;
   vk::DeviceMemory vertexBufferMemory;
   vk::DeviceSize vertexBufferOffset;
@@ -28,6 +29,7 @@ private:
   vk::DeviceMemory indexBufferMemory;
   vk::DeviceSize indexBufferOffset;
   uint32_t indexCount = 0;
+  std::string modelPath;
 
   bool loadMeshData(const std::string &path, std::vector<Vertex> &vertices,
                     std::vector<uint32_t> &indices);
@@ -36,7 +38,8 @@ private:
   void createIndexBuffer(std::vector<uint32_t> &indices);
 
 public:
-  Mesh(const std::string &id, const RenderContext& renderContext);
+  Mesh(const std::string &id, const RenderContext &renderContext,
+       const std::string &modelPath);
   ~Mesh() override;
 
   vk::Buffer getVertexBuffer() const;

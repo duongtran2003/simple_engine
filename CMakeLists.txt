@@ -16,6 +16,7 @@ find_package(Vulkan REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
+find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
 find_package(imgui CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_program(SLANGC_EXECUTABLE NAMES slangc REQUIRED)
@@ -29,6 +30,7 @@ list(FILTER CORE_SOURCES EXCLUDE REGEX "src/main.cpp$")
 
 add_library(EngineCore STATIC ${CORE_SOURCES})
 target_include_directories(EngineCore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(EngineCore PRIVATE ${TINYGLTF_INCLUDE_DIRS})
 target_link_libraries(EngineCore PUBLIC
     Vulkan::Vulkan
     glfw
@@ -93,10 +95,7 @@ set(RES_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
 file(MAKE_DIRECTORY ${RES_OUT_DIR})
 file(GLOB_RECURSE RESOURCE_FILES 
     CONFIGURE_DEPENDS
-    "${RES_SRC_DIR}/*.png"
-    "${RES_SRC_DIR}/*.jpg"
-    "${RES_SRC_DIR}/*.obj"
-    "${RES_SRC_DIR}/*.mtl"
+    "${RES_SRC_DIR}/*"
 )
 set(RES_OUTPUTS "")
 

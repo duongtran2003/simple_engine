@@ -15,6 +15,7 @@
     "vulkan-headers",
     "vulkan-loader",
     "stb",
-    "catch2"
+    "catch2",
+    "tinygltf"
   ]
 }
