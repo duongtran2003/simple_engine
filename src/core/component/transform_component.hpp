@@ -15,7 +15,7 @@ private:
   glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
   glm::vec3 scale = glm::vec3(0.0f);
 
-  glm::mat4 transformMatrix = glm::mat4(1.0f);
+  glm::mat4 mutable transformMatrix = glm::mat4(1.0f);
   bool mutable isTransformDirty = false;
 
 public:

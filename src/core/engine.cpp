@@ -271,8 +271,6 @@ void Engine::updateFrameTime() {
   if (deltaTime > 0.1f) {
     deltaTime = 0.1f;
   }
-
-  std::cout << "Delta time: " << deltaTime << "\n";
 }
 
 void Engine::mainLoop() {

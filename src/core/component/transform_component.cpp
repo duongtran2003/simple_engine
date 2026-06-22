@@ -45,7 +45,8 @@ glm::mat4 TransformComponent::getTransformMatrix() const {
 
   isTransformDirty = false;
 
-  return translationMatrix * rotationMatrix * scaleMatrix;
+  transformMatrix = translationMatrix * rotationMatrix * scaleMatrix;
+  return transformMatrix;
 }
 } // namespace Core
 } // namespace SimpleEngine
