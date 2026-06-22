@@ -8,6 +8,7 @@
 #include "core/camera.hpp"
 #include "core/engine.hpp"
 #include "core/input/input.hpp"
+#include "core/input/key_code.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/graph_resource.hpp"
 #include "core/render_graph/render_graph.hpp"
@@ -279,7 +280,7 @@ void Engine::mainLoop() {
     updateFrameTime();
     glfwPollEvents();
     input->update();
-    handleInput();
+    handleInput(deltaTime);
     camera->update(deltaTime);
     renderFrame();
   }
@@ -336,7 +337,12 @@ void Engine::setupExampleRenderGraph() {
   renderGraph->compile();
 }
 
-void Engine::handleInput() {}
+void Engine::handleInput(float delta) {
+  if (input->isKeyJustPressed(Key::Escape) ||
+      input->isKeyJustPressed(Key::CapsLock)) {
+    glfwSetWindowShouldClose(renderContext.window, true);
+  }
+}
 
 void Engine::run() {
   std::cout << "App run\n";

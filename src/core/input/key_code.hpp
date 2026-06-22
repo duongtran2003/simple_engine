@@ -52,6 +52,8 @@ enum class Key : int {
   LeftCtrl = GLFW_KEY_LEFT_CONTROL,
   LeftAlt = GLFW_KEY_LEFT_ALT,
 
+  CapsLock = GLFW_KEY_CAPS_LOCK,
+
   Up = GLFW_KEY_UP,
   Down = GLFW_KEY_DOWN,
   Left = GLFW_KEY_LEFT,

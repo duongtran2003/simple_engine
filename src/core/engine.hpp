@@ -28,7 +28,7 @@ private:
   void mainLoop();
   void renderFrame();
 
-  void handleInput();
+  void handleInput(float delta);
   void updateFrameTime();
 
 public:
