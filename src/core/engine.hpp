@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/camera.hpp"
 #include "core/input/input.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/render_graph.hpp"
@@ -13,6 +14,7 @@ private:
   RenderGraph *renderGraph = nullptr;
   ResourceManager *resourceManager = nullptr;
   Input *input = nullptr;
+  Camera *camera = nullptr;
 
   void setupExampleRenderGraph();
 

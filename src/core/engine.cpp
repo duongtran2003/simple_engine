@@ -4,9 +4,9 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
+#include "core/camera.hpp"
 #include "core/engine.hpp"
 #include "core/input/input.hpp"
-#include "core/input/key_code.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/graph_resource.hpp"
 #include "core/render_graph/render_graph.hpp"
@@ -38,6 +38,7 @@ Engine::Engine() {
   renderContext = RenderContext(createInfo);
   resourceManager = new ResourceManager(renderContext);
   input = new Input(renderContext.window);
+  camera = new Camera(*input);
 
   createGraphicsPipeline();
   renderGraph = new RenderGraph(renderContext);
@@ -262,6 +263,7 @@ void Engine::mainLoop() {
     glfwPollEvents();
     input->update();
     handleInput();
+    camera->update(0.5);
     renderFrame();
   }
 
@@ -317,11 +319,7 @@ void Engine::setupExampleRenderGraph() {
   renderGraph->compile();
 }
 
-void Engine::handleInput() {
-  if (input->isKeyHeld(Key::W)) {
-    std::cout << "W is being held down\n";
-  }
-}
+void Engine::handleInput() {}
 
 void Engine::run() {
   std::cout << "App run\n";

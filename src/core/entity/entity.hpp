@@ -19,13 +19,14 @@ private:
 
 public:
   Entity(const std::string &name);
+  virtual ~Entity() = default;
 
   const std::string &getName() const;
   bool isActive() const;
   void setActive(bool isActive);
 
   void initialize();
-  void update(float deltaTime);
+  virtual void update(float deltaTime) = 0;
   void render();
 
   template <typename T, typename... Args> T *addComponent(Args &&...args);
