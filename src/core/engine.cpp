@@ -1,12 +1,19 @@
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cstddef>
+#include <glm/ext/matrix_float4x4.hpp>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
 #include "core/camera.hpp"
+#include "core/component/mesh_component.hpp"
+#include "core/component/transform_component.hpp"
 #include "core/engine.hpp"
+#include "core/entity/entity.hpp"
 #include "core/input/input.hpp"
 #include "core/input/key_code.hpp"
 #include "core/render_context.hpp"
@@ -41,14 +48,10 @@ Engine::Engine() {
                                                     .height = 600};
   renderContext = RenderContext(createInfo);
   resourceManager = new ResourceManager(renderContext);
-  ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
-      "model_damaged_helmet",
-      "resources/models/damaged_helmet/DamagedHelmet.glb");
-  uint32_t verticesCount = meshResource.get()->getVertexCount();
-  std::cout << verticesCount << "\n";
   input = new Input(renderContext.window);
   camera = new Camera(*input);
 
+  createUniformBuffers();
   createGraphicsPipeline();
   renderGraph = new RenderGraph(renderContext);
 
@@ -74,7 +77,33 @@ void Engine::createGraphicsPipeline() {
   vk::PipelineShaderStageCreateInfo shaderStages[] = {vertexShaderStageInfo,
                                                       fragmentShaderStageInfo};
 
-  vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+  vk::VertexInputBindingDescription vertexInputBindingDescription{
+      .binding = 0,
+      .stride = sizeof(Mesh::Vertex),
+      .inputRate = vk::VertexInputRate::eVertex};
+  std::array<vk::VertexInputAttributeDescription, 3>
+      vertexInputAttributeDescriptions = {};
+  vertexInputAttributeDescriptions[0] = {.location = 0,
+                                         .binding = 0,
+                                         .format = vk::Format::eR32G32B32Sfloat,
+                                         .offset =
+                                             offsetof(Mesh::Vertex, position)};
+  vertexInputAttributeDescriptions[1] = {.location = 1,
+                                         .binding = 0,
+                                         .format = vk::Format::eR32G32B32Sfloat,
+                                         .offset =
+                                             offsetof(Mesh::Vertex, normal)};
+  vertexInputAttributeDescriptions[2] = {.location = 2,
+                                         .binding = 0,
+                                         .format = vk::Format::eR32G32Sfloat,
+                                         .offset = offsetof(Mesh::Vertex, uv)};
+
+  vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+      .vertexBindingDescriptionCount = 1,
+      .pVertexBindingDescriptions = &vertexInputBindingDescription,
+      .vertexAttributeDescriptionCount =
+          vertexInputAttributeDescriptions.size(),
+      .pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data()};
   vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
       .topology = vk::PrimitiveTopology::eTriangleList};
 
@@ -123,11 +152,20 @@ void Engine::createGraphicsPipeline() {
       .depthBoundsTestEnable = vk::False,
       .stencilTestEnable = vk::False};
 
+  vk::PushConstantRange pushConstantRange{.stageFlags =
+                                              vk::ShaderStageFlagBits::eVertex,
+                                          .offset = 0,
+                                          .size = sizeof(CameraPushConstants)};
+
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0,
-                                                  .pushConstantRangeCount = 0};
+                                                  .pushConstantRangeCount = 1,
+                                                  .pPushConstantRanges =
+                                                      &pushConstantRange};
 
   vk::PipelineLayout pipelineLayout =
       renderContext.device.createPipelineLayout(pipelineLayoutInfo);
+
+  renderContext.pipelineLayout = pipelineLayout;
 
   vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
       .stageCount = 2,
@@ -333,13 +371,79 @@ void Engine::setupExampleRenderGraph() {
                                renderContext.graphicsPipeline);
     commandBuffer.setViewport(0, renderContext.viewport);
     commandBuffer.setScissor(0, renderContext.scissor);
-    commandBuffer.draw(3, 1, 0, 0);
+
+    glm::mat4 viewMatrix = camera->getCamera()->getViewMatrix();
+    glm::mat4 projMatrix = camera->getCamera()->getProjectionMatrix();
+
+    for (Entity *e : renderObjects) {
+      auto *mesh = e->getComponent<MeshComponent>();
+      auto *transform = e->getComponent<TransformComponent>();
+
+      if (!mesh || !mesh->getMesh()->isLoaded()) {
+        continue;
+      }
+
+      CameraPushConstants constants{
+          .model =
+              transform ? transform->getTransformMatrix() : glm::mat4(1.0f),
+          .view = viewMatrix,
+          .proj = projMatrix};
+
+      commandBuffer.pushConstants(renderContext.pipelineLayout,
+                                  vk::ShaderStageFlagBits::eVertex, 0,
+                                  sizeof(CameraPushConstants), &constants);
+
+      auto meshResource = mesh->getMesh().get();
+      vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
+      vk::DeviceSize offsets[] = {0};
+
+      commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
+      commandBuffer.bindIndexBuffer(meshResource->getIndexBuffer(), 0,
+                                    vk::IndexType::eUint32);
+
+      commandBuffer.drawIndexed(meshResource->getVertexCount(), 1, 0, 0, 0);
+    }
 
     commandBuffer.endRendering();
   };
   pass->setExecuteCallbackFn(passCallback);
   renderGraph->addPass(pass);
   renderGraph->compile();
+}
+
+void Engine::createUniformBuffers() {
+  vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+  for (size_t i = 0; i < renderContext.inFlightFrame; i++) {
+    const auto &[buffer, memory] = Helper::VulkanHelper::createBuffer(
+        bufferSize, vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible |
+            vk::MemoryPropertyFlagBits::eHostCoherent,
+        renderContext);
+
+    UboBuffer uboBuffer{
+        .buffer = std::move(buffer),
+        .memory = std::move(memory),
+    };
+    uboBuffer.mapped =
+        renderContext.device.mapMemory(uboBuffer.memory, 0, bufferSize);
+    uniformBuffers.push_back(uboBuffer);
+  }
+}
+
+void Engine::initRenderObjectsList() {
+  ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
+      "model_damaged_helmet",
+      "resources/models/damaged_helmet/DamagedHelmet.glb");
+  uint32_t verticesCount = meshResource.get()->getVertexCount();
+  std::cout << verticesCount << "\n";
+
+  Entity *newEntity = new Entity("helmet");
+
+  newEntity->addComponent<MeshComponent>();
+  newEntity->getComponent<MeshComponent>()->setMesh(meshResource);
+  newEntity->addComponent<TransformComponent>();
+
+  renderObjects.push_back(newEntity);
 }
 
 void Engine::handleInput(float delta) {

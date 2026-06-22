@@ -39,6 +39,7 @@ public:
   std::vector<vk::CommandBuffer> commandBuffers;
 
   vk::Pipeline graphicsPipeline;
+  vk::PipelineLayout pipelineLayout;
 
   uint32_t inFlightFrame = 2;
   std::vector<vk::Semaphore> presentCompleteSemaphores;

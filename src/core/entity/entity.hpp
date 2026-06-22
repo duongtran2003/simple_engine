@@ -26,7 +26,7 @@ public:
   void setActive(bool isActive);
 
   void initialize();
-  virtual void update(float deltaTime) = 0;
+  virtual void update(float deltaTime);
   void render();
 
   template <typename T, typename... Args> T *addComponent(Args &&...args);
