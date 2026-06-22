@@ -9,8 +9,6 @@ private:
   std::string resourceId;
   bool loaded = false;
 
-  const RenderContext &renderContext;
-
 public:
   Resource(const std::string &id, const RenderContext &renderContext);
   virtual ~Resource() = default;
@@ -26,6 +24,8 @@ public:
 protected:
   virtual bool doLoad() = 0;
   virtual void doUnload() = 0;
+
+  const RenderContext &renderContext;
 };
 } // namespace Core
 } // namespace SimpleEngine

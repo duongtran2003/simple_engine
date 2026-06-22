@@ -1,9 +1,12 @@
 #include "core/resource/mesh.hpp"
 #include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
+#include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
+#include <cstring>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace SimpleEngine {
@@ -22,11 +25,63 @@ bool Mesh::loadMeshData(const std::string &path,
 };
 
 void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &vertices) {
-  // TODO: Implement once we have the vkDevice running
+  vk::Device device = renderContext.device;
+  vk::DeviceSize bufferSize = sizeof(Mesh::Vertex) * vertices.size();
+
+  const auto &[stagingBuffer, stagingBufferMemory] =
+      Helper::VulkanHelper::createBuffer(
+          bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+          vk::MemoryPropertyFlagBits::eHostVisible |
+              vk::MemoryPropertyFlagBits::eHostCoherent,
+          renderContext);
+
+  void *dataStaging = device.mapMemory(stagingBufferMemory, 0, bufferSize);
+  memcpy(dataStaging, vertices.data(), bufferSize);
+  device.unmapMemory(stagingBufferMemory);
+
+  const auto &[buffer, memory] = Helper::VulkanHelper::createBuffer(
+      bufferSize,
+      vk::BufferUsageFlagBits::eVertexBuffer |
+          vk::BufferUsageFlagBits::eTransferDst,
+      vk::MemoryPropertyFlagBits::eDeviceLocal, renderContext);
+
+  vertexBuffer = std::move(buffer);
+  vertexBufferMemory = std::move(memory);
+
+  Helper::VulkanHelper::copyBuffer(stagingBuffer, vertexBuffer, bufferSize,
+                                   renderContext);
+  device.destroyBuffer(stagingBuffer);
+  device.freeMemory(stagingBufferMemory);
 }
 
 void Mesh::createIndexBuffer(std::vector<uint32_t> &indices) {
-  // TODO: Implement once we have the vkDevice running
+  vk::Device device = renderContext.device;
+  vk::DeviceSize bufferSize = sizeof(uint32_t) * indices.size();
+
+  const auto &[stagingBuffer, stagingBufferMemory] =
+      Helper::VulkanHelper::createBuffer(
+          bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+          vk::MemoryPropertyFlagBits::eHostVisible |
+              vk::MemoryPropertyFlagBits::eHostCoherent,
+          renderContext);
+
+  void *dataStaging = device.mapMemory(stagingBufferMemory, 0, bufferSize);
+  memcpy(dataStaging, indices.data(), bufferSize);
+  device.unmapMemory(stagingBufferMemory);
+
+  const auto &[buffer, memory] = Helper::VulkanHelper::createBuffer(
+      bufferSize,
+      vk::BufferUsageFlagBits::eVertexBuffer |
+          vk::BufferUsageFlagBits::eTransferDst,
+      vk::MemoryPropertyFlagBits::eDeviceLocal, renderContext);
+
+  indexBuffer = std::move(buffer);
+  indexBufferMemory = std::move(memory);
+
+  Helper::VulkanHelper::copyBuffer(stagingBuffer, indexBuffer, bufferSize,
+                                   renderContext);
+  device.destroyBuffer(stagingBuffer);
+  device.freeMemory(stagingBufferMemory);
 }
 
 vk::Buffer Mesh::getVertexBuffer() const { return vertexBuffer; }
@@ -42,7 +97,7 @@ bool Mesh::doLoad() {
   std::vector<Vertex> _vertices;
   std::vector<uint32_t> _indices;
 
-  if (loadMeshData(filePath, _vertices, _indices)) {
+  if (!loadMeshData(filePath, _vertices, _indices)) {
     return false;
   }
 

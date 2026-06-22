@@ -1,8 +1,12 @@
 #include "helpers/vulkan_helper.hpp"
+#include "core/render_context.hpp"
+#include "core/resource/mesh.hpp"
 #include "vulkan/vulkan.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vulkan/vulkan_to_string.hpp>
 
 namespace SimpleEngine {
@@ -99,6 +103,67 @@ void VulkanHelper::transitionImageLayout(vk::CommandBuffer &commandBuffer,
                                     .pImageMemoryBarriers = &barrier};
 
   commandBuffer.pipelineBarrier2(dependencyInfo);
+}
+
+std::pair<vk::Buffer, vk::DeviceMemory>
+VulkanHelper::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
+                           vk::MemoryPropertyFlags properties,
+                           const Core::RenderContext &context) {
+  vk::Device device = context.device;
+  vk::PhysicalDevice physicalDevice = context.physicalDevice;
+
+  vk::BufferCreateInfo bufferInfo{
+      .size = size, .usage = usage, .sharingMode = vk::SharingMode::eExclusive};
+
+  vk::Buffer buffer = device.createBuffer(bufferInfo);
+  vk::MemoryRequirements memoryRequirements =
+      device.getBufferMemoryRequirements(buffer);
+
+  vk::MemoryAllocateInfo allocateInfo{
+      .allocationSize = memoryRequirements.size,
+      .memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits,
+                                        properties, physicalDevice)};
+
+  vk::DeviceMemory bufferMemory = device.allocateMemory(allocateInfo);
+  device.bindBufferMemory(buffer, bufferMemory, 0);
+
+  return {std::move(buffer), std::move(bufferMemory)};
+}
+
+vk::CommandBuffer
+VulkanHelper::beginSingleTimeCommands(const Core::RenderContext &context) {
+  vk::CommandBufferAllocateInfo allocateInfo{
+      .commandPool = context.commandPool,
+      .level = vk::CommandBufferLevel::ePrimary,
+      .commandBufferCount = 1};
+
+  vk::CommandBuffer commandBuffer =
+      context.device.allocateCommandBuffers(allocateInfo).front();
+
+  vk::CommandBufferBeginInfo beginInfo{
+      .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+  commandBuffer.begin(beginInfo);
+
+  return commandBuffer;
+}
+
+void VulkanHelper::endSingleTimeCommands(vk::CommandBuffer commandBuffer,
+                                         const Core::RenderContext &context) {
+  commandBuffer.end();
+  vk::SubmitInfo submitInfo{.commandBufferCount = 1,
+                            .pCommandBuffers = &commandBuffer};
+  context.graphicsQueue.submit(submitInfo, nullptr);
+  context.graphicsQueue.waitIdle();
+
+  context.device.freeCommandBuffers(context.commandPool, 1, &commandBuffer);
+}
+
+void VulkanHelper::copyBuffer(const vk::Buffer &src, vk::Buffer &dst,
+                              vk::DeviceSize bufferSize,
+                              const Core::RenderContext &context) {
+  vk::CommandBuffer commandBuffer = beginSingleTimeCommands(context);
+  commandBuffer.copyBuffer(src, dst, vk::BufferCopy(0, 0, bufferSize));
+  endSingleTimeCommands(commandBuffer, context);
 }
 } // namespace Helper
 } // namespace SimpleEngine
