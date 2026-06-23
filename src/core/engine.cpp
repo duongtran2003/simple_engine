@@ -543,12 +543,12 @@ void Engine::initRenderObjectsList() {
   rot = rot * quat;
   transform->setRotation(rot);
 
-  // angle = glm::radians(180.0f);
-  // axis = glm::vec3(0.0f, 1.0f, 0.0f);
-  // quat = glm::angleAxis(angle, axis);
-  // rot = transform->getRotation();
-  // rot = rot * quat;
-  // transform->setRotation(rot);
+  angle = glm::radians(180.0f);
+  axis = glm::vec3(0.0f, 0.0f, 1.0f);
+  quat = glm::angleAxis(angle, axis);
+  rot = transform->getRotation();
+  rot = rot * quat;
+  transform->setRotation(rot);
 
   renderObjects.push_back(newEntity);
 }
