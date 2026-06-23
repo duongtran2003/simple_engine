@@ -1,9 +1,13 @@
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <chrono>
 #include <cstddef>
+#include <cstring>
 #include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/quaternion_trigonometric.hpp>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/fwd.hpp>
+#include <glm/trigonometric.hpp>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -34,10 +38,6 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 #include <iostream>
 #include <vulkan/vulkan_hpp_macros.hpp>
 
-std::vector<const char *> requiredDeviceExtensions = {
-    vk::KHRSwapchainExtensionName};
-std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
-
 namespace SimpleEngine {
 namespace Core {
 
@@ -52,6 +52,9 @@ Engine::Engine() {
   camera = new Camera(*input);
 
   createUniformBuffers();
+  createDescriptorPool();
+  createDescriptorSetLayout();
+  createDescriptorSets();
   createGraphicsPipeline();
   renderGraph = new RenderGraph(renderContext);
 
@@ -123,8 +126,8 @@ void Engine::createGraphicsPipeline() {
   vk::PipelineRasterizationStateCreateInfo rasterizer{
       .rasterizerDiscardEnable = vk::False,
       .polygonMode = vk::PolygonMode::eFill,
-      .cullMode = vk::CullModeFlagBits::eBack,
-      .frontFace = vk::FrontFace::eClockwise,
+      .cullMode = vk::CullModeFlagBits::eNone,
+      .frontFace = vk::FrontFace::eCounterClockwise,
       .depthBiasEnable = vk::False,
       .depthBiasClamp = vk::False,
       .lineWidth = 1.0f};
@@ -146,21 +149,16 @@ void Engine::createGraphicsPipeline() {
       .pAttachments = &colorBlendAttachment};
 
   vk::PipelineDepthStencilStateCreateInfo depthStencil{
-      .depthTestEnable = vk::False,
-      .depthWriteEnable = vk::False,
+      .depthTestEnable = vk::True,
+      .depthWriteEnable = vk::True,
       .depthCompareOp = vk::CompareOp::eLess,
       .depthBoundsTestEnable = vk::False,
       .stencilTestEnable = vk::False};
 
-  vk::PushConstantRange pushConstantRange{.stageFlags =
-                                              vk::ShaderStageFlagBits::eVertex,
-                                          .offset = 0,
-                                          .size = sizeof(CameraPushConstants)};
-
-  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0,
-                                                  .pushConstantRangeCount = 1,
-                                                  .pPushConstantRanges =
-                                                      &pushConstantRange};
+  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
+      .setLayoutCount = 1,
+      .pSetLayouts = &renderContext.descriptorSetLayout,
+      .pushConstantRangeCount = 0};
 
   vk::PipelineLayout pipelineLayout =
       renderContext.device.createPipelineLayout(pipelineLayoutInfo);
@@ -334,13 +332,21 @@ void Engine::mainLoop() {
 void Engine::setupExampleRenderGraph() {
   GraphResource *resource = new GraphResource(
       "final_color", renderContext.swapChainExtent.width,
-      renderContext.swapChainExtent.height, vk::Format::eB8G8R8A8Srgb,
-      vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
+      renderContext.swapChainExtent.height,
+      renderContext.swapChainSurfaceFormat.format, vk::ImageLayout::eUndefined,
+      vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc,
       renderContext);
   renderGraph->addResource(resource);
   renderGraph->setOutputResource("final_color");
+
+  GraphResource *depthResource = new GraphResource(
+      "depth_image", renderContext.swapChainExtent.width,
+      renderContext.swapChainExtent.height, vk::Format::eD32Sfloat,
+      vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eDepth,
+      vk::ImageUsageFlagBits::eDepthStencilAttachment, renderContext);
+  renderGraph->addResource(depthResource);
 
   RenderPass *pass = new RenderPass("example_pass", renderContext);
   pass->addOutput("final_color");
@@ -348,6 +354,9 @@ void Engine::setupExampleRenderGraph() {
     GraphResource *finalColor = renderGraph->getResource("final_color");
     finalColor->transitionLayout(commandBuffer,
                                  vk::ImageLayout::eColorAttachmentOptimal);
+    GraphResource *depthImage = renderGraph->getResource("depth_image");
+    depthImage->transitionLayout(
+        commandBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
     vk::RenderingAttachmentInfoKHR colorAttachment{
         .imageView = finalColor->getView(),
@@ -357,13 +366,21 @@ void Engine::setupExampleRenderGraph() {
         .clearValue =
             vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
 
+    vk::RenderingAttachmentInfoKHR depthAttachment{
+        .imageView = depthImage->getView(),
+        .imageLayout = depthImage->getLayout(),
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eDontCare,
+        .clearValue = vk::ClearDepthStencilValue(1.0f, 0)};
+
     vk::RenderingInfoKHR renderingInfo{
         .renderArea = {.offset = {.x = 0, .y = 0},
                        .extent = {.width = finalColor->getWidth(),
                                   .height = finalColor->getHeight()}},
         .layerCount = 1,
         .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachment};
+        .pColorAttachments = &colorAttachment,
+        .pDepthAttachment = &depthAttachment};
 
     commandBuffer.beginRendering(renderingInfo);
 
@@ -371,9 +388,6 @@ void Engine::setupExampleRenderGraph() {
                                renderContext.graphicsPipeline);
     commandBuffer.setViewport(0, renderContext.viewport);
     commandBuffer.setScissor(0, renderContext.scissor);
-
-    glm::mat4 viewMatrix = camera->getCamera()->getViewMatrix();
-    glm::mat4 projMatrix = camera->getCamera()->getProjectionMatrix();
 
     for (Entity *e : renderObjects) {
       auto *mesh = e->getComponent<MeshComponent>();
@@ -383,25 +397,22 @@ void Engine::setupExampleRenderGraph() {
         continue;
       }
 
-      CameraPushConstants constants{
-          .model =
-              transform ? transform->getTransformMatrix() : glm::mat4(1.0f),
-          .view = viewMatrix,
-          .proj = projMatrix};
-
-      commandBuffer.pushConstants(renderContext.pipelineLayout,
-                                  vk::ShaderStageFlagBits::eVertex, 0,
-                                  sizeof(CameraPushConstants), &constants);
-
       auto meshResource = mesh->getMesh().get();
+
       vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
       vk::DeviceSize offsets[] = {0};
 
+      updateUniformBuffer(renderContext.frameIndex,
+                          transform->getTransformMatrix());
+
+      commandBuffer.bindDescriptorSets(
+          vk::PipelineBindPoint::eGraphics, renderContext.pipelineLayout, 0, 1,
+          &renderContext.descriptorSets[renderContext.frameIndex], 0, nullptr);
       commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
       commandBuffer.bindIndexBuffer(meshResource->getIndexBuffer(), 0,
                                     vk::IndexType::eUint32);
 
-      commandBuffer.drawIndexed(meshResource->getVertexCount(), 1, 0, 0, 0);
+      commandBuffer.drawIndexed(meshResource->getIndexCount(), 1, 0, 0, 0);
     }
 
     commandBuffer.endRendering();
@@ -430,12 +441,91 @@ void Engine::createUniformBuffers() {
   }
 }
 
+void Engine::createDescriptorPool() {
+  vk::DescriptorPoolSize uniformPoolSize(vk::DescriptorType::eUniformBuffer,
+                                         renderContext.inFlightFrame);
+
+  vk::DescriptorPoolSize imageSamplerPoolSize(
+      vk::DescriptorType::eCombinedImageSampler, renderContext.inFlightFrame);
+
+  std::array poolSizes = {uniformPoolSize, imageSamplerPoolSize};
+
+  vk::DescriptorPoolCreateInfo poolInfo{
+      .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+      .maxSets = renderContext.inFlightFrame,
+      .poolSizeCount = poolSizes.size(),
+      .pPoolSizes = poolSizes.data()};
+
+  renderContext.descriptorPool =
+      renderContext.device.createDescriptorPool(poolInfo, nullptr);
+}
+
+void Engine::createDescriptorSetLayout() {
+  vk::DescriptorSetLayoutBinding uboLayoutBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eUniformBuffer,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eVertex,
+      .pImmutableSamplers = nullptr};
+
+  vk::DescriptorSetLayoutCreateInfo layoutInfo{.bindingCount = 1,
+                                               .pBindings = &uboLayoutBinding};
+
+  renderContext.descriptorSetLayout =
+      renderContext.device.createDescriptorSetLayout(layoutInfo);
+}
+
+void Engine::createDescriptorSets() {
+  std::vector<vk::DescriptorSetLayout> layouts(
+      renderContext.inFlightFrame, renderContext.descriptorSetLayout);
+
+  vk::DescriptorSetAllocateInfo allocateInfo{
+      .descriptorPool = renderContext.descriptorPool,
+      .descriptorSetCount = renderContext.inFlightFrame,
+      .pSetLayouts = layouts.data()};
+
+  renderContext.descriptorSets =
+      renderContext.device.allocateDescriptorSets(allocateInfo);
+
+  vk::DescriptorBufferInfo bufferInfo{.offset = 0,
+                                      .range = sizeof(UniformBufferObject)};
+
+  for (size_t i = 0; i < renderContext.inFlightFrame; i++) {
+    bufferInfo.buffer = uniformBuffers[i].buffer;
+
+    vk::WriteDescriptorSet descriptorWrite{
+        .dstSet = renderContext.descriptorSets[i],
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eUniformBuffer,
+        .pBufferInfo = &bufferInfo};
+
+    renderContext.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+  }
+}
+
+void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
+  UniformBufferObject ubo{};
+  ubo.model = model;
+  ubo.view = camera->getCamera()->getViewMatrix();
+  ubo.proj = camera->getCamera()->getProjectionMatrix();
+
+  glm::vec3 position = camera->getTransform()->getPosition();
+  std::cout << "Camera is at " << position[0] << " " << position[1] << " "
+            << position[2] << "\n";
+
+  ubo.proj[1][1] *= -1;
+
+  memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
+}
+
 void Engine::initRenderObjectsList() {
   ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
       "model_damaged_helmet",
       "resources/models/damaged_helmet/DamagedHelmet.glb");
   uint32_t verticesCount = meshResource.get()->getVertexCount();
-  std::cout << verticesCount << "\n";
+  std::cout << "vertices count: " << verticesCount << "\n";
 
   Entity *newEntity = new Entity("helmet");
 
@@ -455,6 +545,7 @@ void Engine::handleInput(float delta) {
 
 void Engine::run() {
   std::cout << "App run\n";
+  initRenderObjectsList();
   setupExampleRenderGraph();
   mainLoop();
 }

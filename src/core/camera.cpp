@@ -7,7 +7,6 @@
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/fwd.hpp>
-#include <iostream>
 
 namespace SimpleEngine {
 namespace Core {
@@ -16,7 +15,7 @@ Camera::Camera(const Input &input) : Entity("g_camera"), input(input) {
   addComponent<TransformComponent>();
 
   TransformComponent *transform = getComponent<TransformComponent>();
-  transform->setPosition({0.0f, 0.0f, -5.0f});
+  transform->setPosition({0.0f, 0.0f, 5.0f});
 }
 
 TransformComponent *Camera::getTransform() const {

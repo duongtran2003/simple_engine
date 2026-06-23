@@ -15,7 +15,7 @@ private:
   float fov = 45.0f;
 
   mutable glm::mat4 projectionMatrix = glm::mat4(1.0f);
-  mutable bool isProjectionDirty = false;
+  mutable bool isProjectionDirty = true;
 
 public:
   CameraComponent *setNear(float near);

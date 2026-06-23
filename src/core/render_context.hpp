@@ -41,6 +41,10 @@ public:
   vk::Pipeline graphicsPipeline;
   vk::PipelineLayout pipelineLayout;
 
+  vk::DescriptorPool descriptorPool;
+  vk::DescriptorSetLayout descriptorSetLayout;
+  std::vector<vk::DescriptorSet> descriptorSets;
+
   uint32_t inFlightFrame = 2;
   std::vector<vk::Semaphore> presentCompleteSemaphores;
   std::vector<vk::Semaphore> renderFinishedSemaphores;

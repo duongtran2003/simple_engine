@@ -41,6 +41,7 @@ target_link_libraries(EngineCore PUBLIC
 target_compile_definitions(EngineCore PUBLIC
     VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
     VULKAN_HPP_NO_STRUCT_CONSTRUCTORS=1
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
 )
 
 add_executable(${PROJECT_NAME} src/main.cpp)
@@ -80,7 +81,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
   add_custom_command(
     OUTPUT ${OUTPUT_SPV}
-    COMMAND ${SLANGC_EXECUTABLE} ${SHADER_PATH} -target spirv -profile spirv_1_4 -emit-spirv-directly -fvk-use-entrypoint-name ${ENTRY_POINT_FLAG} ${SLANG_DEBUG_FLAGS} -o ${OUTPUT_SPV}
+    COMMAND ${SLANGC_EXECUTABLE} ${SHADER_PATH} -target spirv -profile spirv_1_4 -emit-spirv-directly -matrix-layout-column-major -fvk-use-entrypoint-name ${ENTRY_POINT_FLAG} ${SLANG_DEBUG_FLAGS} -o ${OUTPUT_SPV}
     DEPENDS ${SHADER_PATH}
     COMMENT "Compiling shader: ${SHADER_FULL_NAME}"
     VERBATIM

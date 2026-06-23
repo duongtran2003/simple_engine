@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/resource/resource_manager.hpp"
+#include <iostream>
 #include <string>
 
 namespace SimpleEngine {
@@ -16,8 +17,39 @@ public:
     resourceId = id;
     resourceManager = manager;
   }
+
+  // Copy constructor
+  ResourceHandle(const ResourceHandle &other) {
+    this->resourceId = other.resourceId;
+    this->resourceManager = other.resourceManager;
+
+    if (this->resourceManager && !this->resourceId.empty()) {
+      this->resourceManager->acquire<T>(this->resourceId);
+    }
+  }
+
+  ResourceHandle &operator=(const ResourceHandle &other) {
+    if (this == &other) {
+      return *this;
+    }
+
+    if (this->resourceManager && !this->resourceId.empty()) {
+      this->resourceManager->release<T>(this->resourceId);
+    }
+
+    this->resourceId = other.resourceId;
+    this->resourceManager = other.resourceManager;
+
+    if (this->resourceManager && !this->resourceId.empty()) {
+      this->resourceManager->acquire<T>(this->resourceId);
+    }
+
+    return *this;
+  }
+
   ~ResourceHandle() {
     if (resourceManager != nullptr && !resourceId.empty()) {
+      std::cout << "resource handle release " << resourceId << "\n";
       resourceManager->release<T>(resourceId);
     }
   }

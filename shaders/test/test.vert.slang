@@ -1,24 +1,31 @@
-static float2 positions[3] = float2[](
-  float2(0.0, -0.5),
-  float2(0.5, 0.5),
-  float2(-0.5, 0.5)
-);
+struct VSInput {
+  [[vk::location(0)]] float3 inPosition;
+  [[vk::location(1)]] float3 inNormal;
+  [[vk::location(2)]] float2 inTexCoords;
+};
 
-static float3 colors[3] = float3[](
-  float3(1.0, 0.0, 0.0),
-  float3(0.0, 1.0, 0.0),
-  float3(0.0, 0.0, 1.0)
-);
+struct UniformBuffer {
+  float4x4 model;
+  float4x4 view;
+  float4x4 proj;
+};
 
-struct VertexOutput {
-  float3 color;
-  float4 sv_position : SV_Position;
+[[vk::binding(0, 0)]]
+ConstantBuffer<UniformBuffer> ubo;
+
+struct VSOutput {
+  float4 pos: SV_Position;
+  float3 normal;
+  float2 texCoords;
 };
 
 [shader("vertex")]
-VertexOutput vertMain(uint vid: SV_VertexID) {
-  VertexOutput output;
-  output.sv_position = float4(positions[vid], 0.0, 1.0);
-  output.color = float3(colors[vid]);
+VSOutput vertMain(VSInput input) {
+  VSOutput output;
+  float4x4 mvp = mul(ubo.proj, mul(ubo.view, ubo.model));
+  output.pos = mul(mvp, float4(input.inPosition, 1.0f));
+  output.normal = input.inNormal;
+  output.texCoords = input.inTexCoords;
+
   return output;
 }

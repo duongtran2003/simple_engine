@@ -58,6 +58,13 @@ void ModelLoader::loadglTF(const std::string &path,
       const tinygltf::Buffer &positionBuffer =
           model.buffers[positionBufferView.buffer];
 
+      const tinygltf::Accessor &normalAccessor =
+          model.accessors[primitive.attributes.at("NORMAL")];
+      const tinygltf::BufferView &normalBufferView =
+          model.bufferViews[normalAccessor.bufferView];
+      const tinygltf::Buffer &normalBuffer =
+          model.buffers[normalBufferView.buffer];
+
       bool hasTexCoords =
           primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end();
       const tinygltf::Accessor *texCoordAccessor = nullptr;
@@ -72,23 +79,34 @@ void ModelLoader::loadglTF(const std::string &path,
       }
 
       uint32_t baseVertex = vertices.size();
+
+      size_t positionStride = positionAccessor.ByteStride(positionBufferView);
+      size_t normalStride = normalAccessor.ByteStride(normalBufferView);
+      size_t texStride =
+          hasTexCoords ? texCoordAccessor->ByteStride(*texCoordBufferView) : 0;
+
       for (size_t i = 0; i < positionAccessor.count; i++) {
         Core::Mesh::Vertex vertex{};
         const float *pos = reinterpret_cast<const float *>(
-            &positionBuffer.data[positionBufferView.byteOffset +
-                                 positionAccessor.byteOffset + i * 12]);
+            &positionBuffer
+                 .data[positionBufferView.byteOffset +
+                       positionAccessor.byteOffset + i * positionStride]);
         vertex.position = {pos[0], -pos[1], pos[2]};
 
         if (hasTexCoords) {
           const float *texCoord = reinterpret_cast<const float *>(
-              &texCoordBuffer->data[texCoordBufferView->byteOffset +
-                                    texCoordAccessor->byteOffset + i * 8]);
+              &texCoordBuffer
+                   ->data[texCoordBufferView->byteOffset +
+                          texCoordAccessor->byteOffset + i * texStride]);
           vertex.uv = {texCoord[0], texCoord[1]};
         } else {
           vertex.uv = {0.0f, 0.0f};
         }
 
-        vertex.normal = {1.0f, 1.0f, 1.0f};
+        const float *norm = reinterpret_cast<const float *>(
+            &normalBuffer.data[normalBufferView.byteOffset +
+                               normalAccessor.byteOffset + i * normalStride]);
+        vertex.normal = {norm[0], norm[1], norm[2]};
 
         vertices.push_back(vertex);
       }

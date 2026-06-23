@@ -30,6 +30,9 @@ public:
 
   template <typename T, typename... Args>
   ResourceHandle<T> load(const std::string &resourceId, Args &&...args);
+
+  template <typename T> void acquire(const std::string &resourceId);
+
   template <typename T> void release(const std::string &resourceId);
   void releaseAll();
   template <typename T> T *getResource(const std::string &resourceId);
@@ -66,6 +69,16 @@ ResourceHandle<T> ResourceManager::load(const std::string &resourceId,
 
   resourceIt->second = ResourceData{.resource = resource, .refCount = 1};
   return ResourceHandle<T>(resourceId, this);
+}
+
+template <typename T>
+void ResourceManager::acquire(const std::string &resourceId) {
+  auto &typeResources = resources[std::type_index(typeid(T))];
+  auto it = typeResources.find(resourceId);
+
+  if (it != typeResources.end()) {
+    it->second.refCount += 1;
+  }
 }
 
 template <typename T>
