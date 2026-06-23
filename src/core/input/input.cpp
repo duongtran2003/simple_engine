@@ -3,12 +3,14 @@
 #include "core/render_context.hpp"
 #include <GLFW/glfw3.h>
 #include <glm/ext/vector_float2.hpp>
+#include <iostream>
 
 namespace SimpleEngine {
 namespace Core {
 Input::Input(const RenderContext &context) : context(context) {
   glfwSetWindowUserPointer(context.window, this);
   glfwSetKeyCallback(context.window, keyCallback);
+  glfwSetCursorPosCallback(context.window, mouseCallback);
 };
 
 void Input::keyCallback(GLFWwindow *window, int key, int scancode, int action,
@@ -23,6 +25,15 @@ void Input::keyCallback(GLFWwindow *window, int key, int scancode, int action,
   } else if (action == GLFW_RELEASE) {
     instance->keys[key] = false;
   }
+}
+
+void Input::mouseCallback(GLFWwindow *window, double xpos, double ypos) {
+  auto *instance = static_cast<Input *>(glfwGetWindowUserPointer(window));
+  if (!instance) {
+    return;
+  }
+
+  instance->handleMouseMove(xpos, ypos);
 }
 
 void Input::toggleMouseLock() {
@@ -54,21 +65,18 @@ void Input::update() {
       }
     }
   }
+}
 
+void Input::handleMouseMove(double xpos, double ypos) {
   if (mouseLocked) {
-    double mouseX, mouseY;
-    glfwGetCursorPos(context.window, &mouseX, &mouseY);
-
     if (mouseFirstEnter) {
-      lastMousePos = {mouseX, mouseY};
+      lastMousePos = {xpos, ypos};
       mouseFirstEnter = false;
     }
 
-    mouseDelta = {mouseX - lastMousePos.x, lastMousePos.y - mouseY};
-
-    lastMousePos = {mouseX, mouseY};
-  } else {
-    mouseDelta = {0.0f, 0.0f};
+    mouseDelta =
+        mouseDelta + glm::vec2(xpos - lastMousePos.x, ypos - lastMousePos.y);
+    lastMousePos = {xpos, ypos};
   }
 }
 

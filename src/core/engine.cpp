@@ -50,6 +50,9 @@ Engine::Engine() {
   resourceManager = new ResourceManager(renderContext);
   input = new Input(renderContext);
   camera = new Camera(*input);
+  camera->setVFov(60.0f);
+  float aspect = (float)renderContext.width / (float)renderContext.height;
+  camera->setAspectRatio(aspect);
 
   createUniformBuffers();
   createDescriptorPool();
@@ -324,6 +327,8 @@ void Engine::mainLoop() {
     handleInput(deltaTime);
     camera->update(deltaTime);
     renderFrame();
+
+    input->clearMouseDelta();
   }
 
   renderContext.device.waitIdle();
@@ -511,10 +516,6 @@ void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
   ubo.view = camera->getCamera()->getViewMatrix();
   ubo.proj = camera->getCamera()->getProjectionMatrix();
 
-  glm::vec3 position = camera->getTransform()->getPosition();
-  std::cout << "Camera is at " << position[0] << " " << position[1] << " "
-            << position[2] << "\n";
-
   ubo.proj[1][1] *= -1;
 
   memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
@@ -532,6 +533,22 @@ void Engine::initRenderObjectsList() {
   newEntity->addComponent<MeshComponent>();
   newEntity->getComponent<MeshComponent>()->setMesh(meshResource);
   newEntity->addComponent<TransformComponent>();
+
+  // Set rotation
+  auto *transform = newEntity->getComponent<TransformComponent>();
+  float angle = glm::radians(90.0f);
+  glm::vec3 axis = glm::vec3(1.0f, 0.0f, 0.0f);
+  glm::quat quat = glm::angleAxis(angle, axis);
+  glm::quat rot = transform->getRotation();
+  rot = rot * quat;
+  transform->setRotation(rot);
+
+  // angle = glm::radians(180.0f);
+  // axis = glm::vec3(0.0f, 1.0f, 0.0f);
+  // quat = glm::angleAxis(angle, axis);
+  // rot = transform->getRotation();
+  // rot = rot * quat;
+  // transform->setRotation(rot);
 
   renderObjects.push_back(newEntity);
 }

@@ -21,6 +21,7 @@ public:
 private:
   static void keyCallback(GLFWwindow *window, int key, int scancode, int action,
                           int mods);
+  static void mouseCallback(GLFWwindow* window, double xpos, double ypos);
 
   const RenderContext &context;
   std::array<bool, 512> keys{false};
@@ -44,6 +45,7 @@ public:
 
   void toggleMouseLock();
 
+  void handleMouseMove(double xpos, double ypos);
   void update();
 };
 } // namespace Core

@@ -12,7 +12,7 @@ private:
   float near = 0.1f;
   float far = 100.0f;
   float aspectRatio = 16.0f / 9.0f;
-  float fov = 45.0f;
+  float fov = 60.0f;
 
   mutable glm::mat4 projectionMatrix = glm::mat4(1.0f);
   mutable bool isProjectionDirty = true;

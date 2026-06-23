@@ -1,4 +1,5 @@
 #include "core/component/transform_component.hpp"
+#include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/fwd.hpp>
@@ -39,13 +40,15 @@ glm::mat4 TransformComponent::getTransformMatrix() const {
     return transformMatrix;
   }
 
-  glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), position);
-  glm::mat4 rotationMatrix = glm::mat4_cast(rotation);
-  glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scale);
+  glm::mat4 model = glm::mat4(1.0f);
+
+  model = glm::translate(model, position);
+  model = model * glm::mat4_cast(rotation);
+  model = glm::scale(model, scale);
 
   isTransformDirty = false;
 
-  transformMatrix = translationMatrix * rotationMatrix * scaleMatrix;
+  transformMatrix = model;
   return transformMatrix;
 }
 } // namespace Core
