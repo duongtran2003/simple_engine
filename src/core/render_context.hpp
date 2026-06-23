@@ -20,6 +20,8 @@ public:
   };
 
   GLFWwindow *window;
+  uint32_t width;
+  uint32_t height;
 
   vk::Instance instance;
   vk::PhysicalDevice physicalDevice;

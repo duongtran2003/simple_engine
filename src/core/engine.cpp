@@ -48,7 +48,7 @@ Engine::Engine() {
                                                     .height = 600};
   renderContext = RenderContext(createInfo);
   resourceManager = new ResourceManager(renderContext);
-  input = new Input(renderContext.window);
+  input = new Input(renderContext);
   camera = new Camera(*input);
 
   createUniformBuffers();
@@ -540,6 +540,10 @@ void Engine::handleInput(float delta) {
   if (input->isKeyJustPressed(Key::Escape) ||
       input->isKeyJustPressed(Key::CapsLock)) {
     glfwSetWindowShouldClose(renderContext.window, true);
+  }
+
+  if (input->isKeyJustPressed(Key::L)) {
+    input->toggleMouseLock();
   }
 }
 

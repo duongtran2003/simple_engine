@@ -30,6 +30,9 @@ constexpr uint32_t MAX_FRAME_IN_FLIGHTS = 2;
 RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
   inFlightFrame = createInfo.inFlightFrame ? createInfo.inFlightFrame
                                            : MAX_FRAME_IN_FLIGHTS;
+  height = createInfo.height ? createInfo.height : HEIGHT;
+  width = createInfo.width ? createInfo.width : WIDTH;
+
   initWindow(createInfo);
   createInstance(createInfo);
   createSurface();
