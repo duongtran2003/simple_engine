@@ -90,8 +90,8 @@ void Camera::handleInput(float delta) {
 
   if (input.isMouseLocked()) {
     glm::vec2 mouseDelta = input.getMouseDelta();
-    float yaw = glm::radians(-mouseDelta.x * mouseSensitivity.x);
-    float pitch = glm::radians(-mouseDelta.y * mouseSensitivity.y);
+    float yaw = glm::radians(-mouseDelta.x * mouseSensitivity.x * delta);
+    float pitch = glm::radians(-mouseDelta.y * mouseSensitivity.y * delta);
 
     glm::quat yawQuat = glm::angleAxis(yaw, glm::vec3(0.0f, 1.0f, 0.0f));
     glm::quat pitchQuat = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
