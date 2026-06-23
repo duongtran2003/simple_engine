@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstdint>
 #include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <vector>
 
 namespace SimpleEngine {
@@ -20,6 +21,9 @@ public:
     alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
+
+    alignas(16) glm::vec3 lightDirection;
+    alignas(16) glm::vec3 objectColor;
   };
 
   struct UboBuffer {

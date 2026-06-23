@@ -8,6 +8,8 @@ struct UniformBuffer {
   float4x4 model;
   float4x4 view;
   float4x4 proj;
+  float3 lightDirection;
+  float3 objectColor;
 };
 
 [[vk::binding(0, 0)]]

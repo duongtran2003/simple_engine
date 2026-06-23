@@ -517,6 +517,8 @@ void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
   ubo.proj = camera->getCamera()->getProjectionMatrix();
 
   ubo.proj[1][1] *= -1;
+  ubo.lightDirection = glm::vec3(2.0f, -2.0f, -5.0f);
+  ubo.objectColor = glm::vec3(0.5f, 0.2f, 0.0f);
 
   memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
 }
