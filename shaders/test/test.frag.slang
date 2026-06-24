@@ -28,5 +28,7 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   float3 diffuse = color * diffuseStrength;
 
   return float4(ambient + diffuse, 1.0);
+  // float3 colorVisual = normalize(inVert.normal);
+  // return float4(colorVisual, 1.0f);
 }
 

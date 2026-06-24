@@ -91,7 +91,7 @@ void ModelLoader::loadglTF(const std::string &path,
             &positionBuffer
                  .data[positionBufferView.byteOffset +
                        positionAccessor.byteOffset + i * positionStride]);
-        vertex.position = {pos[0], -pos[1], pos[2]};
+        vertex.position = {pos[0], pos[1], pos[2]};
 
         if (hasTexCoords) {
           const float *texCoord = reinterpret_cast<const float *>(

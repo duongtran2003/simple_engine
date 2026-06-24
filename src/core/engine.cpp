@@ -49,8 +49,8 @@ namespace Core {
 Engine::Engine() {
   RenderContext::RenderContextCreateInfo createInfo{.appName = "Simple Engine",
                                                     .inFlightFrame = 2,
-                                                    .width = 800,
-                                                    .height = 600};
+                                                    .width = 1280,
+                                                    .height = 720};
   renderContext = RenderContext(createInfo);
   resourceManager = new ResourceManager(renderContext);
   input = new Input(renderContext);
@@ -134,7 +134,7 @@ void Engine::createGraphicsPipeline() {
   vk::PipelineRasterizationStateCreateInfo rasterizer{
       .rasterizerDiscardEnable = vk::False,
       .polygonMode = vk::PolygonMode::eFill,
-      .cullMode = vk::CullModeFlagBits::eNone,
+      .cullMode = vk::CullModeFlagBits::eBack,
       .frontFace = vk::FrontFace::eCounterClockwise,
       .depthBiasEnable = vk::False,
       .depthBiasClamp = vk::False,
@@ -412,6 +412,22 @@ void Engine::setupExampleRenderGraph() {
       vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
       vk::DeviceSize offsets[] = {0};
 
+      float spinSpeedX = glm::radians(30.0f);
+      float spinSpeedY = glm::radians(45.0f);
+      float spinSpeedZ = glm::radians(15.0f);
+
+      glm::quat deltaX =
+          glm::angleAxis(spinSpeedX * deltaTime, glm::vec3(1.0f, 0.0f, 0.0f));
+      glm::quat deltaY =
+          glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
+      glm::quat deltaZ =
+          glm::angleAxis(spinSpeedZ * deltaTime, glm::vec3(0.0f, 0.0f, 1.0f));
+
+      // glm::quat frameRotation = deltaX;
+      //
+      // glm::quat currentRotation = transform->getRotation();
+      // transform->setRotation(frameRotation * currentRotation);
+
       updateUniformBuffer(renderContext.frameIndex,
                           transform->getTransformMatrix());
 
@@ -523,7 +539,7 @@ void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
   ubo.view = camera->getCamera()->getViewMatrix();
   ubo.proj = camera->getCamera()->getProjectionMatrix();
 
-  ubo.lightDirection = glm::vec3(-2.0f, -2.0f, -5.0f);
+  ubo.lightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
   ubo.objectColor = glm::vec3(0.5f, 0.2f, 0.0f);
 
   memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
@@ -543,21 +559,7 @@ void Engine::initRenderObjectsList() {
   newEntity->addComponent<TransformComponent>();
   auto *transform = newEntity->getComponent<TransformComponent>();
   transform->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-
-  // Set rotation
-  float angle = glm::radians(180.0f);
-  glm::vec3 axis = glm::vec3(0.0f, 1.0f, 0.0f);
-  glm::quat quat = glm::angleAxis(angle, axis);
-  glm::quat rot = transform->getRotation();
-  rot = rot * quat;
-  transform->setRotation(rot);
-
-  angle = glm::radians(90.0f);
-  axis = glm::vec3(1.0f, 0.0f, 0.0f);
-  quat = glm::angleAxis(angle, axis);
-  rot = transform->getRotation();
-  rot = rot * quat;
-  transform->setRotation(rot);
+  transform->setScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
   renderObjects.push_back(newEntity);
 }

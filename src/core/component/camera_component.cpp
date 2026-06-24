@@ -10,6 +10,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
+#include <iostream>
 
 namespace SimpleEngine {
 namespace Core {

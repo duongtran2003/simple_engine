@@ -28,8 +28,7 @@ VSOutput vertMain(VSInput input) {
   float4x4 mvp = mul(ubo.proj, mul(ubo.view, ubo.model));
   output.pos = mul(mvp, float4(input.inPosition, 1.0f));
 
-  // This transforms normal to world space
-  output.normal = normalize(mul(ubo.normalModel, float4(input.inNormal, 0.0f)).xyz);
+  output.normal = normalize(mul(float3x3(ubo.normalModel), input.inNormal));
   output.texCoords = input.inTexCoords;
 
   return output;

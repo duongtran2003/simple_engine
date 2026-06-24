@@ -40,11 +40,9 @@ glm::mat4 TransformComponent::getTransformMatrix() const {
     return transformMatrix;
   }
 
-  glm::mat4 model = glm::mat4(1.0f);
-
-  model = glm::translate(model, position);
-  model = model * glm::mat4_cast(rotation);
-  model = glm::scale(model, scale);
+  glm::mat4 model = glm::translate(glm::mat4(1.0f), position) *
+                    glm::mat4_cast(rotation) *
+                    glm::scale(glm::mat4(1.0f), scale);
 
   isTransformDirty = false;
 
