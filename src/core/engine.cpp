@@ -412,21 +412,14 @@ void Engine::setupExampleRenderGraph() {
       vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
       vk::DeviceSize offsets[] = {0};
 
-      float spinSpeedX = glm::radians(30.0f);
-      float spinSpeedY = glm::radians(45.0f);
-      float spinSpeedZ = glm::radians(15.0f);
-
-      glm::quat deltaX =
-          glm::angleAxis(spinSpeedX * deltaTime, glm::vec3(1.0f, 0.0f, 0.0f));
+      float spinSpeedY = glm::radians(15.0f);
       glm::quat deltaY =
           glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
-      glm::quat deltaZ =
-          glm::angleAxis(spinSpeedZ * deltaTime, glm::vec3(0.0f, 0.0f, 1.0f));
 
-      // glm::quat frameRotation = deltaX;
-      //
-      // glm::quat currentRotation = transform->getRotation();
-      // transform->setRotation(frameRotation * currentRotation);
+      glm::quat frameRotation = deltaY;
+
+      glm::quat currentRotation = transform->getRotation();
+      transform->setRotation(frameRotation * currentRotation);
 
       updateUniformBuffer(renderContext.frameIndex,
                           transform->getTransformMatrix());
@@ -540,7 +533,7 @@ void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
   ubo.proj = camera->getCamera()->getProjectionMatrix();
 
   ubo.lightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
-  ubo.objectColor = glm::vec3(0.5f, 0.2f, 0.0f);
+  ubo.objectColor = glm::vec3(0.7f, 1.0f, 0.82f);
 
   memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
 }
@@ -560,6 +553,13 @@ void Engine::initRenderObjectsList() {
   auto *transform = newEntity->getComponent<TransformComponent>();
   transform->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
   transform->setScale(glm::vec3(1.0f, 1.0f, 1.0f));
+
+  glm::vec3 axis = {1.0f, 0.0f, 0.0f};
+  float angle = glm::radians(90.0f);
+  glm::quat rotQuat = glm::angleAxis(angle, axis);
+  glm::quat rot = transform->getRotation();
+  rot = rotQuat * rot;
+  transform->setRotation(rot);
 
   renderObjects.push_back(newEntity);
 }

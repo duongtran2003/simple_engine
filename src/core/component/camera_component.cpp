@@ -75,8 +75,8 @@ glm::mat4 CameraComponent::getProjectionMatrix() const {
   projectionMatrix = glm::mat4(0.0f);
   projectionMatrix[0][0] = 1.0f / (tanGamma * aspectRatio);
   projectionMatrix[1][1] = -1.0f / tanGamma;
-  projectionMatrix[2][2] = (far - near) / (near - far);
-  projectionMatrix[3][2] = (near * far - near * near) / (near - far);
+  projectionMatrix[2][2] = (far) / (near - far);
+  projectionMatrix[3][2] = (near * far) / (near - far);
   projectionMatrix[2][3] = -1;
 
   return projectionMatrix;
