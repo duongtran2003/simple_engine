@@ -6,6 +6,7 @@ struct VSInput {
 
 struct UniformBuffer {
   float4x4 model;
+  float4x4 normalModel;
   float4x4 view;
   float4x4 proj;
   float3 lightDirection;
@@ -26,7 +27,9 @@ VSOutput vertMain(VSInput input) {
   VSOutput output;
   float4x4 mvp = mul(ubo.proj, mul(ubo.view, ubo.model));
   output.pos = mul(mvp, float4(input.inPosition, 1.0f));
-  output.normal = input.inNormal;
+
+  // This transforms normal to world space
+  output.normal = normalize(mul(ubo.normalModel, float4(input.inNormal, 0.0f)).xyz);
   output.texCoords = input.inTexCoords;
 
   return output;

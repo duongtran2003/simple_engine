@@ -14,6 +14,8 @@ public:
   static void loadglTF(const std::string &path,
                        std::vector<Core::Mesh::Vertex> &vertices,
                        std::vector<uint32_t> &indices);
+
+  static void loadGlbTextures(const std::string &path);
 };
 } // namespace Helper
 } // namespace SimpleEngine

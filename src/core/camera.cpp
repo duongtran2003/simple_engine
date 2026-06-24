@@ -11,7 +11,6 @@
 #include <glm/ext/vector_float3.hpp>
 #include <glm/fwd.hpp>
 #include <glm/trigonometric.hpp>
-#include <iostream>
 
 namespace SimpleEngine {
 namespace Core {
@@ -20,7 +19,7 @@ Camera::Camera(const Input &input) : Entity("g_camera"), input(input) {
   addComponent<TransformComponent>();
 
   TransformComponent *transform = getComponent<TransformComponent>();
-  transform->setPosition({0.0f, 0.0f, 5.0f});
+  transform->setPosition({0.0f, 0.0f, 4.0f});
 }
 
 TransformComponent *Camera::getTransform() const {
@@ -106,11 +105,6 @@ void Camera::handleInput(float delta) {
 
 void Camera::update(float delta) {
   handleInput(delta);
-  auto transform = getTransform();
-  auto camera = getCamera();
-  glm::mat4 modelMatrix = transform->getTransformMatrix();
-  glm::mat4 viewMatrix = camera->getViewMatrix();
-  glm::mat4 projectionMatrix = camera->getProjectionMatrix();
 }
 } // namespace Core
 } // namespace SimpleEngine

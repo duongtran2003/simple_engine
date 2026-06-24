@@ -6,6 +6,7 @@ struct VSOutput {
 
 struct UniformBuffer {
   float4x4 model;
+  float4x4 normalModel;
   float4x4 view;
   float4x4 proj;
   float3 lightDirection;
@@ -21,8 +22,11 @@ float4 fragMain(VSOutput inVert) : SV_Target {
 
   float3 invertedLightDirection = normalize(-ubo.lightDirection);
   float3 normal = normalize(inVert.normal);
-  float angle = degrees(acos(dot(invertedLightDirection, normal)));
-  float diffuseStrength = (90.0f - angle) / 90.0f;
-  return float4(color * diffuseStrength, 1.0);
+
+  float diffuseStrength = max(dot(invertedLightDirection, normal), 0.0f);
+  float3 ambient = color * 0.01f;
+  float3 diffuse = color * diffuseStrength;
+
+  return float4(ambient + diffuse, 1.0);
 }
 

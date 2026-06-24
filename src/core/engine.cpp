@@ -3,10 +3,15 @@
 #include <chrono>
 #include <cstddef>
 #include <cstring>
+#include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/quaternion_common.hpp>
 #include <glm/ext/quaternion_trigonometric.hpp>
 #include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <glm/fwd.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/matrix.hpp>
 #include <glm/trigonometric.hpp>
 #include <stdexcept>
 #include <utility>
@@ -470,7 +475,8 @@ void Engine::createDescriptorSetLayout() {
       .binding = 0,
       .descriptorType = vk::DescriptorType::eUniformBuffer,
       .descriptorCount = 1,
-      .stageFlags = vk::ShaderStageFlagBits::eVertex,
+      .stageFlags =
+          vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
       .pImmutableSamplers = nullptr};
 
   vk::DescriptorSetLayoutCreateInfo layoutInfo{.bindingCount = 1,
@@ -513,11 +519,11 @@ void Engine::createDescriptorSets() {
 void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
   UniformBufferObject ubo{};
   ubo.model = model;
+  ubo.normalModel = glm::mat4(glm::transpose(glm::inverse(glm::mat3(model))));
   ubo.view = camera->getCamera()->getViewMatrix();
   ubo.proj = camera->getCamera()->getProjectionMatrix();
 
-  ubo.proj[1][1] *= -1;
-  ubo.lightDirection = glm::vec3(2.0f, -2.0f, -5.0f);
+  ubo.lightDirection = glm::vec3(-2.0f, -2.0f, -5.0f);
   ubo.objectColor = glm::vec3(0.5f, 0.2f, 0.0f);
 
   memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
@@ -535,18 +541,19 @@ void Engine::initRenderObjectsList() {
   newEntity->addComponent<MeshComponent>();
   newEntity->getComponent<MeshComponent>()->setMesh(meshResource);
   newEntity->addComponent<TransformComponent>();
+  auto *transform = newEntity->getComponent<TransformComponent>();
+  transform->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
 
   // Set rotation
-  auto *transform = newEntity->getComponent<TransformComponent>();
-  float angle = glm::radians(90.0f);
-  glm::vec3 axis = glm::vec3(1.0f, 0.0f, 0.0f);
+  float angle = glm::radians(180.0f);
+  glm::vec3 axis = glm::vec3(0.0f, 1.0f, 0.0f);
   glm::quat quat = glm::angleAxis(angle, axis);
   glm::quat rot = transform->getRotation();
   rot = rot * quat;
   transform->setRotation(rot);
 
-  angle = glm::radians(180.0f);
-  axis = glm::vec3(0.0f, 0.0f, 1.0f);
+  angle = glm::radians(90.0f);
+  axis = glm::vec3(1.0f, 0.0f, 0.0f);
   quat = glm::angleAxis(angle, axis);
   rot = transform->getRotation();
   rot = rot * quat;
