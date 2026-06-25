@@ -45,6 +45,7 @@ public:
 
   vk::DescriptorPool descriptorPool;
   vk::DescriptorSetLayout descriptorSetLayout;
+  vk::DescriptorSetLayout samplerDescriptorSetLayout;
   std::vector<vk::DescriptorSet> descriptorSets;
 
   uint32_t inFlightFrame = 2;
@@ -53,11 +54,17 @@ public:
   std::vector<vk::Fence> inFlightFences;
   uint32_t frameIndex = 0;
 
+  vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
+
   vk::Viewport viewport;
   vk::Rect2D scissor;
 
   RenderContext() = default;
   RenderContext(const RenderContextCreateInfo &createInfo);
+
+  RenderContext *setMsaaSamples(vk::SampleCountFlagBits sampleCount);
+
+private:
   void initWindow(const RenderContextCreateInfo &createInfo);
   void createInstance(const RenderContextCreateInfo &createInfo);
   void createSurface();
@@ -70,6 +77,8 @@ public:
   void createSyncObjects();
   void createViewport();
   void createScissor();
+
+  vk::SampleCountFlagBits getMaxMsaaSampleCount();
 };
 } // namespace Core
 } // namespace SimpleEngine

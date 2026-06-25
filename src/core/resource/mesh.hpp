@@ -40,6 +40,7 @@ private:
   std::string modelPath;
 
   std::vector<MeshTexture> meshTextures;
+  vk::DescriptorSet textureDescriptorSet;
 
   bool loadMeshData(const std::string &path, std::vector<Vertex> &vertices,
                     std::vector<uint32_t> &indices,
@@ -59,6 +60,9 @@ public:
 
   uint32_t getVertexCount() const;
   uint32_t getIndexCount() const;
+
+  void allocateTextureDescriptorSet(vk::DescriptorSetLayout layout);
+  vk::DescriptorSet getTextureDescriptorSet() const;
 
 protected:
   bool doLoad() override;

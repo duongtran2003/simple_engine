@@ -148,6 +148,40 @@ void Mesh::createMeshTextures(std::vector<RawTexture> &textures) {
   }
 }
 
+void Mesh::allocateTextureDescriptorSet(vk::DescriptorSetLayout layout) {
+  if (meshTextures.empty()) {
+    return;
+  }
+
+  vk::DescriptorSetAllocateInfo allocateInfo{.descriptorPool =
+                                                 renderContext.descriptorPool,
+                                             .descriptorSetCount = 1,
+                                             .pSetLayouts = &layout};
+
+  auto allocatedSets =
+      renderContext.device.allocateDescriptorSets(allocateInfo);
+  textureDescriptorSet = allocatedSets[0];
+
+  vk::DescriptorImageInfo imageInfo{
+      .sampler = meshTextures[0].sampler,
+      .imageView = meshTextures[0].view,
+      .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+  vk::WriteDescriptorSet descriptorWrite{
+      .dstSet = textureDescriptorSet,
+      .dstBinding = 0,
+      .dstArrayElement = 0,
+      .descriptorCount = 1,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .pImageInfo = &imageInfo};
+
+  renderContext.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+}
+
+vk::DescriptorSet Mesh::getTextureDescriptorSet() const {
+  return textureDescriptorSet;
+}
+
 vk::Buffer Mesh::getVertexBuffer() const { return vertexBuffer; }
 
 vk::Buffer Mesh::getIndexBuffer() const { return indexBuffer; }

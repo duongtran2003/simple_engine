@@ -52,6 +52,7 @@ Engine::Engine() {
                                                     .width = 1280,
                                                     .height = 720};
   renderContext = RenderContext(createInfo);
+  renderContext.setMsaaSamples(vk::SampleCountFlagBits::e16);
   resourceManager = new ResourceManager(renderContext);
   input = new Input(renderContext);
   camera = new Camera(*input);
@@ -141,8 +142,9 @@ void Engine::createGraphicsPipeline() {
       .lineWidth = 1.0f};
 
   vk::PipelineMultisampleStateCreateInfo multisampling{
-      .rasterizationSamples = vk::SampleCountFlagBits::e1,
-      .sampleShadingEnable = vk::False};
+      .rasterizationSamples = renderContext.msaaSamples,
+      .sampleShadingEnable = vk::True,
+      .minSampleShading = .2f};
 
   vk::PipelineColorBlendAttachmentState colorBlendAttachment{
       .blendEnable = vk::False,
@@ -163,10 +165,14 @@ void Engine::createGraphicsPipeline() {
       .depthBoundsTestEnable = vk::False,
       .stencilTestEnable = vk::False};
 
-  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-      .setLayoutCount = 1,
-      .pSetLayouts = &renderContext.descriptorSetLayout,
-      .pushConstantRangeCount = 0};
+  std::array<vk::DescriptorSetLayout, 2> layouts = {
+      renderContext.descriptorSetLayout,
+      renderContext.samplerDescriptorSetLayout};
+
+  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount =
+                                                      layouts.size(),
+                                                  .pSetLayouts = layouts.data(),
+                                                  .pushConstantRangeCount = 0};
 
   vk::PipelineLayout pipelineLayout =
       renderContext.device.createPipelineLayout(pipelineLayoutInfo);
@@ -347,7 +353,7 @@ void Engine::setupExampleRenderGraph() {
       vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc,
-      renderContext);
+      vk::SampleCountFlagBits::e1, renderContext);
   renderGraph->addResource(resource);
   renderGraph->setOutputResource("final_color");
 
@@ -355,8 +361,17 @@ void Engine::setupExampleRenderGraph() {
       "depth_image", renderContext.swapChainExtent.width,
       renderContext.swapChainExtent.height, vk::Format::eD32Sfloat,
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eDepth,
-      vk::ImageUsageFlagBits::eDepthStencilAttachment, renderContext);
+      vk::ImageUsageFlagBits::eDepthStencilAttachment,
+      renderContext.msaaSamples, renderContext);
   renderGraph->addResource(depthResource);
+
+  GraphResource *colorResource = new GraphResource(
+      "color_image", renderContext.swapChainExtent.width,
+      renderContext.swapChainExtent.height,
+      renderContext.swapChainSurfaceFormat.format, vk::ImageLayout::eUndefined,
+      vk::ImageAspectFlagBits::eColor, vk::ImageUsageFlagBits::eColorAttachment,
+      renderContext.msaaSamples, renderContext);
+  renderGraph->addResource(colorResource);
 
   RenderPass *pass = new RenderPass("example_pass", renderContext);
   pass->addOutput("final_color");
@@ -369,10 +384,15 @@ void Engine::setupExampleRenderGraph() {
         commandBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
     vk::RenderingAttachmentInfoKHR colorAttachment{
-        .imageView = finalColor->getView(),
-        .imageLayout = finalColor->getLayout(),
+        .imageView = colorResource->getView(),
+        .imageLayout = colorResource->getLayout(),
+
+        .resolveMode = vk::ResolveModeFlagBits::eAverage,
+        .resolveImageView = finalColor->getView(),
+        .resolveImageLayout = finalColor->getLayout(),
+
         .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eStore,
+        .storeOp = vk::AttachmentStoreOp::eDontCare,
         .clearValue =
             vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
 
@@ -399,6 +419,10 @@ void Engine::setupExampleRenderGraph() {
     commandBuffer.setViewport(0, renderContext.viewport);
     commandBuffer.setScissor(0, renderContext.scissor);
 
+    commandBuffer.bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics, renderContext.pipelineLayout, 0, 1,
+        &renderContext.descriptorSets[renderContext.frameIndex], 0, nullptr);
+
     for (Entity *e : renderObjects) {
       auto *mesh = e->getComponent<MeshComponent>();
       auto *transform = e->getComponent<TransformComponent>();
@@ -424,9 +448,11 @@ void Engine::setupExampleRenderGraph() {
       updateUniformBuffer(renderContext.frameIndex,
                           transform->getTransformMatrix());
 
-      commandBuffer.bindDescriptorSets(
-          vk::PipelineBindPoint::eGraphics, renderContext.pipelineLayout, 0, 1,
-          &renderContext.descriptorSets[renderContext.frameIndex], 0, nullptr);
+      vk::DescriptorSet meshTextureSet =
+          meshResource->getTextureDescriptorSet();
+      commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                       renderContext.pipelineLayout, 1, 1,
+                                       &meshTextureSet, 0, nullptr);
       commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
       commandBuffer.bindIndexBuffer(meshResource->getIndexBuffer(), 0,
                                     vk::IndexType::eUint32);
@@ -469,9 +495,10 @@ void Engine::createDescriptorPool() {
 
   std::array poolSizes = {uniformPoolSize, imageSamplerPoolSize};
 
+  constexpr int MAX_DESCRIPTOR_SETS = 100;
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      .maxSets = renderContext.inFlightFrame,
+      .maxSets = renderContext.inFlightFrame + MAX_DESCRIPTOR_SETS,
       .poolSizeCount = poolSizes.size(),
       .pPoolSizes = poolSizes.data()};
 
@@ -493,6 +520,17 @@ void Engine::createDescriptorSetLayout() {
 
   renderContext.descriptorSetLayout =
       renderContext.device.createDescriptorSetLayout(layoutInfo);
+
+  vk::DescriptorSetLayoutBinding samplerLayoutBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eFragment};
+  vk::DescriptorSetLayoutCreateInfo samplerlayoutInfo{
+      .bindingCount = 1, .pBindings = &samplerLayoutBinding};
+
+  renderContext.samplerDescriptorSetLayout =
+      renderContext.device.createDescriptorSetLayout(samplerlayoutInfo);
 }
 
 void Engine::createDescriptorSets() {
@@ -533,7 +571,7 @@ void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
   ubo.proj = camera->getCamera()->getProjectionMatrix();
 
   ubo.lightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
-  ubo.objectColor = glm::vec3(0.7f, 1.0f, 0.82f);
+  ubo.lightColor = glm::vec3(1.0f, 0.85f, 0.6f);
 
   memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
 }
@@ -544,6 +582,9 @@ void Engine::initRenderObjectsList() {
       "resources/models/damaged_helmet/DamagedHelmet.glb");
   uint32_t verticesCount = meshResource.get()->getVertexCount();
   std::cout << "vertices count: " << verticesCount << "\n";
+
+  meshResource.get()->allocateTextureDescriptorSet(
+      renderContext.samplerDescriptorSetLayout);
 
   Entity *newEntity = new Entity("helmet");
 

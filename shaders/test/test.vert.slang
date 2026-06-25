@@ -10,7 +10,7 @@ struct UniformBuffer {
   float4x4 view;
   float4x4 proj;
   float3 lightDirection;
-  float3 objectColor;
+  float3 lightColor;
 };
 
 [[vk::binding(0, 0)]]

@@ -12,9 +12,11 @@ GraphResource::GraphResource(const std::string &name, uint32_t width,
                              vk::ImageLayout layout,
                              vk::ImageAspectFlags aspectMask,
                              vk::ImageUsageFlags usage,
+                             vk::SampleCountFlagBits sampleCount,
                              const RenderContext &context)
     : context(context), name(name), format(format), layout(layout),
-      aspectMask(aspectMask), usage(usage), width(width), height(height) {
+      aspectMask(aspectMask), usage(usage), sampleCount(sampleCount),
+      width(width), height(height) {
   createImage();
   allocateMemory();
   createView();
@@ -44,7 +46,7 @@ void GraphResource::createImage() {
                                  .extent = {width, height, 1},
                                  .mipLevels = 1,
                                  .arrayLayers = 1,
-                                 .samples = vk::SampleCountFlagBits::e1,
+                                 .samples = sampleCount,
                                  .tiling = vk::ImageTiling::eOptimal,
                                  .usage = usage,
                                  .sharingMode = vk::SharingMode::eExclusive,
