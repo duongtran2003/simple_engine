@@ -14,6 +14,7 @@
 #include <glm/matrix.hpp>
 #include <glm/trigonometric.hpp>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -584,10 +585,38 @@ void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
   memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
 }
 
-void Engine::initRenderObjectsList() {
+// Load different models, this stays here till GUI implementation
+std::tuple<ResourceHandle<Mesh>, glm::vec3, glm::vec3, glm::quat>
+loadHelmet(ResourceManager *resourceManager) {
   ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
       "model_damaged_helmet",
       "resources/models/damaged_helmet/DamagedHelmet.glb");
+
+  glm::vec3 position = {0.0f, 0.0f, 0.0f};
+  glm::vec3 scale = {1.0f, 1.0f, 1.0f};
+  glm::vec3 axis = {1.0f, 0.0f, 0.0f};
+  float angle = glm::radians(90.0f);
+  glm::quat rotQuat = glm::angleAxis(angle, axis);
+
+  return {std::move(meshResource), position, scale, rotQuat};
+}
+
+std::tuple<ResourceHandle<Mesh>, glm::vec3, glm::vec3, glm::quat>
+loadCorset(ResourceManager *resourceManager) {
+  ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
+      "model_corset", "resources/models/corset/Corset.glb");
+
+  glm::vec3 position = {0.0f, -0.8f, 0.0f};
+  glm::vec3 scale = {30.0f, 30.0f, 30.0f};
+  glm::vec3 axis = {0.0f, 1.0f, 0.0f};
+  float angle = glm::radians(180.0f);
+  glm::quat rotQuat = glm::angleAxis(angle, axis);
+
+  return {std::move(meshResource), position, scale, rotQuat};
+}
+
+void Engine::initRenderObjectsList() {
+  auto [meshResource, ePosition, eScale, eRot] = loadCorset(resourceManager);
   uint32_t verticesCount = meshResource.get()->getVertexCount();
   std::cout << "vertices count: " << verticesCount << "\n";
 
@@ -600,14 +629,11 @@ void Engine::initRenderObjectsList() {
   newEntity->getComponent<MeshComponent>()->setMesh(meshResource);
   newEntity->addComponent<TransformComponent>();
   auto *transform = newEntity->getComponent<TransformComponent>();
-  transform->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-  transform->setScale(glm::vec3(1.0f, 1.0f, 1.0f));
+  transform->setPosition(ePosition);
+  transform->setScale(eScale);
 
-  glm::vec3 axis = {1.0f, 0.0f, 0.0f};
-  float angle = glm::radians(90.0f);
-  glm::quat rotQuat = glm::angleAxis(angle, axis);
   glm::quat rot = transform->getRotation();
-  rot = rotQuat * rot;
+  rot = eRot * rot;
   transform->setRotation(rot);
 
   renderObjects.push_back(newEntity);

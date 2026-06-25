@@ -33,7 +33,7 @@ float4 fragMain(VSOutput inVert) : SV_Target {
 
   LightProperty directionalLight = calculateDirectionalLight(ubo.directionalLightDirection, normal);
 
-  LightProperty pointLight = calculatePointLight(ubo.pointLightPosition, ubo.cameraPos, inVert.worldSpacePos, normal, 32.0f);
+  LightProperty pointLight = calculatePointLight(ubo.pointLightPosition, ubo.cameraPos, inVert.worldSpacePos, normal, 128.0f);
 
   float3 ambient = directionalLight.ambient * ubo.directionalLightColor;
   float3 diffuse = directionalLight.diffuse * ubo.directionalLightColor + pointLight.diffuse * ubo.pointLightColor;
@@ -53,7 +53,7 @@ struct LightProperty {
   float ambient = 0.0f;
   float diffuse = 0.0f;
   float specular = 0.0f;
-}
+};
 
 LightProperty calculateDirectionalLight(float3 lightDir, float3 normal) {
   float3 invertedLightDir = normalize(-lightDir);
@@ -79,7 +79,7 @@ LightProperty calculatePointLight(float3 lightPos, float3 viewPos, float3 fragPo
 
   float attenuation = calculateAttenuation(1.0f, 0.007f, 0.0002f, length(lightPos - fragPos));
   LightProperty output;
-  output.diffuse = diffuseStrength * attenuation * 0.4f;
+  output.diffuse = diffuseStrength * attenuation * 0.6f;
   output.specular = specularStrength * attenuation;
 
   return output;
