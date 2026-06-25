@@ -24,8 +24,13 @@ public:
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
 
-    alignas(16) glm::vec3 lightDirection;
-    alignas(16) glm::vec3 lightColor;
+    alignas(16) glm::vec3 directionalLightDirection;
+    alignas(16) glm::vec3 directionalLightColor;
+
+    alignas(16) glm::vec3 pointLightPosition;
+    alignas(16) glm::vec3 pointLightColor;
+
+    alignas(16) glm::vec3 cameraPos;
   };
 
   struct UboBuffer {

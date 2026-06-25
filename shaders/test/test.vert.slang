@@ -9,8 +9,14 @@ struct UniformBuffer {
   float4x4 normalModel;
   float4x4 view;
   float4x4 proj;
-  float3 lightDirection;
-  float3 lightColor;
+
+  float3 directionalLightDirection;
+  float3 directionalLightColor;
+
+  float3 pointLightPosition;
+  float3 pointLightColor;
+
+  float3 cameraPos;
 };
 
 [[vk::binding(0, 0)]]
@@ -20,6 +26,7 @@ struct VSOutput {
   float4 pos: SV_Position;
   float3 normal;
   float2 texCoords;
+  float3 worldSpacePos;
 };
 
 [shader("vertex")]
@@ -27,6 +34,7 @@ VSOutput vertMain(VSInput input) {
   VSOutput output;
   float4x4 mvp = mul(ubo.proj, mul(ubo.view, ubo.model));
   output.pos = mul(mvp, float4(input.inPosition, 1.0f));
+  output.worldSpacePos = mul(ubo.model, float4(input.inPosition, 1.0f)).xyz;
 
   output.normal = normalize(mul(float3x3(ubo.normalModel), input.inNormal));
   output.texCoords = input.inTexCoords;

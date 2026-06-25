@@ -570,8 +570,13 @@ void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
   ubo.view = camera->getCamera()->getViewMatrix();
   ubo.proj = camera->getCamera()->getProjectionMatrix();
 
-  ubo.lightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
-  ubo.lightColor = glm::vec3(1.0f, 0.85f, 0.6f);
+  ubo.directionalLightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
+  ubo.directionalLightColor = glm::vec3(1.0f, 0.85f, 0.6f);
+
+  ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
+  ubo.pointLightColor = glm::vec3(1.0f);
+
+  ubo.cameraPos = camera->getTransform()->getPosition();
 
   memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
 }
