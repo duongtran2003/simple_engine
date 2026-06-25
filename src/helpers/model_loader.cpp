@@ -1,13 +1,12 @@
-#include "vulkan/vulkan.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
 
 #define TINYGLTF_IMPLEMENTATION
 
+#include "helpers/model_loader.hpp"
 #include "core/raw_texture.hpp"
 #include "core/resource/mesh.hpp"
-#include "helpers/model_loader.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -172,14 +171,20 @@ void ModelLoader::loadglTF(const std::string &path,
 Core::RawTexture ModelLoader::loadTexture(tinygltf::Model &model,
                                           int textureIndex) {
   if (textureIndex < 0 || textureIndex >= model.textures.size()) {
-    throw std::runtime_error("ModelLoader::loadTexture::ERROR: Out of bound.");
+    throw std::runtime_error(
+        "ModelLoader::loadTexture::ERROR: Out of bound. Texture index: " +
+        std::to_string(textureIndex) +
+        ". Model textures num: " + std::to_string(model.textures.size()));
   }
 
   const tinygltf::Texture &texture = model.textures[textureIndex];
   int imageIndex = texture.source;
 
   if (imageIndex < 0 || imageIndex >= model.images.size()) {
-    throw std::runtime_error("ModelLoader::loadTexture::ERROR: Out of bound.");
+    throw std::runtime_error(
+        "ModelLoader::loadTexture::ERROR: Out of bound. Image index: " +
+        std::to_string(imageIndex) +
+        ". Model images num: " + std::to_string(model.images.size()));
   }
 
   const tinygltf::Image &image = model.images[imageIndex];
@@ -190,14 +195,25 @@ Core::RawTexture ModelLoader::loadTexture(tinygltf::Model &model,
 
   int samplerIndex = texture.sampler;
   if (samplerIndex < 0 || samplerIndex >= model.samplers.size()) {
-    throw std::runtime_error("ModelLoader::loadTexture::ERROR: Out of bound.");
+    std::cout
+        << ("ModelLoader::loadTexture::WARNING: Out of bound. Sampler index: " +
+            std::to_string(samplerIndex) +
+            ". Model samplers num: " + std::to_string(model.samplers.size()) +
+            ". Using default sampler.\n");
   }
 
-  const tinygltf::Sampler &sampler = model.samplers[samplerIndex];
-  rawTexture.magFilter = mapGltfFilter(sampler.magFilter);
-  rawTexture.minFilter = mapGltfFilter(sampler.minFilter);
-  rawTexture.wrapS = mapGltfWrap(sampler.wrapS);
-  rawTexture.wrapT = mapGltfWrap(sampler.wrapT);
+  if (samplerIndex >= 0) {
+    const tinygltf::Sampler &sampler = model.samplers[samplerIndex];
+    rawTexture.magFilter = mapGltfFilter(sampler.magFilter);
+    rawTexture.minFilter = mapGltfFilter(sampler.minFilter);
+    rawTexture.wrapS = mapGltfWrap(sampler.wrapS);
+    rawTexture.wrapT = mapGltfWrap(sampler.wrapT);
+  } else {
+    rawTexture.magFilter = Core::TextureFilter::Nearest;
+    rawTexture.minFilter = Core::TextureFilter::Nearest;
+    rawTexture.wrapS = Core::TextureWrapMode::Repeat;
+    rawTexture.wrapT = Core::TextureWrapMode::Repeat;
+  }
 
   return rawTexture;
 }
