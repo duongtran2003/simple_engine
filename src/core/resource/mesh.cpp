@@ -105,7 +105,8 @@ void Mesh::createMeshTextures(std::vector<RawTexture> &textures) {
     auto [image, imageMemory, imageView] = Helper::VulkanHelper::createImage(
         raw.width, raw.height, textureFormat,
         vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-        vk::ImageAspectFlagBits::eColor, renderContext);
+        vk::ImageAspectFlagBits::eColor, vk::SampleCountFlagBits::e1,
+        renderContext);
 
     vk::DeviceSize imageSize = raw.pixels.size();
     auto [stagingBuffer, stagingMemory] = Helper::VulkanHelper::createBuffer(

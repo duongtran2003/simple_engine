@@ -30,6 +30,7 @@ public:
   static std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView>
   createImage(uint32_t width, uint32_t height, vk::Format format,
               vk::ImageUsageFlags usage, vk::ImageAspectFlags aspectMask,
+              vk::SampleCountFlagBits sampleCount,
               const Core::RenderContext &context);
 
   static vk::Sampler createImageSampler(Core::TextureFilter magFilter,
@@ -49,7 +50,8 @@ public:
 
   static void copyBufferToImage(vk::CommandBuffer &commandBuffer,
                                 vk::Buffer &src, vk::Image &dst, uint32_t width,
-                                uint32_t height, vk::ImageAspectFlags aspectMask);
+                                uint32_t height,
+                                vk::ImageAspectFlags aspectMask);
 };
 } // namespace Helper
 } // namespace SimpleEngine

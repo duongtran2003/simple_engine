@@ -134,6 +134,7 @@ std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView>
 VulkanHelper::createImage(uint32_t width, uint32_t height, vk::Format format,
                           vk::ImageUsageFlags usage,
                           vk::ImageAspectFlags aspectMask,
+                          vk::SampleCountFlagBits sampleCount,
                           const Core::RenderContext &context) {
   vk::ImageCreateInfo imageCreateInfo{
       .imageType = vk::ImageType::e2D,
@@ -141,7 +142,7 @@ VulkanHelper::createImage(uint32_t width, uint32_t height, vk::Format format,
       .extent = {width, height, 1},
       .mipLevels = 1,
       .arrayLayers = 1,
-      .samples = context.msaaSamples,
+      .samples = sampleCount,
       .tiling = vk::ImageTiling::eOptimal,
       .usage = usage,
       .sharingMode = vk::SharingMode::eExclusive,

@@ -379,6 +379,9 @@ void Engine::setupExampleRenderGraph() {
     GraphResource *finalColor = renderGraph->getResource("final_color");
     finalColor->transitionLayout(commandBuffer,
                                  vk::ImageLayout::eColorAttachmentOptimal);
+    GraphResource *colorImage = renderGraph->getResource("color_image");
+    colorImage->transitionLayout(commandBuffer,
+                                 vk::ImageLayout::eColorAttachmentOptimal);
     GraphResource *depthImage = renderGraph->getResource("depth_image");
     depthImage->transitionLayout(
         commandBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal);
