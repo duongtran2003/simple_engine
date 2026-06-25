@@ -630,7 +630,7 @@ loadDucky(ResourceManager *resourceManager) {
 }
 
 void Engine::initRenderObjectsList() {
-  auto [meshResource, ePosition, eScale, eRot] = loadDucky(resourceManager);
+  auto [meshResource, ePosition, eScale, eRot] = loadHelmet(resourceManager);
   uint32_t verticesCount = meshResource.get()->getVertexCount();
   std::cout << "vertices count: " << verticesCount << "\n";
 

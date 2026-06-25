@@ -80,7 +80,7 @@ LightProperty calculatePointLight(float3 lightPos, float3 viewPos, float3 fragPo
   float attenuation = calculateAttenuation(1.0f, 0.007f, 0.0002f, length(lightPos - fragPos));
   LightProperty output;
   output.diffuse = diffuseStrength * attenuation * 0.6f;
-  output.specular = specularStrength * attenuation;
+  output.specular = specularStrength * attenuation * 0.6f;
 
   return output;
 }
