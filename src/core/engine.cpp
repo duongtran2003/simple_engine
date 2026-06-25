@@ -615,8 +615,22 @@ loadCorset(ResourceManager *resourceManager) {
   return {std::move(meshResource), position, scale, rotQuat};
 }
 
+std::tuple<ResourceHandle<Mesh>, glm::vec3, glm::vec3, glm::quat>
+loadDucky(ResourceManager *resourceManager) {
+  ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
+      "model_ducky", "resources/models/duck/Duck.glb");
+
+  glm::vec3 position = {0.0f, -0.8f, 0.0f};
+  glm::vec3 scale = {0.01f, 0.01f, 0.01f};
+  glm::vec3 axis = {1.0f, 0.0f, 0.0f};
+  float angle = glm::radians(0.0f);
+  glm::quat rotQuat = glm::angleAxis(angle, axis);
+
+  return {std::move(meshResource), position, scale, rotQuat};
+}
+
 void Engine::initRenderObjectsList() {
-  auto [meshResource, ePosition, eScale, eRot] = loadCorset(resourceManager);
+  auto [meshResource, ePosition, eScale, eRot] = loadDucky(resourceManager);
   uint32_t verticesCount = meshResource.get()->getVertexCount();
   std::cout << "vertices count: " << verticesCount << "\n";
 
