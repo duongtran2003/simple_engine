@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
 #include "vulkan/vulkan.hpp"
@@ -19,6 +20,13 @@ public:
     glm::vec2 uv;
   };
 
+  struct MeshTexture {
+    vk::Image image;
+    vk::DeviceMemory memory;
+    vk::ImageView view;
+    vk::Sampler sampler;
+  };
+
 private:
   vk::Buffer vertexBuffer;
   vk::DeviceMemory vertexBufferMemory;
@@ -31,11 +39,15 @@ private:
   uint32_t indexCount = 0;
   std::string modelPath;
 
+  std::vector<MeshTexture> meshTextures;
+
   bool loadMeshData(const std::string &path, std::vector<Vertex> &vertices,
-                    std::vector<uint32_t> &indices);
+                    std::vector<uint32_t> &indices,
+                    std::vector<RawTexture> &textures);
 
   void createVertexBuffer(std::vector<Vertex> &vertices);
   void createIndexBuffer(std::vector<uint32_t> &indices);
+  void createMeshTextures(std::vector<RawTexture> &textures);
 
 public:
   Mesh(const std::string &id, const RenderContext &renderContext,

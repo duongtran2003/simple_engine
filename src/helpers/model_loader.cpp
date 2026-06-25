@@ -1,10 +1,11 @@
+#include "vulkan/vulkan.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
 
 #define TINYGLTF_IMPLEMENTATION
-#include <tiny_gltf.h>
 
+#include "core/raw_texture.hpp"
 #include "core/resource/mesh.hpp"
 #include "helpers/model_loader.hpp"
 #include <cstddef>
@@ -18,7 +19,8 @@ namespace SimpleEngine {
 namespace Helper {
 void ModelLoader::loadglTF(const std::string &path,
                            std::vector<Core::Mesh::Vertex> &vertices,
-                           std::vector<uint32_t> &indices) {
+                           std::vector<uint32_t> &indices,
+                           std::vector<Core::RawTexture> &textures) {
   tinygltf::Model model;
   tinygltf::TinyGLTF loader;
 
@@ -41,9 +43,21 @@ void ModelLoader::loadglTF(const std::string &path,
 
   vertices.clear();
   indices.clear();
+  textures.clear();
 
   for (const auto &mesh : model.meshes) {
     for (const auto &primitive : mesh.primitives) {
+
+      if (primitive.material >= 0) {
+        const auto &material = model.materials[primitive.material];
+
+        if (material.pbrMetallicRoughness.baseColorTexture.index >= 0) {
+          Core::RawTexture albedo = loadTexture(
+              model, material.pbrMetallicRoughness.baseColorTexture.index);
+          textures.push_back(albedo);
+        }
+      }
+
       const tinygltf::Accessor &indexAccessor =
           model.accessors[primitive.indices];
       const tinygltf::BufferView &indexBufferView =
@@ -153,6 +167,58 @@ void ModelLoader::loadglTF(const std::string &path,
       }
     }
   }
+}
+
+Core::RawTexture ModelLoader::loadTexture(tinygltf::Model &model,
+                                          int textureIndex) {
+  if (textureIndex < 0 || textureIndex >= model.textures.size()) {
+    throw std::runtime_error("ModelLoader::loadTexture::ERROR: Out of bound.");
+  }
+
+  const tinygltf::Texture &texture = model.textures[textureIndex];
+  int imageIndex = texture.source;
+
+  if (imageIndex < 0 || imageIndex >= model.images.size()) {
+    throw std::runtime_error("ModelLoader::loadTexture::ERROR: Out of bound.");
+  }
+
+  const tinygltf::Image &image = model.images[imageIndex];
+  Core::RawTexture rawTexture{.pixels = image.image,
+                              .width = static_cast<uint32_t>(image.width),
+                              .height = static_cast<uint32_t>(image.height),
+                              .componentCount = image.component};
+
+  int samplerIndex = texture.sampler;
+  if (samplerIndex < 0 || samplerIndex >= model.samplers.size()) {
+    throw std::runtime_error("ModelLoader::loadTexture::ERROR: Out of bound.");
+  }
+
+  const tinygltf::Sampler &sampler = model.samplers[samplerIndex];
+  rawTexture.magFilter = mapGltfFilter(sampler.magFilter);
+  rawTexture.minFilter = mapGltfFilter(sampler.minFilter);
+  rawTexture.wrapS = mapGltfWrap(sampler.wrapS);
+  rawTexture.wrapT = mapGltfWrap(sampler.wrapT);
+
+  return rawTexture;
+}
+
+Core::TextureFilter ModelLoader::mapGltfFilter(int gltfFilter) {
+  if (gltfFilter == 9728 || gltfFilter == 9984 || gltfFilter == 9986) {
+    return Core::TextureFilter::Nearest;
+  }
+
+  return Core::TextureFilter::Linear;
+}
+
+Core::TextureWrapMode ModelLoader::mapGltfWrap(int gltfWrap) {
+  if (gltfWrap == 33071) {
+    return Core::TextureWrapMode::ClampToEdge;
+  }
+  if (gltfWrap == 33648) {
+    return Core::TextureWrapMode::MirroredRepeat;
+  }
+
+  return Core::TextureWrapMode::Repeat;
 }
 } // namespace Helper
 } // namespace SimpleEngine
