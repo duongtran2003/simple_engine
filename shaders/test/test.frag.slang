@@ -51,6 +51,7 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   float3 diffuse = directionalLightColor * directionalLightDiffuseStrength * 0.2f + ubo.pointLightColor * pointLightDiffuseStrength * 0.5f;
   float3 specular = ubo.pointLightColor * pointLightSpecularStrength;
 
-  return float4(texColor * float4((ambient + diffuse + specular), 1.0f));
+  float3 color = texColor.rgb * (ambient + diffuse) + specular;
+  return float4(color, texColor.a);
 }
 
