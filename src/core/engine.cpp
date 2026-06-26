@@ -400,8 +400,8 @@ void Engine::setupExampleRenderGraph() {
 
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eDontCare,
-        .clearValue =
-            vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
+        .clearValue = vk::ClearColorValue(
+            std::array<float, 4>{1.0f, 0.96f, 0.89f, 1.0f})};
 
     vk::RenderingAttachmentInfoKHR depthAttachment{
         .imageView = depthImage->getView(),
@@ -463,7 +463,7 @@ void Engine::setupExampleRenderGraph() {
       ubo.proj = camera->getCamera()->getProjectionMatrix();
 
       ubo.directionalLightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
-      ubo.directionalLightColor = glm::vec3(1.0f, 0.85f, 0.6f);
+      ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
       ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
       ubo.pointLightColor = glm::vec3(1.0f);

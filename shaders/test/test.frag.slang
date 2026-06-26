@@ -43,7 +43,12 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   float3 specular = pointLight.specular * ubo.pointLightColor;
 
   float3 color = texColor.rgb * (ambient + diffuse) + specular;
-  return float4(color, texColor.a);
+  float3 toneMapped = reinhardToneMap(color);
+  return float4(toneMapped, texColor.a);
+}
+
+float3 reinhardToneMap(float3 color) {
+  return color / (color + float3(1.0f));
 }
 
 float calculateAttenuation(float constant, float linear, float quadratic, float distance) {
@@ -63,8 +68,8 @@ LightProperty calculateDirectionalLight(float3 lightDir, float3 normal) {
   float diffuseStrength = max(dot(invertedLightDir, normal), 0.0f);
 
   LightProperty output;
-  output.diffuse = diffuseStrength * 0.2f;
-  output.ambient = 0.01f;
+  output.diffuse = diffuseStrength * 0.4f;
+  output.ambient = 0.3f;
 
   return output;
 }
@@ -82,8 +87,8 @@ LightProperty calculatePointLight(float3 lightPos, float3 viewPos, float3 fragPo
 
   float attenuation = calculateAttenuation(1.0f, 0.007f, 0.0002f, length(lightPos - fragPos));
   LightProperty output;
-  output.diffuse = diffuseStrength * attenuation * 0.6f;
-  output.specular = specularStrength * attenuation * 0.6f;
+  output.diffuse = diffuseStrength * attenuation * 0.4f;
+  output.specular = specularStrength * attenuation * 1.0f;
 
   return output;
 }
