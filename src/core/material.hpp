@@ -17,6 +17,7 @@ public:
 
 private:
   TextureBinding albedo;
+  TextureBinding normal;
 
 public:
   Material();
@@ -24,6 +25,11 @@ public:
   Material *setAlbedo(TextureBinding binding);
   const TextureBinding &getAlbedo() const;
   Material *registerAlbedo(vk::DescriptorSet &set, uint32_t index,
+                           const RenderContext &context);
+
+  Material *setNormal(TextureBinding binding);
+  const TextureBinding &getNormal() const;
+  Material *registerNormal(vk::DescriptorSet &set, uint32_t index,
                            const RenderContext &context);
 };
 } // namespace Core

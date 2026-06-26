@@ -21,7 +21,8 @@ ConstantBuffer<UniformBuffer> ubo;
 struct PushConstants {
   float4x4 modelMatrix;
   float3 cameraPos;
-  uint meshTextureIndex;
+  uint albedoIndex;
+  uint normalIndex;
 };
 [[vk::push_constant]] PushConstants push;
 

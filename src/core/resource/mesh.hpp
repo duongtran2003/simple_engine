@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
 #include "vulkan/vulkan.hpp"

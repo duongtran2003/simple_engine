@@ -159,6 +159,12 @@ void ModelLoader::loadGltfMeshTextures(
               model, material.pbrMetallicRoughness.baseColorTexture.index);
           textures.push_back(albedo);
         }
+
+        if (material.normalTexture.index >= 0) {
+          Core::RawTexture normal =
+              loadTexture(model, material.normalTexture.index);
+          textures.push_back(normal);
+        }
       }
     }
   }
@@ -245,12 +251,17 @@ void ModelLoader::loadGltfMesh(const std::string &path, const std::string &name,
 
   Core::Material material;
   if (textures.size() >= 1) {
-    std::cout << "loading texture resource from raw texture\n";
     Core::ResourceHandle<Core::Texture> texture =
         resourceManager.load<Core::Texture>(name + "_texture_albedo",
                                             textures[0]);
-    std::cout << "copying it into material\n";
     material.setAlbedo({.index = 0, .handle = texture});
+  }
+
+  if (textures.size() >= 2) {
+    Core::ResourceHandle<Core::Texture> texture =
+        resourceManager.load<Core::Texture>(name + "_texture_normal",
+                                            textures[1]);
+    material.setNormal({.index = 0, .handle = texture});
   }
 
   component.setMesh(meshResource)->setMaterial(material);

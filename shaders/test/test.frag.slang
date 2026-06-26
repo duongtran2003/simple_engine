@@ -25,13 +25,14 @@ Sampler2D globalTextures[];
 struct PushConstants {
   float4x4 modelMatrix;
   float3 cameraPos;
-  uint meshTextureIndex;
+  uint albedoIndex;
+  uint normalIndex;
 };
 [[vk::push_constant]] PushConstants push;
 
 [shader("fragment")]
 float4 fragMain(VSOutput inVert) : SV_Target {
-  float4 texColor = globalTextures[push.meshTextureIndex].Sample(inVert.texCoords);
+  float4 texColor = globalTextures[push.albedoIndex].Sample(inVert.texCoords);
   float3 normal = normalize(inVert.normal);
 
   LightProperty directionalLight = calculateDirectionalLight(ubo.directionalLightDirection, normal);

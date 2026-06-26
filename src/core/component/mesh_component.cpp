@@ -16,7 +16,7 @@ MeshComponent *MeshComponent::setMaterial(Material &material) {
 }
 
 const ResourceHandle<Mesh> &MeshComponent::getMesh() const { return mesh; }
-const Material &MeshComponent::getMaterial() const { return material; }
+Material &MeshComponent::getMaterial() { return material; }
 
 void MeshComponent::render() {
   // TODO: Implement later

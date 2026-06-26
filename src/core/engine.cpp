@@ -472,10 +472,13 @@ void Engine::setupExampleRenderGraph() {
       memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
              sizeof(ubo));
 
+      const auto &albedoBinding = mesh->getMaterial().getAlbedo();
+      const auto &normalBinding = mesh->getMaterial().getNormal();
       PushConstants pushConstant{.modelMatrix = model,
                                  .cameraPos =
                                      camera->getTransform()->getPosition(),
-                                 .meshTextureIndex = 1};
+                                 .albedoIndex = albedoBinding.index,
+                                 .normalIndex = normalBinding.index};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
                                   vk::ShaderStageFlagBits::eVertex |
@@ -552,6 +555,9 @@ void Engine::initRenderObjectsList() {
   transform->setScale(eScale);
 
   auto *mesh = newEntity->getComponent<MeshComponent>();
+  mesh->getMaterial()
+      .registerAlbedo(renderContext.bindlessDescriptorSets, 1, renderContext)
+      ->registerNormal(renderContext.bindlessDescriptorSets, 2, renderContext);
 
   glm::quat rot = transform->getRotation();
   rot = eRot * rot;
@@ -574,8 +580,8 @@ void Engine::handleInput(float delta) {
 void Engine::run() {
   std::cout << "Engine::run::INFO: Engine's running\n";
   initRenderObjectsList();
-  // setupExampleRenderGraph();
-  // mainLoop();
+  setupExampleRenderGraph();
+  mainLoop();
 }
 } // namespace Core
 } // namespace SimpleEngine

@@ -17,7 +17,7 @@ public:
   MeshComponent *setMaterial(Material &material);
 
   const ResourceHandle<Mesh> &getMesh() const;
-  const Material &getMaterial() const;
+  Material &getMaterial();
 
 protected:
   void render() override;

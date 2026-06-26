@@ -20,7 +20,8 @@ public:
   struct PushConstants {
     glm::mat4 modelMatrix;
     glm::vec3 cameraPos;
-    uint32_t meshTextureIndex;
+    uint32_t albedoIndex;
+    uint32_t normalIndex;
   };
 
 private:
