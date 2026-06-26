@@ -34,6 +34,7 @@
 #include "core/resource/resource_handle.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
+#include "helpers/model_loader.hpp"
 #include "helpers/vulkan_helper.hpp"
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "vulkan/vulkan.hpp"
@@ -471,10 +472,10 @@ void Engine::setupExampleRenderGraph() {
       memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
              sizeof(ubo));
 
-      PushConstants pushConstant{
-          .modelMatrix = model,
-          .cameraPos = camera->getTransform()->getPosition(),
-          .meshTextureIndex = meshResource->getTextureIndex()};
+      PushConstants pushConstant{.modelMatrix = model,
+                                 .cameraPos =
+                                     camera->getTransform()->getPosition(),
+                                 .meshTextureIndex = 1};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
                                   vk::ShaderStageFlagBits::eVertex |
@@ -495,11 +496,11 @@ void Engine::setupExampleRenderGraph() {
 }
 
 // Load different models, this stays here till GUI implementation
-std::tuple<ResourceHandle<Mesh>, glm::vec3, glm::vec3, glm::quat>
-loadHelmet(ResourceManager *resourceManager) {
-  ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
-      "model_damaged_helmet",
-      "resources/models/damaged_helmet/DamagedHelmet.glb");
+std::tuple<glm::vec3, glm::vec3, glm::quat>
+loadHelmet(ResourceManager *resourceManager, MeshComponent *meshComponent) {
+  Helper::ModelLoader::loadGltfMesh(
+      "resources/models/damaged_helmet/DamagedHelmet.glb",
+      "model_damaged_helmet", *meshComponent, *resourceManager);
 
   glm::vec3 position = {0.0f, 0.0f, 0.0f};
   glm::vec3 scale = {1.0f, 1.0f, 1.0f};
@@ -507,7 +508,7 @@ loadHelmet(ResourceManager *resourceManager) {
   float angle = glm::radians(90.0f);
   glm::quat rotQuat = glm::angleAxis(angle, axis);
 
-  return {std::move(meshResource), position, scale, rotQuat};
+  return {position, scale, rotQuat};
 }
 
 std::tuple<ResourceHandle<Mesh>, glm::vec3, glm::vec3, glm::quat>
@@ -539,21 +540,18 @@ loadDucky(ResourceManager *resourceManager) {
 }
 
 void Engine::initRenderObjectsList() {
-  auto [meshResource, ePosition, eScale, eRot] = loadHelmet(resourceManager);
-  uint32_t verticesCount = meshResource.get()->getVertexCount();
-  std::cout << "vertices count: " << verticesCount << "\n";
-
-  meshResource.get()->registerTextureToBindlessPool(
-      renderContext.bindlessDescriptorSets, 0);
-
   Entity *newEntity = new Entity("helmet");
 
   newEntity->addComponent<MeshComponent>();
-  newEntity->getComponent<MeshComponent>()->setMesh(meshResource);
+  auto [ePosition, eScale, eRot] =
+      loadHelmet(resourceManager, newEntity->getComponent<MeshComponent>());
+
   newEntity->addComponent<TransformComponent>();
   auto *transform = newEntity->getComponent<TransformComponent>();
   transform->setPosition(ePosition);
   transform->setScale(eScale);
+
+  auto *mesh = newEntity->getComponent<MeshComponent>();
 
   glm::quat rot = transform->getRotation();
   rot = eRot * rot;
@@ -574,10 +572,10 @@ void Engine::handleInput(float delta) {
 }
 
 void Engine::run() {
-  std::cout << "App run\n";
+  std::cout << "Engine::run::INFO: Engine's running\n";
   initRenderObjectsList();
-  setupExampleRenderGraph();
-  mainLoop();
+  // setupExampleRenderGraph();
+  // mainLoop();
 }
 } // namespace Core
 } // namespace SimpleEngine

@@ -1,28 +1,38 @@
 #include "core/material.hpp"
-#include "core/resource/resource_handle.hpp"
-#include "core/resource/shader.hpp"
-#include "core/resource/texture.hpp"
+#include "core/render_context.hpp"
+#include "vulkan/vulkan.hpp"
+#include <cstdint>
 
 namespace SimpleEngine {
 namespace Core {
-Material::Material(ResourceHandle<Shader> &vertexShader,
-                   ResourceHandle<Shader> &fragmentShader) {
-  this->vertexShader = vertexShader;
-  this->fragmentShader = fragmentShader;
+Material::Material() {}
+
+Material *Material::setAlbedo(TextureBinding binding) {
+  albedo = binding;
+  return this;
 }
 
-void Material::setDiffuseTexture(ResourceHandle<Texture> &diffuseTexture) {
-  diffuse = diffuseTexture;
-}
+const Material::TextureBinding &Material::getAlbedo() const { return albedo; }
 
-ResourceHandle<Shader> Material::getVertexShader() const {
-  return vertexShader;
-}
+Material *Material::registerAlbedo(vk::DescriptorSet &set, uint32_t index,
+                                   const RenderContext &context) {
+  albedo.index = index;
+  vk::DescriptorImageInfo imageInfo{
+      .sampler = albedo.handle->getSampler(),
+      .imageView = albedo.handle->getImageView(),
+      .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
 
-ResourceHandle<Shader> Material::getFragmentShader() const {
-  return fragmentShader;
-}
+  vk::WriteDescriptorSet descriptorWrite{
+      .dstSet = set,
+      .dstBinding = 0,
+      .dstArrayElement = index,
+      .descriptorCount = 1,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .pImageInfo = &imageInfo};
 
-ResourceHandle<Texture> Material::getDiffuseTexture() const { return diffuse; }
+  context.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+
+  return this;
+}
 } // namespace Core
 } // namespace SimpleEngine

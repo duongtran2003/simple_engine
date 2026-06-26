@@ -10,14 +10,14 @@ namespace Core {
 class MeshComponent : public Component {
 private:
   ResourceHandle<Mesh> mesh;
-  Material *material = nullptr;
+  Material material;
 
 public:
   MeshComponent *setMesh(ResourceHandle<Mesh> &mesh);
-  MeshComponent *setMaterial(Material *material);
+  MeshComponent *setMaterial(Material &material);
 
   const ResourceHandle<Mesh> &getMesh() const;
-  const Material *getMaterial() const;
+  const Material &getMaterial() const;
 
 protected:
   void render() override;

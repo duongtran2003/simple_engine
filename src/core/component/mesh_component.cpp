@@ -10,13 +10,13 @@ MeshComponent *MeshComponent::setMesh(ResourceHandle<Mesh> &mesh) {
   return this;
 }
 
-MeshComponent *MeshComponent::setMaterial(Material *material) {
+MeshComponent *MeshComponent::setMaterial(Material &material) {
   this->material = material;
   return this;
 }
 
 const ResourceHandle<Mesh> &MeshComponent::getMesh() const { return mesh; }
-const Material *MeshComponent::getMaterial() const { return material; }
+const Material &MeshComponent::getMaterial() const { return material; }
 
 void MeshComponent::render() {
   // TODO: Implement later

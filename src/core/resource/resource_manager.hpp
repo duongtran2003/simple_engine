@@ -2,6 +2,7 @@
 
 #include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
+#include <iostream>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -77,6 +78,8 @@ void ResourceManager::acquire(const std::string &resourceId) {
   auto it = typeResources.find(resourceId);
 
   if (it != typeResources.end()) {
+    std::cout << "ResourceManager::acquire::INFO: Acquiring " + resourceId +
+                     "\n";
     it->second.refCount += 1;
   }
 }
@@ -107,6 +110,8 @@ void ResourceManager::release(const std::string &resourceId) {
   if (resourceIt != typeResources.end()) {
     resourceIt->second.refCount -= 1;
     if (resourceIt->second.refCount <= 0) {
+      std::cout << "ResourceManager::release::INFO: Unloading " + resourceId +
+                       "\n";
       resourceIt->second.resource->unload();
       typeResources.erase(resourceIt);
     }

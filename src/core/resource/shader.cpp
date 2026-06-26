@@ -17,7 +17,6 @@ Shader::Shader(const std::string &id, const RenderContext &renderContext,
     : Resource(id, renderContext) {
   stage = shaderStage;
 }
-Shader::~Shader() { unload(); }
 
 bool Shader::doLoad() {
   std::string filePath = "shaders/" + getId() + ".spv";

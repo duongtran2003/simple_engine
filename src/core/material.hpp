@@ -1,26 +1,30 @@
 #pragma once
 
+#include "core/render_context.hpp"
 #include "core/resource/resource_handle.hpp"
-#include "core/resource/shader.hpp"
 #include "core/resource/texture.hpp"
+#include "vulkan/vulkan.hpp"
+#include <cstdint>
 
 namespace SimpleEngine {
 namespace Core {
 class Material {
+public:
+  struct TextureBinding {
+    uint32_t index;
+    ResourceHandle<Texture> handle;
+  };
+
 private:
-  ResourceHandle<Shader> vertexShader;
-  ResourceHandle<Shader> fragmentShader;
-  ResourceHandle<Texture> diffuse;
+  TextureBinding albedo;
 
 public:
-  Material(ResourceHandle<Shader> &vertexShader,
-           ResourceHandle<Shader> &fragmentShader);
+  Material();
 
-  void setDiffuseTexture(ResourceHandle<Texture> &diffuseTexture);
-
-  ResourceHandle<Shader> getVertexShader() const;
-  ResourceHandle<Shader> getFragmentShader() const;
-  ResourceHandle<Texture> getDiffuseTexture() const;
+  Material *setAlbedo(TextureBinding binding);
+  const TextureBinding &getAlbedo() const;
+  Material *registerAlbedo(vk::DescriptorSet &set, uint32_t index,
+                           const RenderContext &context);
 };
 } // namespace Core
 } // namespace SimpleEngine

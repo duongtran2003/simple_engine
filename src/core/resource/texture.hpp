@@ -1,8 +1,10 @@
 #pragma once
 
+#include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cstdint>
 #include <string>
 
 namespace SimpleEngine {
@@ -15,9 +17,9 @@ private:
   vk::ImageView imageView;
   vk::Sampler sampler;
 
-  int width = 0;
-  int height = 0;
-  int channels = 0;
+  uint32_t width = 0;
+  uint32_t height = 0;
+  uint32_t channels = 0;
 
   unsigned char *loadImageData(const std::string &path, int &width, int &height,
                                int &channels);
@@ -27,7 +29,12 @@ private:
 
 public:
   Texture(const std::string &id, const RenderContext &renderContext);
-  ~Texture() override;
+  Texture(const std::string &id, const RenderContext &renderContext,
+          RawTexture &raw);
+
+  vk::Image getImage() const;
+  vk::Sampler getSampler() const;
+  vk::ImageView getImageView() const;
 
 protected:
   bool doLoad() override;

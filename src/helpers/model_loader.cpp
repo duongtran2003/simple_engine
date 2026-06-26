@@ -1,12 +1,18 @@
+#include "core/component/mesh_component.hpp"
+#include "core/material.hpp"
+#include "core/resource/resource_handle.hpp"
+#include "core/resource/resource_manager.hpp"
+#include "core/resource/texture.hpp"
+#include <algorithm>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
 
 #define TINYGLTF_IMPLEMENTATION
 
-#include "helpers/model_loader.hpp"
 #include "core/raw_texture.hpp"
 #include "core/resource/mesh.hpp"
+#include "helpers/model_loader.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -16,46 +22,16 @@
 
 namespace SimpleEngine {
 namespace Helper {
-void ModelLoader::loadglTF(const std::string &path,
-                           std::vector<Core::Mesh::Vertex> &vertices,
-                           std::vector<uint32_t> &indices,
-                           std::vector<Core::RawTexture> &textures) {
-  tinygltf::Model model;
-  tinygltf::TinyGLTF loader;
-
-  std::string error;
-  std::string warning;
-
-  bool ret = loader.LoadBinaryFromFile(&model, &error, &warning, path);
-  if (!warning.empty()) {
-    std::cout << "Helper::ModelLoader::loadglTF::WARNING: " + warning + "\n";
-  }
-
-  if (!error.empty()) {
-    std::cout << "Helper::ModelLoader::loadglTF::ERROR: " + error + "\n";
-  }
-
-  if (!ret) {
-    throw std::runtime_error(
-        "Helper::ModelLoader::loadglTF::ERROR: Failed to load glTF model.");
-  }
+void ModelLoader::loadGltfMeshData(const std::string &path,
+                                   std::vector<Core::Mesh::Vertex> &vertices,
+                                   std::vector<uint32_t> &indices) {
+  tinygltf::Model model = loadGltfModel(path);
 
   vertices.clear();
   indices.clear();
-  textures.clear();
 
   for (const auto &mesh : model.meshes) {
     for (const auto &primitive : mesh.primitives) {
-
-      if (primitive.material >= 0) {
-        const auto &material = model.materials[primitive.material];
-
-        if (material.pbrMetallicRoughness.baseColorTexture.index >= 0) {
-          Core::RawTexture albedo = loadTexture(
-              model, material.pbrMetallicRoughness.baseColorTexture.index);
-          textures.push_back(albedo);
-        }
-      }
 
       const tinygltf::Accessor &indexAccessor =
           model.accessors[primitive.indices];
@@ -168,6 +144,26 @@ void ModelLoader::loadglTF(const std::string &path,
   }
 }
 
+void ModelLoader::loadGltfMeshTextures(
+    const std::string &path, std::vector<Core::RawTexture> &textures) {
+  tinygltf::Model model = loadGltfModel(path);
+
+  for (const auto &mesh : model.meshes) {
+    for (const auto &primitive : mesh.primitives) {
+
+      if (primitive.material >= 0) {
+        const auto &material = model.materials[primitive.material];
+
+        if (material.pbrMetallicRoughness.baseColorTexture.index >= 0) {
+          Core::RawTexture albedo = loadTexture(
+              model, material.pbrMetallicRoughness.baseColorTexture.index);
+          textures.push_back(albedo);
+        }
+      }
+    }
+  }
+}
+
 Core::RawTexture ModelLoader::loadTexture(tinygltf::Model &model,
                                           int textureIndex) {
   if (textureIndex < 0 || textureIndex >= model.textures.size()) {
@@ -191,7 +187,8 @@ Core::RawTexture ModelLoader::loadTexture(tinygltf::Model &model,
   Core::RawTexture rawTexture{.pixels = image.image,
                               .width = static_cast<uint32_t>(image.width),
                               .height = static_cast<uint32_t>(image.height),
-                              .componentCount = image.component};
+                              .componentCount =
+                                  static_cast<uint32_t>(image.component)};
 
   int samplerIndex = texture.sampler;
   if (samplerIndex < 0 || samplerIndex >= model.samplers.size()) {
@@ -235,6 +232,52 @@ Core::TextureWrapMode ModelLoader::mapGltfWrap(int gltfWrap) {
   }
 
   return Core::TextureWrapMode::Repeat;
+}
+
+void ModelLoader::loadGltfMesh(const std::string &path, const std::string &name,
+                               Core::MeshComponent &component,
+                               Core::ResourceManager &resourceManager) {
+  Core::ResourceHandle<Core::Mesh> meshResource =
+      resourceManager.load<Core::Mesh>(name, path);
+
+  std::vector<Core::RawTexture> textures;
+  loadGltfMeshTextures(path, textures);
+
+  Core::Material material;
+  if (textures.size() >= 1) {
+    std::cout << "loading texture resource from raw texture\n";
+    Core::ResourceHandle<Core::Texture> texture =
+        resourceManager.load<Core::Texture>(name + "_texture_albedo",
+                                            textures[0]);
+    std::cout << "copying it into material\n";
+    material.setAlbedo({.index = 0, .handle = texture});
+  }
+
+  component.setMesh(meshResource)->setMaterial(material);
+}
+
+tinygltf::Model ModelLoader::loadGltfModel(const std::string &path) {
+  tinygltf::Model model;
+  tinygltf::TinyGLTF loader;
+
+  std::string error;
+  std::string warning;
+
+  bool ret = loader.LoadBinaryFromFile(&model, &error, &warning, path);
+  if (!warning.empty()) {
+    std::cout << "Helper::ModelLoader::loadglTF::WARNING: " + warning + "\n";
+  }
+
+  if (!error.empty()) {
+    std::cout << "Helper::ModelLoader::loadglTF::ERROR: " + error + "\n";
+  }
+
+  if (!ret) {
+    throw std::runtime_error(
+        "Helper::ModelLoader::loadglTF::ERROR: Failed to load glTF model.");
+  }
+
+  return model;
 }
 } // namespace Helper
 } // namespace SimpleEngine

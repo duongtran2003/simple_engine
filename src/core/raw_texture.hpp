@@ -12,7 +12,7 @@ struct RawTexture {
   std::vector<unsigned char> pixels;
   uint32_t width = 0;
   uint32_t height = 0;
-  int componentCount = 4;
+  uint32_t componentCount = 4;
 
   TextureFilter magFilter = TextureFilter::Linear;
   TextureFilter minFilter = TextureFilter::Linear;

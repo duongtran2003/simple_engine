@@ -15,7 +15,6 @@ private:
 
 public:
   Shader(const std::string &id, const RenderContext &renderContext, vk::ShaderStageFlagBits shaderStage);
-  ~Shader() override;
 
   bool doLoad() override;
   void doUnload() override;

@@ -21,13 +21,6 @@ public:
     glm::vec2 uv;
   };
 
-  struct MeshTexture {
-    vk::Image image;
-    vk::DeviceMemory memory;
-    vk::ImageView view;
-    vk::Sampler sampler;
-  };
-
 private:
   vk::Buffer vertexBuffer;
   vk::DeviceMemory vertexBufferMemory;
@@ -40,18 +33,11 @@ private:
   uint32_t indexCount = 0;
   std::string modelPath;
 
-  std::vector<MeshTexture> meshTextures;
-  vk::DescriptorSet textureDescriptorSet;
-
-  uint32_t textureIndex;
-
   bool loadMeshData(const std::string &path, std::vector<Vertex> &vertices,
-                    std::vector<uint32_t> &indices,
-                    std::vector<RawTexture> &textures);
+                    std::vector<uint32_t> &indices);
 
   void createVertexBuffer(std::vector<Vertex> &vertices);
   void createIndexBuffer(std::vector<uint32_t> &indices);
-  void createMeshTextures(std::vector<RawTexture> &textures);
 
 public:
   Mesh(const std::string &id, const RenderContext &renderContext,
@@ -63,9 +49,7 @@ public:
 
   uint32_t getVertexCount() const;
   uint32_t getIndexCount() const;
-  uint32_t getTextureIndex() const;
 
-  void allocateTextureDescriptorSet(vk::DescriptorSetLayout layout);
   vk::DescriptorSet getTextureDescriptorSet() const;
   void registerTextureToBindlessPool(vk::DescriptorSet bindlessSet,
                                      uint32_t textureSlotIndex);

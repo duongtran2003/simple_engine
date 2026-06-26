@@ -49,7 +49,8 @@ public:
 
   ~ResourceHandle() {
     if (resourceManager != nullptr && !resourceId.empty()) {
-      std::cout << "resource handle release " << resourceId << "\n";
+      std::cout << "ResourceHandle::~ResourceHandle::INFO: Releasing "
+                << resourceId << "\n";
       resourceManager->release<T>(resourceId);
     }
   }
