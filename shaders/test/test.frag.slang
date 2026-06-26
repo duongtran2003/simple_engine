@@ -6,7 +6,6 @@ struct VSOutput {
 };
 
 struct UniformBuffer {
-  float4x4 model;
   float4x4 normalModel;
   float4x4 view;
   float4x4 proj;
@@ -16,24 +15,28 @@ struct UniformBuffer {
 
   float3 pointLightPosition;
   float3 pointLightColor;
-
-  float3 cameraPos;
 };
-
 [[vk::binding(0, 0)]]
 ConstantBuffer<UniformBuffer> ubo;
 
 [[vk::binding(0, 1)]]
-Sampler2D albedoTexture;
+Sampler2D globalTextures[];
+
+struct PushConstants {
+  float4x4 modelMatrix;
+  float3 cameraPos;
+  uint meshTextureIndex;
+};
+[[vk::push_constant]] PushConstants push;
 
 [shader("fragment")]
 float4 fragMain(VSOutput inVert) : SV_Target {
-  float4 texColor = albedoTexture.Sample(inVert.texCoords);
+  float4 texColor = globalTextures[push.meshTextureIndex].Sample(inVert.texCoords);
   float3 normal = normalize(inVert.normal);
 
   LightProperty directionalLight = calculateDirectionalLight(ubo.directionalLightDirection, normal);
 
-  LightProperty pointLight = calculatePointLight(ubo.pointLightPosition, ubo.cameraPos, inVert.worldSpacePos, normal, 128.0f);
+  LightProperty pointLight = calculatePointLight(ubo.pointLightPosition, push.cameraPos, inVert.worldSpacePos, normal, 128.0f);
 
   float3 ambient = directionalLight.ambient * ubo.directionalLightColor;
   float3 diffuse = directionalLight.diffuse * ubo.directionalLightColor + pointLight.diffuse * ubo.pointLightColor;

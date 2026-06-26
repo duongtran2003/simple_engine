@@ -5,7 +5,6 @@ struct VSInput {
 };
 
 struct UniformBuffer {
-  float4x4 model;
   float4x4 normalModel;
   float4x4 view;
   float4x4 proj;
@@ -15,12 +14,17 @@ struct UniformBuffer {
 
   float3 pointLightPosition;
   float3 pointLightColor;
-
-  float3 cameraPos;
 };
-
 [[vk::binding(0, 0)]]
 ConstantBuffer<UniformBuffer> ubo;
+
+struct PushConstants {
+  float4x4 modelMatrix;
+  float3 cameraPos;
+  uint meshTextureIndex;
+};
+[[vk::push_constant]] PushConstants push;
+
 
 struct VSOutput {
   float4 pos: SV_Position;
@@ -32,9 +36,9 @@ struct VSOutput {
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
   VSOutput output;
-  float4x4 mvp = mul(ubo.proj, mul(ubo.view, ubo.model));
+  float4x4 mvp = mul(ubo.proj, mul(ubo.view, push.modelMatrix));
   output.pos = mul(mvp, float4(input.inPosition, 1.0f));
-  output.worldSpacePos = mul(ubo.model, float4(input.inPosition, 1.0f)).xyz;
+  output.worldSpacePos = mul(push.modelMatrix, float4(input.inPosition, 1.0f)).xyz;
 
   output.normal = normalize(mul(float3x3(ubo.normalModel), input.inNormal));
   output.texCoords = input.inTexCoords;

@@ -164,12 +164,19 @@ void Engine::createGraphicsPipeline() {
 
   std::array<vk::DescriptorSetLayout, 2> layouts = {
       renderContext.descriptorSetLayout,
-      renderContext.samplerDescriptorSetLayout};
+      renderContext.bindlessDescriptorSetLayout};
 
-  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount =
-                                                      layouts.size(),
-                                                  .pSetLayouts = layouts.data(),
-                                                  .pushConstantRangeCount = 0};
+  vk::PushConstantRange pushConstantRange{
+      .stageFlags =
+          vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+      .offset = 0,
+      .size = sizeof(PushConstants)};
+
+  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
+      .setLayoutCount = layouts.size(),
+      .pSetLayouts = layouts.data(),
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges = &pushConstantRange};
 
   vk::PipelineLayout pipelineLayout =
       renderContext.device.createPipelineLayout(pipelineLayoutInfo);
@@ -419,9 +426,12 @@ void Engine::setupExampleRenderGraph() {
     commandBuffer.setViewport(0, renderContext.viewport);
     commandBuffer.setScissor(0, renderContext.scissor);
 
+    std::array<vk::DescriptorSet, 2> descriptorSets = {
+        renderContext.descriptorSets[renderContext.frameIndex],
+        renderContext.bindlessDescriptorSets};
     commandBuffer.bindDescriptorSets(
-        vk::PipelineBindPoint::eGraphics, renderContext.pipelineLayout, 0, 1,
-        &renderContext.descriptorSets[renderContext.frameIndex], 0, nullptr);
+        vk::PipelineBindPoint::eGraphics, renderContext.pipelineLayout, 0,
+        descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 
     for (Entity *e : renderObjects) {
       auto *mesh = e->getComponent<MeshComponent>();
@@ -447,7 +457,6 @@ void Engine::setupExampleRenderGraph() {
 
       glm::mat4 model = transform->getTransformMatrix();
       RenderContext::UniformBufferObject ubo{};
-      ubo.model = model;
       ubo.normalModel =
           glm::mat4(glm::transpose(glm::inverse(glm::mat3(model))));
       ubo.view = camera->getCamera()->getViewMatrix();
@@ -459,16 +468,18 @@ void Engine::setupExampleRenderGraph() {
       ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
       ubo.pointLightColor = glm::vec3(1.0f);
 
-      ubo.cameraPos = camera->getTransform()->getPosition();
-
       memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
              sizeof(ubo));
 
-      vk::DescriptorSet meshTextureSet =
-          meshResource->getTextureDescriptorSet();
-      commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                       renderContext.pipelineLayout, 1, 1,
-                                       &meshTextureSet, 0, nullptr);
+      PushConstants pushConstant{
+          .modelMatrix = model,
+          .cameraPos = camera->getTransform()->getPosition(),
+          .meshTextureIndex = meshResource->getTextureIndex()};
+
+      commandBuffer.pushConstants(renderContext.pipelineLayout,
+                                  vk::ShaderStageFlagBits::eVertex |
+                                      vk::ShaderStageFlagBits::eFragment,
+                                  0, sizeof(PushConstants), &pushConstant);
       commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
       commandBuffer.bindIndexBuffer(meshResource->getIndexBuffer(), 0,
                                     vk::IndexType::eUint32);
@@ -532,8 +543,8 @@ void Engine::initRenderObjectsList() {
   uint32_t verticesCount = meshResource.get()->getVertexCount();
   std::cout << "vertices count: " << verticesCount << "\n";
 
-  meshResource.get()->allocateTextureDescriptorSet(
-      renderContext.samplerDescriptorSetLayout);
+  meshResource.get()->registerTextureToBindlessPool(
+      renderContext.bindlessDescriptorSets, 0);
 
   Entity *newEntity = new Entity("helmet");
 

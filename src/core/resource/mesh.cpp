@@ -179,6 +179,29 @@ void Mesh::allocateTextureDescriptorSet(vk::DescriptorSetLayout layout) {
   renderContext.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
+void Mesh::registerTextureToBindlessPool(vk::DescriptorSet bindlessSet,
+                                         uint32_t textureSlotIndex) {
+  if (meshTextures.empty()) {
+    return;
+  }
+
+  textureIndex = textureSlotIndex;
+  vk::DescriptorImageInfo imageInfo{
+      .sampler = meshTextures[0].sampler,
+      .imageView = meshTextures[0].view,
+      .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+  vk::WriteDescriptorSet bindlessWrite{
+      .dstSet = bindlessSet,
+      .dstBinding = 0,
+      .dstArrayElement = textureSlotIndex,
+      .descriptorCount = 1,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .pImageInfo = &imageInfo};
+
+  renderContext.device.updateDescriptorSets(1, &bindlessWrite, 0, nullptr);
+}
+
 vk::DescriptorSet Mesh::getTextureDescriptorSet() const {
   return textureDescriptorSet;
 }
@@ -190,6 +213,8 @@ vk::Buffer Mesh::getIndexBuffer() const { return indexBuffer; }
 uint32_t Mesh::getVertexCount() const { return vertexCount; }
 
 uint32_t Mesh::getIndexCount() const { return indexCount; }
+
+uint32_t Mesh::getTextureIndex() const { return textureIndex; }
 
 bool Mesh::doLoad() {
   std::vector<Vertex> _vertices;

@@ -22,12 +22,14 @@ namespace Core {
 std::vector<const char *> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName};
 std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
+// std::vector<char const *> requiredLayers = {};
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 const std::string APP_NAME = "Simple Engine";
 const std::string ENGINE_NAME = "Vulkan";
 constexpr uint32_t MAX_FRAME_IN_FLIGHTS = 2;
+constexpr uint32_t MAX_BINDLESS_TEXTURES = 500000;
 
 RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
   inFlightFrame = createInfo.inFlightFrame ? createInfo.inFlightFrame
@@ -250,15 +252,29 @@ void RenderContext::createDevice() {
   }
   graphicsQueueFamilyIndex = static_cast<uint32_t>(index);
 
-  vk::StructureChain<vk::PhysicalDeviceFeatures2,
-                     vk::PhysicalDeviceVulkan11Features,
-                     vk::PhysicalDeviceVulkan13Features,
-                     vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
-      featuresChain = {
-          {.features = {.sampleRateShading = true, .samplerAnisotropy = true}},
-          {.shaderDrawParameters = true},
-          {.synchronization2 = true, .dynamicRendering = true},
-          {.extendedDynamicState = true}};
+  vk::PhysicalDeviceFeatures2 physicalDeviceFeatures2{
+      .features = {.sampleRateShading = true, .samplerAnisotropy = true}};
+  vk::PhysicalDeviceVulkan11Features physicalDeviceVulkan11Features{
+      .shaderDrawParameters = true};
+  vk::PhysicalDeviceVulkan12Features physicalDeviceVulkan12Features{
+      .descriptorBindingSampledImageUpdateAfterBind = true,
+      .descriptorBindingUpdateUnusedWhilePending = true,
+      .descriptorBindingPartiallyBound = true,
+      .descriptorBindingVariableDescriptorCount = true,
+      .runtimeDescriptorArray = true};
+  vk::PhysicalDeviceVulkan13Features physicalDeviceVulkan13Features{
+      .synchronization2 = true, .dynamicRendering = true};
+  vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT
+      physicalDeviceExtendedDynamicStateFeaturesEXT = {.extendedDynamicState =
+                                                           true};
+  vk::StructureChain<
+      vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
+      vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features,
+      vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
+      featuresChain = {physicalDeviceFeatures2, physicalDeviceVulkan11Features,
+                       physicalDeviceVulkan12Features,
+                       physicalDeviceVulkan13Features,
+                       physicalDeviceExtendedDynamicStateFeaturesEXT};
 
   float queuePriority = 0.5f;
   vk::DeviceQueueCreateInfo deviceQueueCreateInfo{
@@ -458,18 +474,20 @@ void RenderContext::createUniformBuffers() {
 }
 
 void RenderContext::createDescriptorPool() {
-  vk::DescriptorPoolSize uniformPoolSize(vk::DescriptorType::eUniformBuffer,
-                                         inFlightFrame);
+  vk::DescriptorPoolSize uniformPoolSize{.type =
+                                             vk::DescriptorType::eUniformBuffer,
+                                         .descriptorCount = inFlightFrame};
 
-  vk::DescriptorPoolSize imageSamplerPoolSize(
-      vk::DescriptorType::eCombinedImageSampler, inFlightFrame);
+  vk::DescriptorPoolSize bindlessTExturePoolSize = {
+      .type = vk::DescriptorType::eCombinedImageSampler,
+      .descriptorCount = MAX_BINDLESS_TEXTURES};
 
-  std::array poolSizes = {uniformPoolSize, imageSamplerPoolSize};
+  std::array poolSizes = {uniformPoolSize, bindlessTExturePoolSize};
 
-  constexpr int MAX_DESCRIPTOR_SETS = 100;
   vk::DescriptorPoolCreateInfo poolInfo{
-      .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      .maxSets = inFlightFrame + MAX_DESCRIPTOR_SETS,
+      .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet |
+               vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
+      .maxSets = inFlightFrame + 1,
       .poolSizeCount = poolSizes.size(),
       .pPoolSizes = poolSizes.data()};
 
@@ -487,19 +505,29 @@ void RenderContext::createDescriptorSetLayout() {
 
   vk::DescriptorSetLayoutCreateInfo layoutInfo{.bindingCount = 1,
                                                .pBindings = &uboLayoutBinding};
-
   descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
 
-  vk::DescriptorSetLayoutBinding samplerLayoutBinding{
+  vk::DescriptorSetLayoutBinding bindlessLayoutBinding{
       .binding = 0,
       .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-      .descriptorCount = 1,
-      .stageFlags = vk::ShaderStageFlagBits::eFragment};
-  vk::DescriptorSetLayoutCreateInfo samplerlayoutInfo{
-      .bindingCount = 1, .pBindings = &samplerLayoutBinding};
+      .descriptorCount = MAX_BINDLESS_TEXTURES,
+      .stageFlags = vk::ShaderStageFlagBits::eFragment,
+      .pImmutableSamplers = nullptr};
+  vk::DescriptorBindingFlagsEXT flags =
+      vk::DescriptorBindingFlagBitsEXT::ePartiallyBound |
+      vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind |
+      vk::DescriptorBindingFlagBitsEXT::eUpdateUnusedWhilePending;
+  vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlags = {
+      .bindingCount = 1, .pBindingFlags = &flags};
 
-  samplerDescriptorSetLayout =
-      device.createDescriptorSetLayout(samplerlayoutInfo);
+  vk::DescriptorSetLayoutCreateInfo bindlessLayoutInfo = {
+      .pNext = bindingFlags,
+      .flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
+      .bindingCount = 1,
+      .pBindings = &bindlessLayoutBinding};
+
+  bindlessDescriptorSetLayout =
+      device.createDescriptorSetLayout(bindlessLayoutInfo);
 }
 
 void RenderContext::createDescriptorSets() {
@@ -529,6 +557,13 @@ void RenderContext::createDescriptorSets() {
 
     device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
   }
+
+  vk::DescriptorSetAllocateInfo bindlessSetAllocateInfo{
+      .descriptorPool = descriptorPool,
+      .descriptorSetCount = 1,
+      .pSetLayouts = &bindlessDescriptorSetLayout};
+  bindlessDescriptorSets =
+      device.allocateDescriptorSets(bindlessSetAllocateInfo)[0];
 }
 
 void *RenderContext::getCurrentFrameUniformBufferPtr() {

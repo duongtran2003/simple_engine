@@ -3,6 +3,7 @@
 #include "vulkan/vulkan.hpp"
 #include <GLFW/glfw3.h>
 #include <cstdint>
+#include <glm/detail/qualifier.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <string>
@@ -15,7 +16,6 @@ namespace Core {
 class RenderContext {
 public:
   struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 normalModel;
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
@@ -25,8 +25,6 @@ public:
 
     alignas(16) glm::vec3 pointLightPosition;
     alignas(16) glm::vec3 pointLightColor;
-
-    alignas(16) glm::vec3 cameraPos;
   };
 
   struct UboBuffer {
@@ -68,8 +66,11 @@ public:
 
   vk::DescriptorPool descriptorPool;
   vk::DescriptorSetLayout descriptorSetLayout;
-  vk::DescriptorSetLayout samplerDescriptorSetLayout;
+
+  vk::DescriptorSetLayout bindlessDescriptorSetLayout;
+
   std::vector<vk::DescriptorSet> descriptorSets;
+  vk::DescriptorSet bindlessDescriptorSets;
 
   std::vector<UboBuffer> uniformBuffers;
 

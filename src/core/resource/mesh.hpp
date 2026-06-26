@@ -5,6 +5,7 @@
 #include "core/resource/resource.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
+#include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <string>
@@ -42,6 +43,8 @@ private:
   std::vector<MeshTexture> meshTextures;
   vk::DescriptorSet textureDescriptorSet;
 
+  uint32_t textureIndex;
+
   bool loadMeshData(const std::string &path, std::vector<Vertex> &vertices,
                     std::vector<uint32_t> &indices,
                     std::vector<RawTexture> &textures);
@@ -60,9 +63,12 @@ public:
 
   uint32_t getVertexCount() const;
   uint32_t getIndexCount() const;
+  uint32_t getTextureIndex() const;
 
   void allocateTextureDescriptorSet(vk::DescriptorSetLayout layout);
   vk::DescriptorSet getTextureDescriptorSet() const;
+  void registerTextureToBindlessPool(vk::DescriptorSet bindlessSet,
+                                     uint32_t textureSlotIndex);
 
 protected:
   bool doLoad() override;

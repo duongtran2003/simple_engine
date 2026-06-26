@@ -7,6 +7,7 @@
 #include "core/render_graph/render_graph.hpp"
 #include "core/resource/resource_manager.hpp"
 #include <chrono>
+#include <cstdint>
 #include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float3.hpp>
@@ -16,6 +17,12 @@ namespace SimpleEngine {
 namespace Core {
 class Engine {
 public:
+  struct PushConstants {
+    glm::mat4 modelMatrix;
+    glm::vec3 cameraPos;
+    uint32_t meshTextureIndex;
+  };
+
 private:
   RenderContext renderContext;
   RenderGraph *renderGraph = nullptr;
