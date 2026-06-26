@@ -20,13 +20,20 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext,
     : Resource(id, renderContext) {
   vk::Format textureFormat;
   if (raw.componentCount == 1) {
-    textureFormat = vk::Format::eR8Srgb;
+    textureFormat = raw.colorSpace == ColorSpace::Linear ? vk::Format::eR8Unorm
+                                                         : vk::Format::eR8Srgb;
   } else if (raw.componentCount == 2) {
-    textureFormat = vk::Format::eR8G8Srgb;
+    textureFormat = raw.colorSpace == ColorSpace::Linear
+                        ? vk::Format::eR8G8Unorm
+                        : vk::Format::eR8G8Srgb;
   } else if (raw.componentCount == 3) {
-    textureFormat = vk::Format::eR8G8B8Srgb;
+    textureFormat = raw.colorSpace == ColorSpace::Linear
+                        ? vk::Format::eR8G8B8Unorm
+                        : vk::Format::eR8G8B8Srgb;
   } else {
-    textureFormat = vk::Format::eR8G8B8A8Srgb;
+    textureFormat = raw.colorSpace == ColorSpace::Linear
+                        ? vk::Format::eR8G8B8A8Unorm
+                        : vk::Format::eR8G8B8A8Srgb;
   }
   auto [newImage, newImageMemory, newImageView] =
       Helper::VulkanHelper::createImage(raw.width, raw.height, textureFormat,

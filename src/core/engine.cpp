@@ -402,7 +402,7 @@ void Engine::setupExampleRenderGraph() {
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eDontCare,
         .clearValue = vk::ClearColorValue(
-            std::array<float, 4>{1.0f, 0.96f, 0.89f, 1.0f})};
+            std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
 
     vk::RenderingAttachmentInfoKHR depthAttachment{
         .imageView = depthImage->getView(),
@@ -447,14 +447,15 @@ void Engine::setupExampleRenderGraph() {
       vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
       vk::DeviceSize offsets[] = {0};
 
-      float spinSpeedY = glm::radians(15.0f);
-      glm::quat deltaY =
-          glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
-
-      glm::quat frameRotation = deltaY;
-
-      glm::quat currentRotation = transform->getRotation();
-      transform->setRotation(frameRotation * currentRotation);
+      // float spinSpeedY = glm::radians(15.0f);
+      // glm::quat deltaY =
+      //     glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f,
+      //     0.0f));
+      //
+      // glm::quat frameRotation = deltaY;
+      //
+      // glm::quat currentRotation = transform->getRotation();
+      // transform->setRotation(frameRotation * currentRotation);
 
       glm::mat4 model = transform->getTransformMatrix();
       RenderContext::UniformBufferObject ubo{};
@@ -463,7 +464,7 @@ void Engine::setupExampleRenderGraph() {
       ubo.view = camera->getCamera()->getViewMatrix();
       ubo.proj = camera->getCamera()->getProjectionMatrix();
 
-      ubo.directionalLightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
+      ubo.directionalLightDirection = glm::vec3(-2.0f, -5.0f, -5.0f);
       ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
       ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
@@ -478,7 +479,8 @@ void Engine::setupExampleRenderGraph() {
                                  .cameraPos =
                                      camera->getTransform()->getPosition(),
                                  .albedoIndex = albedoBinding.index,
-                                 .normalIndex = normalBinding.index};
+                                 .normalIndex = normalBinding.index,
+                                 .useNormalMap = useNormalMap};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
                                   vk::ShaderStageFlagBits::eVertex |
@@ -514,10 +516,11 @@ loadHelmet(ResourceManager *resourceManager, MeshComponent *meshComponent) {
   return {position, scale, rotQuat};
 }
 
-std::tuple<ResourceHandle<Mesh>, glm::vec3, glm::vec3, glm::quat>
-loadCorset(ResourceManager *resourceManager) {
-  ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
-      "model_corset", "resources/models/corset/Corset.glb");
+std::tuple<glm::vec3, glm::vec3, glm::quat>
+loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
+  Helper::ModelLoader::loadGltfMesh("resources/models/corset/Corset.glb",
+                                    "model_corset", *meshComponent,
+                                    *resourceManager);
 
   glm::vec3 position = {0.0f, -0.8f, 0.0f};
   glm::vec3 scale = {30.0f, 30.0f, 30.0f};
@@ -525,7 +528,7 @@ loadCorset(ResourceManager *resourceManager) {
   float angle = glm::radians(180.0f);
   glm::quat rotQuat = glm::angleAxis(angle, axis);
 
-  return {std::move(meshResource), position, scale, rotQuat};
+  return {position, scale, rotQuat};
 }
 
 std::tuple<ResourceHandle<Mesh>, glm::vec3, glm::vec3, glm::quat>
@@ -574,6 +577,10 @@ void Engine::handleInput(float delta) {
 
   if (input->isKeyJustPressed(Key::L)) {
     input->toggleMouseLock();
+  }
+
+  if (input->isKeyJustPressed(Key::N)) {
+    useNormalMap = !useNormalMap;
   }
 }
 

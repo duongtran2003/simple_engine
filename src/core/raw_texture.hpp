@@ -7,6 +7,7 @@ namespace Core {
 
 enum class TextureFilter { Nearest, Linear };
 enum class TextureWrapMode { Repeat, ClampToEdge, MirroredRepeat };
+enum class ColorSpace { Linear, NonLinear };
 
 struct RawTexture {
   std::vector<unsigned char> pixels;
@@ -19,6 +20,8 @@ struct RawTexture {
 
   TextureWrapMode wrapS = TextureWrapMode::Repeat;
   TextureWrapMode wrapT = TextureWrapMode::Repeat;
+
+  ColorSpace colorSpace;
 };
 
 } // namespace Core

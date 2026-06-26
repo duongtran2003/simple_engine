@@ -23,6 +23,7 @@ struct PushConstants {
   float3 cameraPos;
   uint albedoIndex;
   uint normalIndex;
+  bool useNormalMap;
 };
 [[vk::push_constant]] PushConstants push;
 

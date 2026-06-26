@@ -27,13 +27,20 @@ struct PushConstants {
   float3 cameraPos;
   uint albedoIndex;
   uint normalIndex;
+  bool useNormalMap;
 };
 [[vk::push_constant]] PushConstants push;
 
 [shader("fragment")]
 float4 fragMain(VSOutput inVert) : SV_Target {
   float4 texColor = globalTextures[push.albedoIndex].Sample(inVert.texCoords);
-  float3 normal = normalize(inVert.normal);
+  float3 normal;
+  if (push.useNormalMap) {
+    normal = normalize(globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb);
+    normal = normalize(normal * 2.0f - 1.0f);
+  } else {
+    normal = normalize(inVert.normal);
+  }
 
   LightProperty directionalLight = calculateDirectionalLight(ubo.directionalLightDirection, normal);
 
@@ -69,8 +76,8 @@ LightProperty calculateDirectionalLight(float3 lightDir, float3 normal) {
   float diffuseStrength = max(dot(invertedLightDir, normal), 0.0f);
 
   LightProperty output;
-  output.diffuse = diffuseStrength * 0.4f;
-  output.ambient = 0.3f;
+  output.diffuse = diffuseStrength * 0.3f;
+  output.ambient = 0.01f;
 
   return output;
 }

@@ -67,12 +67,26 @@ void ModelLoader::loadGltfMeshData(const std::string &path,
         texCoordBuffer = &model.buffers[texCoordBufferView->buffer];
       }
 
+      bool hasTangent =
+          primitive.attributes.find("TANGENT") != primitive.attributes.end();
+      const tinygltf::Accessor *tangentAccessor = nullptr;
+      const tinygltf::BufferView *tangentBufferView = nullptr;
+      const tinygltf::Buffer *tangentBuffer = nullptr;
+
+      if (hasTangent) {
+        tangentAccessor = &model.accessors[primitive.attributes.at("TANGENT")];
+        tangentBufferView = &model.bufferViews[tangentAccessor->bufferView];
+        tangentBuffer = &model.buffers[tangentBufferView->buffer];
+      }
+
       uint32_t baseVertex = vertices.size();
 
       size_t positionStride = positionAccessor.ByteStride(positionBufferView);
       size_t normalStride = normalAccessor.ByteStride(normalBufferView);
       size_t texStride =
           hasTexCoords ? texCoordAccessor->ByteStride(*texCoordBufferView) : 0;
+      size_t tangentStride =
+          hasTangent ? tangentAccessor->ByteStride(*tangentBufferView) : 0;
 
       for (size_t i = 0; i < positionAccessor.count; i++) {
         Core::Mesh::Vertex vertex{};
@@ -90,6 +104,16 @@ void ModelLoader::loadGltfMeshData(const std::string &path,
           vertex.uv = {texCoord[0], texCoord[1]};
         } else {
           vertex.uv = {0.0f, 0.0f};
+        }
+
+        if (hasTangent) {
+          const float *tangent = reinterpret_cast<const float *>(
+              &texCoordBuffer
+                   ->data[tangentBufferView->byteOffset +
+                          tangentAccessor->byteOffset + i * tangentStride]);
+          vertex.tangent = {tangent[0], tangent[1], tangent[2]};
+        } else {
+          // Manually calculate tangent
         }
 
         const float *norm = reinterpret_cast<const float *>(
@@ -158,12 +182,14 @@ void ModelLoader::loadGltfMeshTextures(
           Core::RawTexture albedo = loadTexture(
               model, material.pbrMetallicRoughness.baseColorTexture.index);
           textures.push_back(albedo);
+          albedo.colorSpace = Core::ColorSpace::NonLinear;
         }
 
         if (material.normalTexture.index >= 0) {
           Core::RawTexture normal =
               loadTexture(model, material.normalTexture.index);
           textures.push_back(normal);
+          normal.colorSpace = Core::ColorSpace::Linear;
         }
       }
     }
