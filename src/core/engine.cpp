@@ -61,10 +61,6 @@ Engine::Engine() {
   float aspect = (float)renderContext.width / (float)renderContext.height;
   camera->setAspectRatio(aspect);
 
-  createUniformBuffers();
-  createDescriptorPool();
-  createDescriptorSetLayout();
-  createDescriptorSets();
   createGraphicsPipeline();
   renderGraph = new RenderGraph(renderContext);
 
@@ -449,8 +445,24 @@ void Engine::setupExampleRenderGraph() {
       glm::quat currentRotation = transform->getRotation();
       transform->setRotation(frameRotation * currentRotation);
 
-      updateUniformBuffer(renderContext.frameIndex,
-                          transform->getTransformMatrix());
+      glm::mat4 model = transform->getTransformMatrix();
+      RenderContext::UniformBufferObject ubo{};
+      ubo.model = model;
+      ubo.normalModel =
+          glm::mat4(glm::transpose(glm::inverse(glm::mat3(model))));
+      ubo.view = camera->getCamera()->getViewMatrix();
+      ubo.proj = camera->getCamera()->getProjectionMatrix();
+
+      ubo.directionalLightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
+      ubo.directionalLightColor = glm::vec3(1.0f, 0.85f, 0.6f);
+
+      ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
+      ubo.pointLightColor = glm::vec3(1.0f);
+
+      ubo.cameraPos = camera->getTransform()->getPosition();
+
+      memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
+             sizeof(ubo));
 
       vk::DescriptorSet meshTextureSet =
           meshResource->getTextureDescriptorSet();
@@ -469,120 +481,6 @@ void Engine::setupExampleRenderGraph() {
   pass->setExecuteCallbackFn(passCallback);
   renderGraph->addPass(pass);
   renderGraph->compile();
-}
-
-void Engine::createUniformBuffers() {
-  vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
-  for (size_t i = 0; i < renderContext.inFlightFrame; i++) {
-    const auto &[buffer, memory] = Helper::VulkanHelper::createBuffer(
-        bufferSize, vk::BufferUsageFlagBits::eUniformBuffer,
-        vk::MemoryPropertyFlagBits::eHostVisible |
-            vk::MemoryPropertyFlagBits::eHostCoherent,
-        renderContext);
-
-    UboBuffer uboBuffer{
-        .buffer = std::move(buffer),
-        .memory = std::move(memory),
-    };
-    uboBuffer.mapped =
-        renderContext.device.mapMemory(uboBuffer.memory, 0, bufferSize);
-    uniformBuffers.push_back(uboBuffer);
-  }
-}
-
-void Engine::createDescriptorPool() {
-  vk::DescriptorPoolSize uniformPoolSize(vk::DescriptorType::eUniformBuffer,
-                                         renderContext.inFlightFrame);
-
-  vk::DescriptorPoolSize imageSamplerPoolSize(
-      vk::DescriptorType::eCombinedImageSampler, renderContext.inFlightFrame);
-
-  std::array poolSizes = {uniformPoolSize, imageSamplerPoolSize};
-
-  constexpr int MAX_DESCRIPTOR_SETS = 100;
-  vk::DescriptorPoolCreateInfo poolInfo{
-      .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      .maxSets = renderContext.inFlightFrame + MAX_DESCRIPTOR_SETS,
-      .poolSizeCount = poolSizes.size(),
-      .pPoolSizes = poolSizes.data()};
-
-  renderContext.descriptorPool =
-      renderContext.device.createDescriptorPool(poolInfo, nullptr);
-}
-
-void Engine::createDescriptorSetLayout() {
-  vk::DescriptorSetLayoutBinding uboLayoutBinding{
-      .binding = 0,
-      .descriptorType = vk::DescriptorType::eUniformBuffer,
-      .descriptorCount = 1,
-      .stageFlags =
-          vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
-      .pImmutableSamplers = nullptr};
-
-  vk::DescriptorSetLayoutCreateInfo layoutInfo{.bindingCount = 1,
-                                               .pBindings = &uboLayoutBinding};
-
-  renderContext.descriptorSetLayout =
-      renderContext.device.createDescriptorSetLayout(layoutInfo);
-
-  vk::DescriptorSetLayoutBinding samplerLayoutBinding{
-      .binding = 0,
-      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-      .descriptorCount = 1,
-      .stageFlags = vk::ShaderStageFlagBits::eFragment};
-  vk::DescriptorSetLayoutCreateInfo samplerlayoutInfo{
-      .bindingCount = 1, .pBindings = &samplerLayoutBinding};
-
-  renderContext.samplerDescriptorSetLayout =
-      renderContext.device.createDescriptorSetLayout(samplerlayoutInfo);
-}
-
-void Engine::createDescriptorSets() {
-  std::vector<vk::DescriptorSetLayout> layouts(
-      renderContext.inFlightFrame, renderContext.descriptorSetLayout);
-
-  vk::DescriptorSetAllocateInfo allocateInfo{
-      .descriptorPool = renderContext.descriptorPool,
-      .descriptorSetCount = renderContext.inFlightFrame,
-      .pSetLayouts = layouts.data()};
-
-  renderContext.descriptorSets =
-      renderContext.device.allocateDescriptorSets(allocateInfo);
-
-  vk::DescriptorBufferInfo bufferInfo{.offset = 0,
-                                      .range = sizeof(UniformBufferObject)};
-
-  for (size_t i = 0; i < renderContext.inFlightFrame; i++) {
-    bufferInfo.buffer = uniformBuffers[i].buffer;
-
-    vk::WriteDescriptorSet descriptorWrite{
-        .dstSet = renderContext.descriptorSets[i],
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = vk::DescriptorType::eUniformBuffer,
-        .pBufferInfo = &bufferInfo};
-
-    renderContext.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
-  }
-}
-
-void Engine::updateUniformBuffer(uint32_t currentFrame, glm::mat4 model) {
-  UniformBufferObject ubo{};
-  ubo.model = model;
-  ubo.normalModel = glm::mat4(glm::transpose(glm::inverse(glm::mat3(model))));
-  ubo.view = camera->getCamera()->getViewMatrix();
-  ubo.proj = camera->getCamera()->getProjectionMatrix();
-
-  ubo.directionalLightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
-  ubo.directionalLightColor = glm::vec3(1.0f, 0.85f, 0.6f);
-
-  ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
-  ubo.pointLightColor = glm::vec3(1.0f);
-
-  ubo.cameraPos = camera->getTransform()->getPosition();
-
-  memcpy(uniformBuffers[currentFrame].mapped, &ubo, sizeof(ubo));
 }
 
 // Load different models, this stays here till GUI implementation

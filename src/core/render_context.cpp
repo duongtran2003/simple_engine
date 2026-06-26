@@ -1,13 +1,16 @@
 #include "render_context.hpp"
+#include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
@@ -18,9 +21,7 @@ namespace Core {
 
 std::vector<const char *> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName};
-std::vector<char const *> requiredLayers = {
-    "VK_LAYER_KHRONOS_validation"
-};
+std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -46,6 +47,11 @@ RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
   createSyncObjects();
   createViewport();
   createScissor();
+
+  createUniformBuffers();
+  createDescriptorPool();
+  createDescriptorSetLayout();
+  createDescriptorSets();
 }
 
 RenderContext *
@@ -432,5 +438,102 @@ void RenderContext::createScissor() {
   vk::Rect2D _scissor{.offset = {.x = 0, .y = 0}, .extent = swapChainExtent};
   scissor = _scissor;
 }
+
+void RenderContext::createUniformBuffers() {
+  vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+  for (size_t i = 0; i < inFlightFrame; i++) {
+    const auto &[buffer, memory] = Helper::VulkanHelper::createBuffer(
+        bufferSize, vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible |
+            vk::MemoryPropertyFlagBits::eHostCoherent,
+        *this);
+
+    UboBuffer uboBuffer{
+        .buffer = std::move(buffer),
+        .memory = std::move(memory),
+    };
+    uboBuffer.mapped = device.mapMemory(uboBuffer.memory, 0, bufferSize);
+    uniformBuffers.push_back(uboBuffer);
+  }
+}
+
+void RenderContext::createDescriptorPool() {
+  vk::DescriptorPoolSize uniformPoolSize(vk::DescriptorType::eUniformBuffer,
+                                         inFlightFrame);
+
+  vk::DescriptorPoolSize imageSamplerPoolSize(
+      vk::DescriptorType::eCombinedImageSampler, inFlightFrame);
+
+  std::array poolSizes = {uniformPoolSize, imageSamplerPoolSize};
+
+  constexpr int MAX_DESCRIPTOR_SETS = 100;
+  vk::DescriptorPoolCreateInfo poolInfo{
+      .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+      .maxSets = inFlightFrame + MAX_DESCRIPTOR_SETS,
+      .poolSizeCount = poolSizes.size(),
+      .pPoolSizes = poolSizes.data()};
+
+  descriptorPool = device.createDescriptorPool(poolInfo, nullptr);
+}
+
+void RenderContext::createDescriptorSetLayout() {
+  vk::DescriptorSetLayoutBinding uboLayoutBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eUniformBuffer,
+      .descriptorCount = 1,
+      .stageFlags =
+          vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+      .pImmutableSamplers = nullptr};
+
+  vk::DescriptorSetLayoutCreateInfo layoutInfo{.bindingCount = 1,
+                                               .pBindings = &uboLayoutBinding};
+
+  descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+
+  vk::DescriptorSetLayoutBinding samplerLayoutBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eFragment};
+  vk::DescriptorSetLayoutCreateInfo samplerlayoutInfo{
+      .bindingCount = 1, .pBindings = &samplerLayoutBinding};
+
+  samplerDescriptorSetLayout =
+      device.createDescriptorSetLayout(samplerlayoutInfo);
+}
+
+void RenderContext::createDescriptorSets() {
+  std::vector<vk::DescriptorSetLayout> layouts(inFlightFrame,
+                                               descriptorSetLayout);
+
+  vk::DescriptorSetAllocateInfo allocateInfo{.descriptorPool = descriptorPool,
+                                             .descriptorSetCount =
+                                                 inFlightFrame,
+                                             .pSetLayouts = layouts.data()};
+
+  descriptorSets = device.allocateDescriptorSets(allocateInfo);
+
+  vk::DescriptorBufferInfo bufferInfo{.offset = 0,
+                                      .range = sizeof(UniformBufferObject)};
+
+  for (size_t i = 0; i < inFlightFrame; i++) {
+    bufferInfo.buffer = uniformBuffers[i].buffer;
+
+    vk::WriteDescriptorSet descriptorWrite{
+        .dstSet = descriptorSets[i],
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eUniformBuffer,
+        .pBufferInfo = &bufferInfo};
+
+    device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+  }
+}
+
+void *RenderContext::getCurrentFrameUniformBufferPtr() {
+  return uniformBuffers[frameIndex].mapped;
+}
+
 } // namespace Core
 } // namespace SimpleEngine

@@ -3,6 +3,8 @@
 #include "vulkan/vulkan.hpp"
 #include <GLFW/glfw3.h>
 #include <cstdint>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <string>
 #include <sys/types.h>
 #include <vector>
@@ -12,6 +14,27 @@ namespace Core {
 
 class RenderContext {
 public:
+  struct UniformBufferObject {
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 normalModel;
+    alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
+
+    alignas(16) glm::vec3 directionalLightDirection;
+    alignas(16) glm::vec3 directionalLightColor;
+
+    alignas(16) glm::vec3 pointLightPosition;
+    alignas(16) glm::vec3 pointLightColor;
+
+    alignas(16) glm::vec3 cameraPos;
+  };
+
+  struct UboBuffer {
+    vk::Buffer buffer{nullptr};
+    vk::DeviceMemory memory{nullptr};
+    void *mapped = nullptr;
+  };
+
   struct RenderContextCreateInfo {
     std::string appName;
     uint32_t inFlightFrame;
@@ -48,6 +71,8 @@ public:
   vk::DescriptorSetLayout samplerDescriptorSetLayout;
   std::vector<vk::DescriptorSet> descriptorSets;
 
+  std::vector<UboBuffer> uniformBuffers;
+
   uint32_t inFlightFrame = 2;
   std::vector<vk::Semaphore> presentCompleteSemaphores;
   std::vector<vk::Semaphore> renderFinishedSemaphores;
@@ -63,6 +88,7 @@ public:
   RenderContext(const RenderContextCreateInfo &createInfo);
 
   RenderContext *setMsaaSamples(vk::SampleCountFlagBits sampleCount);
+  void *getCurrentFrameUniformBufferPtr();
 
 private:
   void initWindow(const RenderContextCreateInfo &createInfo);
@@ -77,6 +103,11 @@ private:
   void createSyncObjects();
   void createViewport();
   void createScissor();
+
+  void createDescriptorPool();
+  void createDescriptorSetLayout();
+  void createDescriptorSets();
+  void createUniformBuffers();
 
   vk::SampleCountFlagBits getMaxMsaaSampleCount();
 };
