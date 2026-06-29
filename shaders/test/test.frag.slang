@@ -1,6 +1,7 @@
 struct VSOutput {
   float4 pos: SV_Position;
   float3 normal;
+  float3 tangent;
   float2 texCoords;
   float3 worldSpacePos;
 };
@@ -38,6 +39,17 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   if (push.useNormalMap) {
     normal = normalize(globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb);
     normal = normalize(normal * 2.0f - 1.0f);
+
+    float3 normalizedInNormal = normalize(inVert.normal);
+
+    float3 biTangent = cross(inVert.tangent, normalizedInNormal);
+    float3x3 TBN = float3x3(
+      inVert.tangent.x, biTangent.x, normalizedInNormal.x,
+      inVert.tangent.y, biTangent.y, normalizedInNormal.y,
+      inVert.tangent.z, biTangent.z, normalizedInNormal.z,
+    );
+
+    normal = normalize(mul(TBN, normal));
   } else {
     normal = normalize(inVert.normal);
   }
