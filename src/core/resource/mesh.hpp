@@ -7,6 +7,7 @@
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <string>
 #include <vector>
 
@@ -18,7 +19,7 @@ public:
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec2 uv;
-    glm::vec3 tangent;
+    glm::vec4 tangent;
   };
 
 private:

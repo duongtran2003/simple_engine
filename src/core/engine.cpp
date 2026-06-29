@@ -91,7 +91,7 @@ void Engine::createGraphicsPipeline() {
       .binding = 0,
       .stride = sizeof(Mesh::Vertex),
       .inputRate = vk::VertexInputRate::eVertex};
-  std::array<vk::VertexInputAttributeDescription, 3>
+  std::array<vk::VertexInputAttributeDescription, 4>
       vertexInputAttributeDescriptions = {};
   vertexInputAttributeDescriptions[0] = {.location = 0,
                                          .binding = 0,
@@ -107,6 +107,11 @@ void Engine::createGraphicsPipeline() {
                                          .binding = 0,
                                          .format = vk::Format::eR32G32Sfloat,
                                          .offset = offsetof(Mesh::Vertex, uv)};
+  vertexInputAttributeDescriptions[3] = {
+      .location = 3,
+      .binding = 0,
+      .format = vk::Format::eR32G32B32A32Sfloat,
+      .offset = offsetof(Mesh::Vertex, tangent)};
 
   vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
       .vertexBindingDescriptionCount = 1,
@@ -401,8 +406,8 @@ void Engine::setupExampleRenderGraph() {
 
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eDontCare,
-        .clearValue = vk::ClearColorValue(
-            std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
+        .clearValue =
+            vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
 
     vk::RenderingAttachmentInfoKHR depthAttachment{
         .imageView = depthImage->getView(),
@@ -464,7 +469,7 @@ void Engine::setupExampleRenderGraph() {
       ubo.view = camera->getCamera()->getViewMatrix();
       ubo.proj = camera->getCamera()->getProjectionMatrix();
 
-      ubo.directionalLightDirection = glm::vec3(-2.0f, -5.0f, -5.0f);
+      ubo.directionalLightDirection = glm::vec3(-4.0f, -3.0f, -1.0f);
       ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
       ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
@@ -475,12 +480,12 @@ void Engine::setupExampleRenderGraph() {
 
       const auto &albedoBinding = mesh->getMaterial().getAlbedo();
       const auto &normalBinding = mesh->getMaterial().getNormal();
-      PushConstants pushConstant{.modelMatrix = model,
-                                 .cameraPos =
-                                     camera->getTransform()->getPosition(),
-                                 .albedoIndex = albedoBinding.index,
-                                 .normalIndex = normalBinding.index,
-                                 .useNormalMap = useNormalMap};
+      PushConstants pushConstant{
+          .modelMatrix = model,
+          .cameraPos = camera->getTransform()->getPosition(),
+          .albedoIndex = albedoBinding.index,
+          .normalIndex = normalBinding.index,
+          .useNormalMap = static_cast<uint32_t>(useNormalMap ? 1 : 0)};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
                                   vk::ShaderStageFlagBits::eVertex |

@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,6 +28,12 @@ bool Mesh::loadMeshData(const std::string &path,
 };
 
 void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &vertices) {
+  std::cout << "Creating vertex buffer\n";
+  for (const auto &v : vertices) {
+    std::cout << v.normal.x << " " << v.normal.y << " " << v.normal.z
+              << " " << v.tangent.x << " " << v.tangent.y << " " << v.tangent.z
+              << "\n";
+  }
   vk::Device device = renderContext.device;
   vk::DeviceSize bufferSize = sizeof(Mesh::Vertex) * vertices.size();
 

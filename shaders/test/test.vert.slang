@@ -2,6 +2,7 @@ struct VSInput {
   [[vk::location(0)]] float3 inPosition;
   [[vk::location(1)]] float3 inNormal;
   [[vk::location(2)]] float2 inTexCoords;
+  [[vk::location(3)]] float4 inTangent;
 };
 
 struct UniformBuffer {

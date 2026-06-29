@@ -22,7 +22,7 @@ public:
     glm::vec3 cameraPos;
     uint32_t albedoIndex;
     uint32_t normalIndex;
-    bool useNormalMap;
+    uint32_t useNormalMap;
   };
 
 private:

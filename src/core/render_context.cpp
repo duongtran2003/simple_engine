@@ -21,8 +21,8 @@ namespace Core {
 
 std::vector<const char *> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName};
-std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
-// std::vector<char const *> requiredLayers = {};
+// std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
+std::vector<char const *> requiredLayers = {};
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -328,7 +328,7 @@ void RenderContext::createSwapChain() {
   vk::SurfaceFormatKHR _swapChainSurfaceFormat;
   const auto formatIt = std::ranges::find_if(
       availableFormats, [](const vk::SurfaceFormatKHR &format) {
-        return format.format == vk::Format::eR16G16B16A16Sfloat &&
+        return format.format == vk::Format::eB8G8R8A8Srgb &&
                format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear;
       });
 
