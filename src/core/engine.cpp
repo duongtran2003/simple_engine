@@ -452,7 +452,7 @@ void Engine::setupExampleRenderGraph() {
       vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
       vk::DeviceSize offsets[] = {0};
 
-      float spinSpeedY = glm::radians(5.0f);
+      float spinSpeedY = glm::radians(2.0f);
       glm::quat deltaY =
           glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
 

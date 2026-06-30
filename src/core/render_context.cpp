@@ -21,15 +21,15 @@ namespace Core {
 
 std::vector<const char *> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName};
-// std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
-std::vector<char const *> requiredLayers = {};
+std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
+// std::vector<char const *> requiredLayers = {};
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 const std::string APP_NAME = "Simple Engine";
 const std::string ENGINE_NAME = "Vulkan";
 constexpr uint32_t MAX_FRAME_IN_FLIGHTS = 2;
-constexpr uint32_t MAX_BINDLESS_TEXTURES = 500000;
+constexpr uint32_t MAX_BINDLESS_TEXTURES = 4096;
 
 RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
   inFlightFrame = createInfo.inFlightFrame ? createInfo.inFlightFrame
@@ -478,11 +478,11 @@ void RenderContext::createDescriptorPool() {
                                              vk::DescriptorType::eUniformBuffer,
                                          .descriptorCount = inFlightFrame};
 
-  vk::DescriptorPoolSize bindlessTExturePoolSize = {
+  vk::DescriptorPoolSize bindlessTexturePoolSize = {
       .type = vk::DescriptorType::eCombinedImageSampler,
       .descriptorCount = MAX_BINDLESS_TEXTURES};
 
-  std::array poolSizes = {uniformPoolSize, bindlessTExturePoolSize};
+  std::array poolSizes = {uniformPoolSize, bindlessTexturePoolSize};
 
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet |

@@ -37,7 +37,7 @@ private:
   std::chrono::high_resolution_clock::time_point lastFrameTime;
   float deltaTime = 0.0f;
 
-  bool useNormalMap = false;
+  bool useNormalMap = true;
 
   void setupExampleRenderGraph();
   void initRenderObjectsList();

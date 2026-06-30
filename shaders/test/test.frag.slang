@@ -41,7 +41,7 @@ float4 fragMain(VSOutput inVert) : SV_Target {
     normal = normalize(normal * 2.0f - 1.0f);
 
     float3 N = normalize(inVert.normal);
-    // Gram-Schmidt
+    // Gram-Schmidt orthogonal correction
     float3 T = inVert.tangent - dot(inVert.tangent, N) * N;
 
     float3 B = cross(T, N);
