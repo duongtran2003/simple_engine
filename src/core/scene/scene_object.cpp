@@ -6,7 +6,10 @@
 
 namespace SimpleEngine {
 namespace Core {
-SceneObject::SceneObject(const std::string &name) : Entity(name) {}
+SceneObject::SceneObject(const std::string &name) : Entity(name) {
+  addComponent<TransformComponent>();
+  addComponent<MeshComponent>();
+}
 SceneObject::~SceneObject() {
   // TODO: Destructor for scene object
 }

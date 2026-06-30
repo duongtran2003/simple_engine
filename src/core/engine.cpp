@@ -34,6 +34,8 @@
 #include "core/resource/resource_handle.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
+#include "core/scene/scene.hpp"
+#include "core/system/culling_system.hpp"
 #include "helpers/model_loader.hpp"
 #include "helpers/vulkan_helper.hpp"
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
@@ -61,6 +63,9 @@ Engine::Engine() {
   camera->setVFov(60.0f);
   float aspect = (float)renderContext.width / (float)renderContext.height;
   camera->setAspectRatio(aspect);
+
+  cullingSystem = new CullingSystem(camera);
+  scene = new Scene(renderContext, *camera, *cullingSystem);
 
   createGraphicsPipeline();
   renderGraph = new RenderGraph(renderContext);
