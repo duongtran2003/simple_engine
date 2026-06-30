@@ -2,6 +2,7 @@
 
 #include "core/component/component.hpp"
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -12,6 +13,9 @@ namespace SimpleEngine {
 namespace Core {
 class Entity {
 private:
+  static uint64_t nextId;
+
+  uint64_t id;
   std::string name;
   bool active = false;
   std::vector<std::unique_ptr<Component>> components;
@@ -21,6 +25,7 @@ public:
   Entity(const std::string &name);
   virtual ~Entity() = default;
 
+  uint64_t getId() const;
   const std::string &getName() const;
   bool isActive() const;
   void setActive(bool isActive);

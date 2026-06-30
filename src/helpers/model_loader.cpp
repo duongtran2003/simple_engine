@@ -4,7 +4,6 @@
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/texture.hpp"
 #include "helpers/math.hpp"
-#include <algorithm>
 #include <cassert>
 #include <glm/ext/quaternion_geometric.hpp>
 #include <glm/ext/vector_float2.hpp>
