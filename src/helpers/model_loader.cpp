@@ -35,6 +35,7 @@ void ModelLoader::loadGltfMeshData(const std::string &path,
 
   vertices.clear();
   indices.clear();
+  bool hasTangent = false;
 
   for (const auto &mesh : model.meshes) {
     for (const auto &primitive : mesh.primitives) {
@@ -73,7 +74,7 @@ void ModelLoader::loadGltfMeshData(const std::string &path,
         texCoordBuffer = &model.buffers[texCoordBufferView->buffer];
       }
 
-      bool hasTangent =
+      hasTangent =
           primitive.attributes.find("TANGENT") != primitive.attributes.end();
       const tinygltf::Accessor *tangentAccessor = nullptr;
       const tinygltf::BufferView *tangentBufferView = nullptr;
@@ -168,35 +169,37 @@ void ModelLoader::loadGltfMeshData(const std::string &path,
 
         indices.push_back(baseVertex + index);
       }
+    }
+  }
 
-      assert(indices.size() % 3 == 0);
-      for (size_t i = 0; i < indices.size() - 2; i += 3) {
-        glm::vec3 v1 = vertices[indices[i]].position;
-        glm::vec3 v2 = vertices[indices[i + 1]].position;
-        glm::vec3 v3 = vertices[indices[i + 2]].position;
+  if (!hasTangent) {
+    assert(indices.size() % 3 == 0);
+    for (size_t i = 0; i < indices.size() - 2; i += 3) {
+      glm::vec3 v1 = vertices[indices[i]].position;
+      glm::vec3 v2 = vertices[indices[i + 1]].position;
+      glm::vec3 v3 = vertices[indices[i + 2]].position;
 
-        glm::vec2 uv1 = vertices[indices[i]].uv;
-        glm::vec2 uv2 = vertices[indices[i + 1]].uv;
-        glm::vec2 uv3 = vertices[indices[i + 2]].uv;
+      glm::vec2 uv1 = vertices[indices[i]].uv;
+      glm::vec2 uv2 = vertices[indices[i + 1]].uv;
+      glm::vec2 uv3 = vertices[indices[i + 2]].uv;
 
-        glm::vec4 tangent = glm::vec4(
-            Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 1.0f);
+      glm::vec4 tangent = glm::vec4(
+          Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 1.0f);
 
-        glm::vec3 v1v2 = v2 - v1;
-        glm::vec3 v1v3 = v3 - v1;
-        float area = glm::length(glm::cross(v1v2, v1v3));
+      glm::vec3 v1v2 = v2 - v1;
+      glm::vec3 v1v3 = v3 - v1;
+      float area = glm::length(glm::cross(v1v2, v1v3));
 
-        vertices[indices[i]].tangent =
-            vertices[indices[i]].tangent + tangent * area;
-        vertices[indices[i + 1]].tangent =
-            vertices[indices[i + 1]].tangent + tangent * area;
-        vertices[indices[i + 2]].tangent =
-            vertices[indices[i + 2]].tangent + tangent * area;
-      }
+      vertices[indices[i]].tangent =
+          vertices[indices[i]].tangent + tangent * area;
+      vertices[indices[i + 1]].tangent =
+          vertices[indices[i + 1]].tangent + tangent * area;
+      vertices[indices[i + 2]].tangent =
+          vertices[indices[i + 2]].tangent + tangent * area;
+    }
 
-      for (auto &v : vertices) {
-        v.tangent = glm::normalize(v.tangent);
-      }
+    for (auto &v : vertices) {
+      v.tangent = glm::normalize(v.tangent);
     }
   }
 }
