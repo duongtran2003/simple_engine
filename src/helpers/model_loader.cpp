@@ -114,14 +114,11 @@ void ModelLoader::loadGltfMeshData(const std::string &path,
         }
 
         if (hasTangent) {
-          std::cout << "has tangent\n";
           const float *tangent = reinterpret_cast<const float *>(
               &tangentBuffer
                    ->data[tangentBufferView->byteOffset +
                           tangentAccessor->byteOffset + i * tangentStride]);
           vertex.tangent = {tangent[0], tangent[1], tangent[2], tangent[3]};
-        } else {
-          std::cout << "NO TANGENT\n";
         }
 
         const float *norm = reinterpret_cast<const float *>(
@@ -191,11 +188,11 @@ void ModelLoader::loadGltfMeshData(const std::string &path,
         float area = glm::length(glm::cross(v1v2, v1v3));
 
         vertices[indices[i]].tangent =
-            vertices[indices[i]].tangent + area * tangent;
+            vertices[indices[i]].tangent + tangent * area;
         vertices[indices[i + 1]].tangent =
-            vertices[indices[i + 1]].tangent + area * tangent;
+            vertices[indices[i + 1]].tangent + tangent * area;
         vertices[indices[i + 2]].tangent =
-            vertices[indices[i + 2]].tangent + area * tangent;
+            vertices[indices[i + 2]].tangent + tangent * area;
       }
 
       for (auto &v : vertices) {

@@ -37,17 +37,15 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   float4 texColor = globalTextures[push.albedoIndex].Sample(inVert.texCoords);
   float3 normal;
   if (push.useNormalMap) {
-    normal = normalize(globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb);
+    normal = globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb;
     normal = normalize(normal * 2.0f - 1.0f);
 
-    float3 normalizedInNormal = normalize(inVert.normal);
+    float3 N = normalize(inVert.normal);
+    // Gram-Schmidt
+    float3 T = inVert.tangent - dot(inVert.tangent, N) * N;
 
-    float3 biTangent = cross(inVert.tangent, normalizedInNormal);
-    float3x3 TBN = float3x3(
-      inVert.tangent.x, biTangent.x, normalizedInNormal.x,
-      inVert.tangent.y, biTangent.y, normalizedInNormal.y,
-      inVert.tangent.z, biTangent.z, normalizedInNormal.z,
-    );
+    float3 B = cross(T, N);
+    float3x3 TBN = transpose(float3x3(T, B, N));
 
     normal = normalize(mul(TBN, normal));
   } else {

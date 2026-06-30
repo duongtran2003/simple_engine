@@ -31,7 +31,7 @@ public:
 private:
   const Input &input;
   float velocity = 10.0f;
-  glm::vec2 mouseSensitivity = {0.1f, 0.05f};
+  glm::vec2 mouseSensitivity = {0.2f, 0.1f};
 
   void handleInput(float delta);
 };

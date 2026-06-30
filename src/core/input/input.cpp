@@ -40,6 +40,7 @@ void Input::toggleMouseLock() {
   mouseLocked = !mouseLocked;
   if (mouseLocked) {
     glfwSetInputMode(context.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(context.window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     mouseFirstEnter = true;
   } else {
     glfwSetInputMode(context.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

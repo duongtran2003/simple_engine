@@ -452,15 +452,14 @@ void Engine::setupExampleRenderGraph() {
       vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
       vk::DeviceSize offsets[] = {0};
 
-      // float spinSpeedY = glm::radians(15.0f);
-      // glm::quat deltaY =
-      //     glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f,
-      //     0.0f));
-      //
-      // glm::quat frameRotation = deltaY;
-      //
-      // glm::quat currentRotation = transform->getRotation();
-      // transform->setRotation(frameRotation * currentRotation);
+      float spinSpeedY = glm::radians(5.0f);
+      glm::quat deltaY =
+          glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
+
+      glm::quat frameRotation = deltaY;
+
+      glm::quat currentRotation = transform->getRotation();
+      transform->setRotation(frameRotation * currentRotation);
 
       glm::mat4 model = transform->getTransformMatrix();
       RenderContext::UniformBufferObject ubo{};

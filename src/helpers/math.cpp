@@ -14,14 +14,14 @@ glm::vec3 Math::calculateTangent(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC,
   glm::vec3 P2 = posC - posB;
 
   // delta V1 = vB - vA = A
-  float A = uvB.y - uvA.y;
+  float A = uvB.x - uvA.x;
   // delta U1 = uB - uA = B
-  float B = uvB.x - uvA.x;
+  float B = uvB.y - uvA.y;
 
   // delta V2 = vC - vB = C
-  float C = uvC.y - uvB.y;
+  float C = uvC.x - uvB.x;
   // delta U2 = uC - uB = D
-  float D = uvC.x - uvB.x;
+  float D = uvC.y - uvB.y;
 
   // det = |A  B|
   //       |C  D|
