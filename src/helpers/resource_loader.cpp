@@ -1,37 +1,116 @@
-#include "helpers/scene_loader.hpp"
+#include "helpers/resource_loader.hpp"
+#include "core/raw_texture.hpp"
 #include "core/resource/mesh.hpp"
+#include "core/resource/resource_manager.hpp"
+#include "core/scene/scene_object.hpp"
 #include "helpers/math.hpp"
 #include "helpers/model_loader.hpp"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <glm/detail/qualifier.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
+#include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace SimpleEngine {
 namespace Helper {
-void SceneLoader::processNode(const tinygltf::Model &model, int nodeIndex,
-                              const glm::mat4 &parentTransformMat,
-                              std::vector<RawNode> &nodes) {
+glm::mat4 ResourceLoader::getGltfNodeTransform(const tinygltf::Node &node) {
+  if (!node.matrix.empty()) {
+    return glm::make_mat4(node.matrix.data());
+  }
+
+  glm::mat4 transform = glm::mat4(1.0f);
+  if (!node.translation.empty()) {
+    transform = glm::translate(transform, glm::vec3(node.translation[0],
+                                                    node.translation[1],
+                                                    node.translation[2]));
+  }
+
+  if (!node.rotation.empty()) {
+    glm::quat q = glm::quat(node.rotation[3], node.rotation[0],
+                            node.rotation[1], node.rotation[2]);
+    transform = transform * glm::mat4_cast(q);
+  }
+
+  if (!node.scale.empty()) {
+    transform = glm::scale(
+        transform, glm::vec3(node.scale[0], node.scale[1], node.scale[2]));
+  }
+
+  return transform;
+}
+
+void ResourceLoader::loadKtxTexture(const std::string &path,
+                                    Core::RawTexture &rawTexture) {}
+
+void ResourceLoader::loadGltfScene(const std::string &basePath,
+                                   const std::string &name,
+                                   Core::SceneObject &sceneObject,
+                                   Core::ResourceManager &resourceManager) {
+  tinygltf::Model model;
+  tinygltf::TinyGLTF loader;
+
+  std::string error;
+  std::string warning;
+
+  std::filesystem::path pathToSceneEntry =
+      std::filesystem::path(basePath) / name;
+
+  bool ret = loader.LoadASCIIFromFile(&model, &error, &warning,
+                                      pathToSceneEntry.string());
+  if (!warning.empty()) {
+    std::cout << "Helper::SceneLoader::loadGltfScene::WARNING: " + warning +
+                     "\n";
+  }
+
+  if (!error.empty()) {
+    std::cout << "Helper::SceneLoader::loadGltfScene::ERROR: " + error + "\n";
+  }
+
+  if (!ret) {
+    throw std::runtime_error("Helper::SceneLoader::loadGltfScene::ERROR: "
+                             "Failed to load glTF model.");
+  }
+
+  std::vector<SceneNode> sceneNodes;
+  const tinygltf::Scene &scene =
+      model.scenes[model.defaultScene >= 0 ? model.defaultScene : 0];
+
+  for (int nodeIndex : scene.nodes) {
+    processGltfNode(model, nodeIndex, glm::mat4(1.0f), sceneNodes, basePath);
+  }
+}
+
+void ResourceLoader::processGltfNode(const tinygltf::Model &model,
+                                     int nodeIndex,
+                                     const glm::mat4 &parentTransformMat,
+                                     std::vector<SceneNode> &nodes,
+                                     const std::string &basePath) {
   if (nodeIndex < 0 || nodeIndex >= model.nodes.size()) {
     return;
   }
   const auto &node = model.nodes[nodeIndex];
   if (node.mesh >= 0 && node.mesh < model.meshes.size()) {
     const auto &mesh = model.meshes[node.mesh];
-    glm::mat4 transformMat = parentTransformMat * getNodeTransform(node);
+    glm::mat4 transformMat = parentTransformMat * getGltfNodeTransform(node);
 
     bool hasTangent = false;
-    RawNode currentNode{.name = node.name.empty() ? mesh.name : node.name,
-                        .transformMat = transformMat,
-                        .vertices = {},
-                        .indices = {}};
+    SceneNode currentNode{.name = node.name.empty() ? mesh.name : node.name,
+                          .transformMat = transformMat,
+                          .vertices = {},
+                          .indices = {}};
 
     for (const auto &primitive : mesh.primitives) {
       const tinygltf::Accessor &indexAccessor =
@@ -59,7 +138,7 @@ void SceneLoader::processNode(const tinygltf::Model &model, int nodeIndex,
           index =
               *reinterpret_cast<const uint8_t *>(indexData + i * indexStride);
         } else {
-          throw std::runtime_error("SceneLoader::processNode::ERROR: "
+          throw std::runtime_error("SceneLoader::processGltfNode::ERROR: "
                                    "Unsupported index component type");
         }
         currentNode.indices.push_back(index);
@@ -143,6 +222,48 @@ void SceneLoader::processNode(const tinygltf::Model &model, int nodeIndex,
 
         currentNode.vertices.push_back(vertex);
       }
+
+      if (primitive.material >= 0) {
+        const auto &material = model.materials[primitive.material];
+
+        int albedoIndex = material.pbrMetallicRoughness.baseColorTexture.index;
+        currentNode.hasAlbedo = false;
+        if (albedoIndex >= 0 && albedoIndex < model.textures.size()) {
+          currentNode.hasAlbedo = true;
+
+          const tinygltf::Texture &texture = model.textures[albedoIndex];
+          int imageIndex = texture.source;
+          if (imageIndex >= 0 && imageIndex < model.images.size()) {
+            const tinygltf::Image image = model.images[imageIndex];
+            std::string textureUri = image.uri;
+            std::filesystem::path texturePath =
+                std::filesystem::path(basePath) /
+                std::filesystem::path(textureUri);
+
+            Core::RawTexture rawTexture;
+            loadKtxTexture(texturePath.string(), rawTexture);
+          }
+        }
+
+        int normalIndex = material.normalTexture.index;
+        currentNode.hasNormal = false;
+        if (normalIndex >= 0 && normalIndex < model.textures.size()) {
+          currentNode.hasNormal = true;
+
+          const tinygltf::Texture &texture = model.textures[normalIndex];
+          int imageIndex = texture.source;
+          if (imageIndex >= 0 && imageIndex < model.images.size()) {
+            const tinygltf::Image image = model.images[imageIndex];
+            std::string textureUri = image.uri;
+            std::filesystem::path texturePath =
+                std::filesystem::path(basePath) /
+                std::filesystem::path(textureUri);
+
+            Core::RawTexture rawTexture;
+            loadKtxTexture(texturePath.string(), rawTexture);
+          }
+        }
+      }
     }
 
     if (!hasTangent) {
@@ -181,6 +302,10 @@ void SceneLoader::processNode(const tinygltf::Model &model, int nodeIndex,
       }
     }
     nodes.push_back(currentNode);
+    for (int childIndex : node.children) {
+      processGltfNode(model, childIndex, currentNode.transformMat, nodes,
+                      basePath);
+    }
   }
 }
 } // namespace Helper

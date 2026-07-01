@@ -16,6 +16,7 @@
     "vulkan-loader",
     "stb",
     "catch2",
-    "tinygltf"
+    "tinygltf",
+    "ktx"
   ]
 }
