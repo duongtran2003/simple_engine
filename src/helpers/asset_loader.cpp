@@ -1,26 +1,16 @@
-#include "core/component/mesh_component.hpp"
-#include "core/material.hpp"
-#include "core/resource/resource_handle.hpp"
-#include "core/resource/resource_manager.hpp"
-#include "core/resource/texture.hpp"
+#include "helpers/asset_loader.hpp"
+#include "core/raw_texture.hpp"
+#include "core/resource/mesh.hpp"
 #include "helpers/math.hpp"
+#include "helpers/model_loader.hpp"
 #include <cassert>
-#include <glm/ext/quaternion_geometric.hpp>
+#include <cstddef>
+#include <cstdint>
+#include <filesystem>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <glm/geometric.hpp>
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#define TINYGLTF_IMPLEMENTATION
-
-#define TINYGLTF_IMPLEMENTATION
-
-#include "core/raw_texture.hpp"
-#include "core/resource/mesh.hpp"
-#include "helpers/model_loader.hpp"
-#include <cstddef>
-#include <cstdint>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -28,13 +18,138 @@
 
 namespace SimpleEngine {
 namespace Helper {
-void ModelLoader::loadGltfMeshData(const std::string &path,
-                                   std::vector<Core::Mesh::Vertex> &vertices,
-                                   std::vector<uint32_t> &indices) {
-  tinygltf::Model model = loadGltfModel(path);
+tinygltf::Model
+AssetLoader::loadTinyGltfModelFromBinary(const std::string &path) {
+  tinygltf::Model model;
+  tinygltf::TinyGLTF loader;
+
+  std::string error;
+  std::string warning;
+
+  bool ret = loader.LoadBinaryFromFile(&model, &error, &warning, path);
+  if (!warning.empty()) {
+    std::cout << "Helper::ModelLoader::loadglTF::WARNING: " + warning + "\n";
+  }
+
+  if (!error.empty()) {
+    std::cout << "Helper::ModelLoader::loadglTF::ERROR: " + error + "\n";
+  }
+
+  if (!ret) {
+    throw std::runtime_error(
+        "Helper::ModelLoader::loadglTF::ERROR: Failed to load glTF model.");
+  }
+
+  return model;
+}
+
+tinygltf::Model
+AssetLoader::loadTinyGltfModelFromASCII(const std::string &path) {
+  tinygltf::Model model;
+  tinygltf::TinyGLTF loader;
+
+  std::string error;
+  std::string warning;
+
+  bool ret = loader.LoadASCIIFromFile(&model, &error, &warning, path);
+  if (!warning.empty()) {
+    std::cout << "Helper::ModelLoader::loadglTF::WARNING: " + warning + "\n";
+  }
+
+  if (!error.empty()) {
+    std::cout << "Helper::ModelLoader::loadglTF::ERROR: " + error + "\n";
+  }
+
+  if (!ret) {
+    throw std::runtime_error(
+        "Helper::ModelLoader::loadglTF::ERROR: Failed to load glTF model.");
+  }
+
+  return model;
+}
+
+Core::RawTexture
+AssetLoader::loadTextureFromTinyGltfModel(tinygltf::Model &model,
+                                          int textureIndex) {
+  if (textureIndex < 0 || textureIndex >= model.textures.size()) {
+    throw std::runtime_error(
+        "ModelLoader::loadTexture::ERROR: Out of bound. Texture index: " +
+        std::to_string(textureIndex) +
+        ". Model textures num: " + std::to_string(model.textures.size()));
+  }
+
+  const tinygltf::Texture &texture = model.textures[textureIndex];
+  int imageIndex = texture.source;
+
+  if (imageIndex < 0 || imageIndex >= model.images.size()) {
+    throw std::runtime_error(
+        "ModelLoader::loadTexture::ERROR: Out of bound. Image index: " +
+        std::to_string(imageIndex) +
+        ". Model images num: " + std::to_string(model.images.size()));
+  }
+
+  const tinygltf::Image &image = model.images[imageIndex];
+  Core::RawTexture rawTexture{.pixels = image.image,
+                              .width = static_cast<uint32_t>(image.width),
+                              .height = static_cast<uint32_t>(image.height),
+                              .componentCount =
+                                  static_cast<uint32_t>(image.component)};
+
+  int samplerIndex = texture.sampler;
+  if (samplerIndex < 0 || samplerIndex >= model.samplers.size()) {
+    std::cout
+        << ("ModelLoader::loadTexture::WARNING: Out of bound. Sampler index: " +
+            std::to_string(samplerIndex) +
+            ". Model samplers num: " + std::to_string(model.samplers.size()) +
+            ". Using default sampler.\n");
+  }
+
+  if (samplerIndex >= 0) {
+    const tinygltf::Sampler &sampler = model.samplers[samplerIndex];
+    rawTexture.magFilter = mapGltfFilter(sampler.magFilter);
+    rawTexture.minFilter = mapGltfFilter(sampler.minFilter);
+    rawTexture.wrapS = mapGltfWrap(sampler.wrapS);
+    rawTexture.wrapT = mapGltfWrap(sampler.wrapT);
+  } else {
+    rawTexture.magFilter = Core::TextureFilter::Nearest;
+    rawTexture.minFilter = Core::TextureFilter::Nearest;
+    rawTexture.wrapS = Core::TextureWrapMode::Repeat;
+    rawTexture.wrapT = Core::TextureWrapMode::Repeat;
+  }
+
+  return rawTexture;
+}
+
+Core::TextureFilter AssetLoader::mapGltfFilter(int gltfFilter) {
+  if (gltfFilter == 9728 || gltfFilter == 9984 || gltfFilter == 9986) {
+    return Core::TextureFilter::Nearest;
+  }
+
+  return Core::TextureFilter::Linear;
+}
+
+Core::TextureWrapMode AssetLoader::mapGltfWrap(int gltfWrap) {
+  if (gltfWrap == 33071) {
+    return Core::TextureWrapMode::ClampToEdge;
+  }
+  if (gltfWrap == 33648) {
+    return Core::TextureWrapMode::MirroredRepeat;
+  }
+
+  return Core::TextureWrapMode::Repeat;
+}
+
+void AssetLoader::loadGltfModelFromBinary(
+    const std::string &path, const std::string &name,
+    std::vector<Core::Mesh::Vertex> &vertices, std::vector<uint32_t> &indices,
+    std::vector<Core::RawTexture> &textures) {
+  std::string pathToModel =
+      (std::filesystem::path(path) / std::filesystem::path(name)).string();
+  tinygltf::Model model = loadTinyGltfModelFromBinary(pathToModel);
 
   vertices.clear();
   indices.clear();
+  textures.clear();
   bool hasTangent = false;
 
   for (const auto &mesh : model.meshes) {
@@ -202,159 +317,6 @@ void ModelLoader::loadGltfMeshData(const std::string &path,
       v.tangent = glm::normalize(v.tangent);
     }
   }
-}
-
-void ModelLoader::loadGltfMeshTextures(
-    const std::string &path, std::vector<Core::RawTexture> &textures) {
-  tinygltf::Model model = loadGltfModel(path);
-
-  std::cout << "In load gltf mesh textures: " << model.meshes.size() << "\n";
-
-  for (const auto &mesh : model.meshes) {
-    std::cout << "In load gltf mesh textures: " << mesh.primitives.size() << "\n";
-    for (const auto &primitive : mesh.primitives) {
-
-      if (primitive.material >= 0) {
-        const auto &material = model.materials[primitive.material];
-
-        if (material.pbrMetallicRoughness.baseColorTexture.index >= 0) {
-          Core::RawTexture albedo = loadTexture(
-              model, material.pbrMetallicRoughness.baseColorTexture.index);
-          textures.push_back(albedo);
-          albedo.colorSpace = Core::ColorSpace::NonLinear;
-        }
-
-        if (material.normalTexture.index >= 0) {
-          Core::RawTexture normal =
-              loadTexture(model, material.normalTexture.index);
-          textures.push_back(normal);
-          normal.colorSpace = Core::ColorSpace::Linear;
-        }
-      }
-    }
-  }
-}
-
-Core::RawTexture ModelLoader::loadTexture(tinygltf::Model &model,
-                                          int textureIndex) {
-  if (textureIndex < 0 || textureIndex >= model.textures.size()) {
-    throw std::runtime_error(
-        "ModelLoader::loadTexture::ERROR: Out of bound. Texture index: " +
-        std::to_string(textureIndex) +
-        ". Model textures num: " + std::to_string(model.textures.size()));
-  }
-
-  const tinygltf::Texture &texture = model.textures[textureIndex];
-  int imageIndex = texture.source;
-
-  if (imageIndex < 0 || imageIndex >= model.images.size()) {
-    throw std::runtime_error(
-        "ModelLoader::loadTexture::ERROR: Out of bound. Image index: " +
-        std::to_string(imageIndex) +
-        ". Model images num: " + std::to_string(model.images.size()));
-  }
-
-  const tinygltf::Image &image = model.images[imageIndex];
-  Core::RawTexture rawTexture{.pixels = image.image,
-                              .width = static_cast<uint32_t>(image.width),
-                              .height = static_cast<uint32_t>(image.height),
-                              .componentCount =
-                                  static_cast<uint32_t>(image.component)};
-
-  int samplerIndex = texture.sampler;
-  if (samplerIndex < 0 || samplerIndex >= model.samplers.size()) {
-    std::cout
-        << ("ModelLoader::loadTexture::WARNING: Out of bound. Sampler index: " +
-            std::to_string(samplerIndex) +
-            ". Model samplers num: " + std::to_string(model.samplers.size()) +
-            ". Using default sampler.\n");
-  }
-
-  if (samplerIndex >= 0) {
-    const tinygltf::Sampler &sampler = model.samplers[samplerIndex];
-    rawTexture.magFilter = mapGltfFilter(sampler.magFilter);
-    rawTexture.minFilter = mapGltfFilter(sampler.minFilter);
-    rawTexture.wrapS = mapGltfWrap(sampler.wrapS);
-    rawTexture.wrapT = mapGltfWrap(sampler.wrapT);
-  } else {
-    rawTexture.magFilter = Core::TextureFilter::Nearest;
-    rawTexture.minFilter = Core::TextureFilter::Nearest;
-    rawTexture.wrapS = Core::TextureWrapMode::Repeat;
-    rawTexture.wrapT = Core::TextureWrapMode::Repeat;
-  }
-
-  return rawTexture;
-}
-
-Core::TextureFilter ModelLoader::mapGltfFilter(int gltfFilter) {
-  if (gltfFilter == 9728 || gltfFilter == 9984 || gltfFilter == 9986) {
-    return Core::TextureFilter::Nearest;
-  }
-
-  return Core::TextureFilter::Linear;
-}
-
-Core::TextureWrapMode ModelLoader::mapGltfWrap(int gltfWrap) {
-  if (gltfWrap == 33071) {
-    return Core::TextureWrapMode::ClampToEdge;
-  }
-  if (gltfWrap == 33648) {
-    return Core::TextureWrapMode::MirroredRepeat;
-  }
-
-  return Core::TextureWrapMode::Repeat;
-}
-
-void ModelLoader::loadGltfMesh(const std::string &path, const std::string &name,
-                               Core::MeshComponent &component,
-                               Core::ResourceManager &resourceManager) {
-  Core::ResourceHandle<Core::Mesh> meshResource =
-      resourceManager.load<Core::Mesh>(name, path);
-
-  std::vector<Core::RawTexture> textures;
-  loadGltfMeshTextures(path, textures);
-  std::cout << "After loading mesh textures: " << textures.size() << "\n";
-
-  Core::Material material;
-  if (textures.size() >= 1) {
-    Core::ResourceHandle<Core::Texture> texture =
-        resourceManager.load<Core::Texture>(name + "_texture_albedo",
-                                            textures[0]);
-    material.setAlbedo({.index = 0, .handle = texture});
-  }
-
-  if (textures.size() >= 2) {
-    Core::ResourceHandle<Core::Texture> texture =
-        resourceManager.load<Core::Texture>(name + "_texture_normal",
-                                            textures[1]);
-    material.setNormal({.index = 0, .handle = texture});
-  }
-
-  component.setMesh(meshResource)->setMaterial(material);
-}
-
-tinygltf::Model ModelLoader::loadGltfModel(const std::string &path) {
-  tinygltf::Model model;
-  tinygltf::TinyGLTF loader;
-
-  std::string error;
-  std::string warning;
-
-  bool ret = loader.LoadBinaryFromFile(&model, &error, &warning, path);
-  if (!warning.empty()) {
-    std::cout << "Helper::ModelLoader::loadglTF::WARNING: " + warning + "\n";
-  }
-
-  if (!error.empty()) {
-    std::cout << "Helper::ModelLoader::loadglTF::ERROR: " + error + "\n";
-  }
-
-  if (!ret) {
-    throw std::runtime_error(
-        "Helper::ModelLoader::loadglTF::ERROR: Failed to load glTF model.");
-  }
-
-  return model;
 }
 } // namespace Helper
 } // namespace SimpleEngine

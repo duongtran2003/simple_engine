@@ -18,8 +18,6 @@ Mesh::Mesh(const std::string &id, const RenderContext &renderContext,
            const std::string &modelPath)
     : Resource(id, renderContext), modelPath(modelPath) {}
 
-Mesh::~Mesh() { unload(); }
-
 bool Mesh::loadMeshData(const std::string &path,
                         std::vector<Mesh::Vertex> &vertices,
                         std::vector<uint32_t> &indices) {

@@ -23,6 +23,11 @@ public:
   };
 
 private:
+  enum class Source { fromFile, fromMemory };
+  Source source;
+
+  std::string *path;
+
   vk::Buffer vertexBuffer;
   vk::DeviceMemory vertexBufferMemory;
   vk::DeviceSize vertexBufferOffset;
@@ -43,7 +48,6 @@ private:
 public:
   Mesh(const std::string &id, const RenderContext &renderContext,
        const std::string &modelPath);
-  ~Mesh() override;
 
   vk::Buffer getVertexBuffer() const;
   vk::Buffer getIndexBuffer() const;

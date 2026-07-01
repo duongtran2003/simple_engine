@@ -9,6 +9,7 @@ Resource::Resource(const std::string &id, const RenderContext &renderContext)
     : renderContext(renderContext) {
   resourceId = id;
 }
+
 const std::string &Resource::getId() const { return resourceId; }
 const RenderContext &Resource::getRenderContext() const {
   return renderContext;
