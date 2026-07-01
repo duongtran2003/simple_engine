@@ -13,8 +13,14 @@ private:
   vk::ShaderModule shaderModule;
   vk::ShaderStageFlagBits stage;
 
+  std::string path;
+
+  enum class Source { fromFile, fromMemory };
+  Source source;
+
 public:
-  Shader(const std::string &id, const RenderContext &renderContext, vk::ShaderStageFlagBits shaderStage);
+  Shader(const std::string &id, const RenderContext &renderContext,
+         vk::ShaderStageFlagBits shaderStage, const std::string &path);
 
   bool doLoad() override;
   void doUnload() override;

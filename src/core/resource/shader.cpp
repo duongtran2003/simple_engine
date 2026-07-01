@@ -13,22 +13,26 @@
 namespace SimpleEngine {
 namespace Core {
 Shader::Shader(const std::string &id, const RenderContext &renderContext,
-               vk::ShaderStageFlagBits shaderStage)
+               vk::ShaderStageFlagBits shaderStage, const std::string &path)
     : Resource(id, renderContext) {
   stage = shaderStage;
+  source = Source::fromFile;
+  this->path = path;
 }
 
 bool Shader::doLoad() {
-  std::string filePath = "shaders/" + getId() + ".spv";
+  if (source == Source::fromFile) {
+    std::vector<char> shaderCode;
+    if (!readShaderFile(path, shaderCode)) {
+      return false;
+    }
 
-  std::vector<char> shaderCode;
-  if (!readShaderFile(filePath, shaderCode)) {
-    return false;
+    createShaderModule(shaderCode);
+
+    return true;
   }
 
-  createShaderModule(shaderCode);
-
-  return true;
+  return false;
 }
 
 void Shader::doUnload() {

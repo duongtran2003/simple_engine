@@ -75,9 +75,9 @@ Engine::Engine() {
 
 void Engine::createGraphicsPipeline() {
   ResourceHandle<Shader> vertexShaderHandle = resourceManager->load<Shader>(
-      "test.vert", vk::ShaderStageFlagBits::eVertex);
+      "test_vert", vk::ShaderStageFlagBits::eVertex, "shaders/test.vert.spv");
   ResourceHandle<Shader> fragmentShaderHandle = resourceManager->load<Shader>(
-      "test.frag", vk::ShaderStageFlagBits::eFragment);
+      "test_frag", vk::ShaderStageFlagBits::eFragment, "shaders/test.frag.spv");
 
   vk::PipelineShaderStageCreateInfo vertexShaderStageInfo{
       .stage = vk::ShaderStageFlagBits::eVertex,
