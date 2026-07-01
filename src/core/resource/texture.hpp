@@ -11,6 +11,12 @@ namespace SimpleEngine {
 namespace Core {
 class Texture : public Resource {
 private:
+  enum class Source { fromFile, fromRawTexture };
+  Source source;
+
+  std::string *path;
+  RawTexture rawTexture;
+
   vk::Image image;
   vk::DeviceMemory memory;
   vk::DeviceSize offset;
@@ -27,10 +33,12 @@ private:
   void createVulkanImage(unsigned char *data, int &width, int &height,
                          int &channels);
 
+  void readFromRawTexture();
+
 public:
   Texture(const std::string &id, const RenderContext &renderContext);
   Texture(const std::string &id, const RenderContext &renderContext,
-          RawTexture &raw);
+          RawTexture raw);
 
   vk::Image getImage() const;
   vk::Sampler getSampler() const;

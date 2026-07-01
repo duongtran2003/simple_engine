@@ -10,13 +10,13 @@ namespace SimpleEngine {
 namespace Core {
 class Shader : public Resource {
 private:
-  vk::ShaderModule shaderModule;
-  vk::ShaderStageFlagBits stage;
+  enum class Source { fromFile, fromMemory };
+  Source source;
 
   std::string path;
 
-  enum class Source { fromFile, fromMemory };
-  Source source;
+  vk::ShaderModule shaderModule;
+  vk::ShaderStageFlagBits stage;
 
 public:
   Shader(const std::string &id, const RenderContext &renderContext,

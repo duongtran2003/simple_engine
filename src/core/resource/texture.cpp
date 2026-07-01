@@ -8,6 +8,7 @@
 #include <cstring>
 #include <stb_image.h>
 #include <string>
+#include <utility>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -16,34 +17,39 @@ namespace Core {
 Texture::Texture(const std::string &id, const RenderContext &renderContext)
     : Resource(id, renderContext) {}
 Texture::Texture(const std::string &id, const RenderContext &renderContext,
-                 RawTexture &raw)
-    : Resource(id, renderContext) {
+                 RawTexture raw)
+    : Resource(id, renderContext), rawTexture(std::move(raw)) {
+  source = Source::fromRawTexture;
+}
+
+void Texture::readFromRawTexture() {
   vk::Format textureFormat;
-  if (raw.componentCount == 1) {
-    textureFormat = raw.colorSpace == ColorSpace::Linear ? vk::Format::eR8Unorm
-                                                         : vk::Format::eR8Srgb;
-  } else if (raw.componentCount == 2) {
-    textureFormat = raw.colorSpace == ColorSpace::Linear
+  if (rawTexture.componentCount == 1) {
+    textureFormat = rawTexture.colorSpace == ColorSpace::Linear
+                        ? vk::Format::eR8Unorm
+                        : vk::Format::eR8Srgb;
+  } else if (rawTexture.componentCount == 2) {
+    textureFormat = rawTexture.colorSpace == ColorSpace::Linear
                         ? vk::Format::eR8G8Unorm
                         : vk::Format::eR8G8Srgb;
-  } else if (raw.componentCount == 3) {
-    textureFormat = raw.colorSpace == ColorSpace::Linear
+  } else if (rawTexture.componentCount == 3) {
+    textureFormat = rawTexture.colorSpace == ColorSpace::Linear
                         ? vk::Format::eR8G8B8Unorm
                         : vk::Format::eR8G8B8Srgb;
   } else {
-    textureFormat = raw.colorSpace == ColorSpace::Linear
+    textureFormat = rawTexture.colorSpace == ColorSpace::Linear
                         ? vk::Format::eR8G8B8A8Unorm
                         : vk::Format::eR8G8B8A8Srgb;
   }
   auto [newImage, newImageMemory, newImageView] =
-      Helper::VulkanHelper::createImage(raw.width, raw.height, textureFormat,
-                                        vk::ImageUsageFlagBits::eTransferDst |
-                                            vk::ImageUsageFlagBits::eSampled,
-                                        vk::ImageAspectFlagBits::eColor,
-                                        vk::SampleCountFlagBits::e1,
-                                        renderContext);
+      Helper::VulkanHelper::createImage(
+          rawTexture.width, rawTexture.height, textureFormat,
+          vk::ImageUsageFlagBits::eTransferDst |
+              vk::ImageUsageFlagBits::eSampled,
+          vk::ImageAspectFlagBits::eColor, vk::SampleCountFlagBits::e1,
+          renderContext);
 
-  vk::DeviceSize imageSize = raw.pixels.size();
+  vk::DeviceSize imageSize = rawTexture.pixels.size();
   auto [stagingBuffer, stagingMemory] = Helper::VulkanHelper::createBuffer(
       imageSize, vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible |
@@ -51,7 +57,7 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext,
       renderContext);
 
   void *data = renderContext.device.mapMemory(stagingMemory, 0, imageSize);
-  memcpy(data, raw.pixels.data(), static_cast<size_t>(imageSize));
+  memcpy(data, rawTexture.pixels.data(), static_cast<size_t>(imageSize));
   renderContext.device.unmapMemory(stagingMemory);
 
   vk::CommandBuffer commandBuffer =
@@ -60,9 +66,9 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext,
   Helper::VulkanHelper::transitionImageLayout(
       commandBuffer, newImage, vk::ImageLayout::eUndefined,
       vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eColor);
-  Helper::VulkanHelper::copyBufferToImage(commandBuffer, stagingBuffer,
-                                          newImage, raw.width, raw.height,
-                                          vk::ImageAspectFlagBits::eColor);
+  Helper::VulkanHelper::copyBufferToImage(
+      commandBuffer, stagingBuffer, newImage, rawTexture.width,
+      rawTexture.height, vk::ImageAspectFlagBits::eColor);
   Helper::VulkanHelper::transitionImageLayout(
       commandBuffer, newImage, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor);
@@ -76,11 +82,17 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext,
   this->memory = newImageMemory;
   this->imageView = newImageView;
   this->sampler = Helper::VulkanHelper::createImageSampler(
-      raw.magFilter, raw.minFilter, raw.wrapS, raw.wrapT, renderContext);
-  this->width = raw.width;
-  this->height = raw.height;
-  this->channels = raw.componentCount;
+      rawTexture.magFilter, rawTexture.minFilter, rawTexture.wrapS,
+      rawTexture.wrapT, renderContext);
+  this->width = rawTexture.width;
+  this->height = rawTexture.height;
+  this->channels = rawTexture.componentCount;
   this->offset = imageSize;
+
+  // Clean up
+  rawTexture.pixels.clear();
+  rawTexture.pixels.shrink_to_fit();
+  rawTexture = {};
 }
 
 unsigned char *Texture::loadImageData(const std::string &path, int &_width,
@@ -97,7 +109,14 @@ void Texture::unloadImageData(unsigned char *data) {
   }
 }
 
-bool Texture::doLoad() { return true; }
+bool Texture::doLoad() {
+  if (source == Source::fromRawTexture) {
+    readFromRawTexture();
+    return true;
+  }
+
+  return false;
+}
 
 void Texture::doUnload() {
   renderContext.device.destroySampler(sampler);
