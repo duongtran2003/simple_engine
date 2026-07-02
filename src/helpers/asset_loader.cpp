@@ -2,7 +2,6 @@
 #include "core/raw_texture.hpp"
 #include "core/resource/mesh.hpp"
 #include "helpers/math.hpp"
-#include "helpers/model_loader.hpp"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -14,6 +13,10 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define TINYGLTF_IMPLEMENTATION
+#include <tiny_gltf.h>
 #include <vector>
 
 namespace SimpleEngine {
@@ -28,16 +31,18 @@ AssetLoader::loadTinyGltfModelFromBinary(const std::string &path) {
 
   bool ret = loader.LoadBinaryFromFile(&model, &error, &warning, path);
   if (!warning.empty()) {
-    std::cout << "Helper::ModelLoader::loadglTF::WARNING: " + warning + "\n";
+    std::cout << "Helper::AssetLoader::LoadBinaryFromFile::WARNING: " +
+                     warning + "\n";
   }
 
   if (!error.empty()) {
-    std::cout << "Helper::ModelLoader::loadglTF::ERROR: " + error + "\n";
+    std::cout << "Helper::AssetLoader::LoadBinaryFromFile::ERROR: " + error +
+                     "\n";
   }
 
   if (!ret) {
-    throw std::runtime_error(
-        "Helper::ModelLoader::loadglTF::ERROR: Failed to load glTF model.");
+    throw std::runtime_error("Helper::AssetLoader::LoadBinaryFromFile::ERROR: "
+                             "Failed to load glTF model.");
   }
 
   return model;
@@ -53,27 +58,30 @@ AssetLoader::loadTinyGltfModelFromASCII(const std::string &path) {
 
   bool ret = loader.LoadASCIIFromFile(&model, &error, &warning, path);
   if (!warning.empty()) {
-    std::cout << "Helper::ModelLoader::loadglTF::WARNING: " + warning + "\n";
+    std::cout << "Helper::AssetLoader::LoadASCIIFromFile::WARNING: " + warning +
+                     "\n";
   }
 
   if (!error.empty()) {
-    std::cout << "Helper::ModelLoader::loadglTF::ERROR: " + error + "\n";
+    std::cout << "Helper::AssetLoader::LoadASCIIFromFile::ERROR: " + error +
+                     "\n";
   }
 
   if (!ret) {
-    throw std::runtime_error(
-        "Helper::ModelLoader::loadglTF::ERROR: Failed to load glTF model.");
+    throw std::runtime_error("Helper::AssetLoader::LoadASCIIFromFile::ERROR: "
+                             "Failed to load glTF model.");
   }
 
   return model;
 }
 
-Core::RawTexture
-AssetLoader::loadTextureFromTinyGltfModel(tinygltf::Model &model,
-                                          int textureIndex) {
+void AssetLoader::loadTextureFromTinyGltfModel(tinygltf::Model &model,
+                                               int textureIndex,
+                                               Core::RawTexture &rawTexture) {
   if (textureIndex < 0 || textureIndex >= model.textures.size()) {
     throw std::runtime_error(
-        "ModelLoader::loadTexture::ERROR: Out of bound. Texture index: " +
+        "AssetLoader::loadTextureFromTinyGltfModel::ERROR: Out of bound. "
+        "Texture index: " +
         std::to_string(textureIndex) +
         ". Model textures num: " + std::to_string(model.textures.size()));
   }
@@ -83,25 +91,25 @@ AssetLoader::loadTextureFromTinyGltfModel(tinygltf::Model &model,
 
   if (imageIndex < 0 || imageIndex >= model.images.size()) {
     throw std::runtime_error(
-        "ModelLoader::loadTexture::ERROR: Out of bound. Image index: " +
+        "AssetLoader::loadTextureFromTinyGltfModel::ERROR: Out of bound. Image "
+        "index: " +
         std::to_string(imageIndex) +
         ". Model images num: " + std::to_string(model.images.size()));
   }
 
   const tinygltf::Image &image = model.images[imageIndex];
-  Core::RawTexture rawTexture{.pixels = image.image,
-                              .width = static_cast<uint32_t>(image.width),
-                              .height = static_cast<uint32_t>(image.height),
-                              .componentCount =
-                                  static_cast<uint32_t>(image.component)};
+  rawTexture.pixels = image.image;
+  rawTexture.width = static_cast<uint32_t>(image.width);
+  rawTexture.height = static_cast<uint32_t>(image.height);
+  rawTexture.componentCount = static_cast<uint32_t>(image.component);
 
   int samplerIndex = texture.sampler;
   if (samplerIndex < 0 || samplerIndex >= model.samplers.size()) {
-    std::cout
-        << ("ModelLoader::loadTexture::WARNING: Out of bound. Sampler index: " +
-            std::to_string(samplerIndex) +
-            ". Model samplers num: " + std::to_string(model.samplers.size()) +
-            ". Using default sampler.\n");
+    std::cout << ("AssetLoader::loadTextureFromTinyGltfModel::WARNING: Out of "
+                  "bound. Sampler index: " +
+                  std::to_string(samplerIndex) + ". Model samplers num: " +
+                  std::to_string(model.samplers.size()) +
+                  ". Using default sampler.\n");
   }
 
   if (samplerIndex >= 0) {
@@ -116,8 +124,6 @@ AssetLoader::loadTextureFromTinyGltfModel(tinygltf::Model &model,
     rawTexture.wrapS = Core::TextureWrapMode::Repeat;
     rawTexture.wrapT = Core::TextureWrapMode::Repeat;
   }
-
-  return rawTexture;
 }
 
 Core::TextureFilter AssetLoader::mapGltfFilter(int gltfFilter) {
@@ -139,22 +145,22 @@ Core::TextureWrapMode AssetLoader::mapGltfWrap(int gltfWrap) {
   return Core::TextureWrapMode::Repeat;
 }
 
+void AssetLoader::loadKtxTexture(const std::string &path,
+                                 Core::RawTexture &rawTexture) {}
 void AssetLoader::loadGltfModelFromBinary(
     const std::string &path, const std::string &name,
     std::vector<Core::Mesh::Vertex> &vertices, std::vector<uint32_t> &indices,
     std::vector<Core::RawTexture> &textures) {
   std::string pathToModel =
       (std::filesystem::path(path) / std::filesystem::path(name)).string();
-  tinygltf::Model model = loadTinyGltfModelFromBinary(pathToModel);
+  tinygltf::Model model = loadTinyGltfModelFromBinary(pathToModel + ".glb");
 
   vertices.clear();
   indices.clear();
   textures.clear();
-  bool hasTangent = false;
 
   for (const auto &mesh : model.meshes) {
     for (const auto &primitive : mesh.primitives) {
-
       const tinygltf::Accessor &indexAccessor =
           model.accessors[primitive.indices];
       const tinygltf::BufferView &indexBufferView =
@@ -189,7 +195,7 @@ void AssetLoader::loadGltfModelFromBinary(
         texCoordBuffer = &model.buffers[texCoordBufferView->buffer];
       }
 
-      hasTangent =
+      bool hasTangent =
           primitive.attributes.find("TANGENT") != primitive.attributes.end();
       const tinygltf::Accessor *tangentAccessor = nullptr;
       const tinygltf::BufferView *tangentBufferView = nullptr;
@@ -244,6 +250,29 @@ void AssetLoader::loadGltfModelFromBinary(
         vertices.push_back(vertex);
       }
 
+      if (primitive.material >= 0) {
+        const auto &material = model.materials[primitive.material];
+
+        int albedoIndex = material.pbrMetallicRoughness.baseColorTexture.index;
+        int normalIndex = material.normalTexture.index;
+
+        if (albedoIndex >= 0) {
+          Core::RawTexture albedo = {};
+          albedo.name = material.name + "_abledo";
+          loadTextureFromTinyGltfModel(model, albedoIndex, albedo);
+          textures.push_back(albedo);
+          albedo.colorSpace = Core::ColorSpace::NonLinear;
+        }
+
+        if (normalIndex >= 0) {
+          Core::RawTexture normal = {};
+          normal.name = material.name + "_normal";
+          loadTextureFromTinyGltfModel(model, normalIndex, normal);
+          textures.push_back(normal);
+          normal.colorSpace = Core::ColorSpace::Linear;
+        }
+      }
+
       const unsigned char *indexData =
           &indexBuffer
                .data[indexBufferView.byteOffset + indexAccessor.byteOffset];
@@ -284,37 +313,37 @@ void AssetLoader::loadGltfModelFromBinary(
 
         indices.push_back(baseVertex + index);
       }
-    }
-  }
 
-  if (!hasTangent) {
-    assert(indices.size() % 3 == 0);
-    for (size_t i = 0; i < indices.size() - 2; i += 3) {
-      glm::vec3 v1 = vertices[indices[i]].position;
-      glm::vec3 v2 = vertices[indices[i + 1]].position;
-      glm::vec3 v3 = vertices[indices[i + 2]].position;
+      if (!hasTangent) {
+        assert(indices.size() % 3 == 0);
+        for (size_t i = 0; i < indices.size() - 2; i += 3) {
+          glm::vec3 v1 = vertices[indices[i]].position;
+          glm::vec3 v2 = vertices[indices[i + 1]].position;
+          glm::vec3 v3 = vertices[indices[i + 2]].position;
 
-      glm::vec2 uv1 = vertices[indices[i]].uv;
-      glm::vec2 uv2 = vertices[indices[i + 1]].uv;
-      glm::vec2 uv3 = vertices[indices[i + 2]].uv;
+          glm::vec2 uv1 = vertices[indices[i]].uv;
+          glm::vec2 uv2 = vertices[indices[i + 1]].uv;
+          glm::vec2 uv3 = vertices[indices[i + 2]].uv;
 
-      glm::vec4 tangent = glm::vec4(
-          Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 1.0f);
+          glm::vec4 tangent = glm::vec4(
+              Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 1.0f);
 
-      glm::vec3 v1v2 = v2 - v1;
-      glm::vec3 v1v3 = v3 - v1;
-      float area = glm::length(glm::cross(v1v2, v1v3));
+          glm::vec3 v1v2 = v2 - v1;
+          glm::vec3 v1v3 = v3 - v1;
+          float area = glm::length(glm::cross(v1v2, v1v3));
 
-      vertices[indices[i]].tangent =
-          vertices[indices[i]].tangent + tangent * area;
-      vertices[indices[i + 1]].tangent =
-          vertices[indices[i + 1]].tangent + tangent * area;
-      vertices[indices[i + 2]].tangent =
-          vertices[indices[i + 2]].tangent + tangent * area;
-    }
+          vertices[indices[i]].tangent =
+              vertices[indices[i]].tangent + tangent * area;
+          vertices[indices[i + 1]].tangent =
+              vertices[indices[i + 1]].tangent + tangent * area;
+          vertices[indices[i + 2]].tangent =
+              vertices[indices[i + 2]].tangent + tangent * area;
+        }
 
-    for (auto &v : vertices) {
-      v.tangent = glm::normalize(v.tangent);
+        for (auto &v : vertices) {
+          v.tangent = glm::normalize(v.tangent);
+        }
+      }
     }
   }
 }

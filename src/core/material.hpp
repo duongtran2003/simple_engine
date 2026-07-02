@@ -19,6 +19,9 @@ private:
   TextureBinding albedo;
   TextureBinding normal;
 
+  bool hasAlbedoTexture = false;
+  bool hasNormalTexture = false;
+
 public:
   Material();
 
@@ -31,6 +34,10 @@ public:
   const TextureBinding &getNormal() const;
   Material *registerNormal(vk::DescriptorSet &set, uint32_t index,
                            const RenderContext &context);
+
+  bool hasAlbedo() { return hasAlbedoTexture; }
+
+  bool hasNormal() { return hasNormalTexture; }
 };
 } // namespace Core
 } // namespace SimpleEngine

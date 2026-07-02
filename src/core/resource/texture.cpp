@@ -95,20 +95,6 @@ void Texture::readFromRawTexture() {
   rawTexture = {};
 }
 
-unsigned char *Texture::loadImageData(const std::string &path, int &_width,
-                                      int &_height, int &_channels) {
-  unsigned char *data =
-      stbi_load(path.c_str(), &_width, &_height, &_channels, STBI_rgb_alpha);
-
-  return data;
-}
-
-void Texture::unloadImageData(unsigned char *data) {
-  if (data) {
-    stbi_image_free(data);
-  }
-}
-
 bool Texture::doLoad() {
   if (source == Source::fromRawTexture) {
     readFromRawTexture();
@@ -123,11 +109,6 @@ void Texture::doUnload() {
   renderContext.device.destroyImageView(imageView);
   renderContext.device.destroyImage(image);
   renderContext.device.freeMemory(memory);
-}
-
-void Texture::createVulkanImage(unsigned char *data, int &width, int &height,
-                                int &channels) {
-  // TODO: Implement later
 }
 
 vk::Image Texture::getImage() const { return image; }

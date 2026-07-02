@@ -9,6 +9,7 @@ Material::Material() {}
 
 Material *Material::setAlbedo(TextureBinding binding) {
   albedo = binding;
+  hasAlbedoTexture = true;
   return this;
 }
 
@@ -37,6 +38,7 @@ Material *Material::registerAlbedo(vk::DescriptorSet &set, uint32_t index,
 
 Material *Material::setNormal(TextureBinding binding) {
   normal = binding;
+  hasNormalTexture = true;
   return this;
 }
 

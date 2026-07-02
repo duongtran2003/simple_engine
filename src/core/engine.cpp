@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstring>
+#include <glm/detail/qualifier.hpp>
 #include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/quaternion_common.hpp>
@@ -14,8 +15,8 @@
 #include <glm/matrix.hpp>
 #include <glm/trigonometric.hpp>
 #include <stdexcept>
+#include <string>
 #include <tuple>
-#include <utility>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -26,6 +27,8 @@
 #include "core/entity/entity.hpp"
 #include "core/input/input.hpp"
 #include "core/input/key_code.hpp"
+#include "core/material.hpp"
+#include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/graph_resource.hpp"
 #include "core/render_graph/render_graph.hpp"
@@ -34,9 +37,10 @@
 #include "core/resource/resource_handle.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
+#include "core/resource/texture.hpp"
 #include "core/scene/scene.hpp"
 #include "core/system/culling_system.hpp"
-#include "helpers/model_loader.hpp"
+#include "helpers/asset_loader.hpp"
 #include "helpers/vulkan_helper.hpp"
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "vulkan/vulkan.hpp"
@@ -512,9 +516,32 @@ void Engine::setupExampleRenderGraph() {
 // Load different models, this stays here till GUI implementation
 std::tuple<glm::vec3, glm::vec3, glm::quat>
 loadHelmet(ResourceManager *resourceManager, MeshComponent *meshComponent) {
-  Helper::ModelLoader::loadGltfMesh(
-      "resources/models/damaged_helmet/DamagedHelmet.glb",
-      "model_damaged_helmet", *meshComponent, *resourceManager);
+  const std::string modelPath = "resources/models/damaged_helmet";
+  const std::string name = "DamagedHelmet";
+  std::vector<Mesh::Vertex> vertices;
+  std::vector<uint32_t> indices;
+  std::vector<RawTexture> textures;
+  Helper::AssetLoader::loadGltfModelFromBinary(modelPath, name, vertices,
+                                               indices, textures);
+
+  ResourceHandle<Mesh> mesh =
+      resourceManager->load<Mesh>(name, vertices, indices);
+  Core::Material material;
+  if (textures.size() >= 1) {
+    ResourceHandle<Texture> albedo =
+        resourceManager->load<Texture>(textures[0].name, textures[0]);
+
+    material.setAlbedo({.index = 0, .handle = albedo});
+  }
+
+  if (textures.size() >= 2) {
+    ResourceHandle<Texture> normal =
+        resourceManager->load<Texture>(textures[1].name, textures[1]);
+
+    material.setNormal({.index = 0, .handle = normal});
+  }
+
+  meshComponent->setMesh(mesh)->setMaterial(material);
 
   glm::vec3 position = {0.0f, 0.0f, 0.0f};
   glm::vec3 scale = {1.0f, 1.0f, 1.0f};
@@ -527,9 +554,32 @@ loadHelmet(ResourceManager *resourceManager, MeshComponent *meshComponent) {
 
 std::tuple<glm::vec3, glm::vec3, glm::quat>
 loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
-  Helper::ModelLoader::loadGltfMesh("resources/models/corset/Corset.glb",
-                                    "model_corset", *meshComponent,
-                                    *resourceManager);
+  const std::string modelPath = "resources/models/corset";
+  const std::string name = "Corset";
+  std::vector<Mesh::Vertex> vertices;
+  std::vector<uint32_t> indices;
+  std::vector<RawTexture> textures;
+  Helper::AssetLoader::loadGltfModelFromBinary(modelPath, name, vertices,
+                                               indices, textures);
+
+  ResourceHandle<Mesh> mesh =
+      resourceManager->load<Mesh>(name, vertices, indices);
+  Core::Material material;
+  if (textures.size() >= 1) {
+    ResourceHandle<Texture> albedo =
+        resourceManager->load<Texture>(textures[0].name, textures[0]);
+
+    material.setAlbedo({.index = 0, .handle = albedo});
+  }
+
+  if (textures.size() >= 2) {
+    ResourceHandle<Texture> normal =
+        resourceManager->load<Texture>(textures[1].name, textures[1]);
+
+    material.setNormal({.index = 0, .handle = normal});
+  }
+
+  meshComponent->setMesh(mesh)->setMaterial(material);
 
   glm::vec3 position = {0.0f, -0.8f, 0.0f};
   glm::vec3 scale = {30.0f, 30.0f, 30.0f};
@@ -538,20 +588,6 @@ loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
   glm::quat rotQuat = glm::angleAxis(angle, axis);
 
   return {position, scale, rotQuat};
-}
-
-std::tuple<ResourceHandle<Mesh>, glm::vec3, glm::vec3, glm::quat>
-loadDucky(ResourceManager *resourceManager) {
-  ResourceHandle<Mesh> meshResource = resourceManager->load<Mesh>(
-      "model_ducky", "resources/models/duck/Duck.glb");
-
-  glm::vec3 position = {0.0f, -0.8f, 0.0f};
-  glm::vec3 scale = {0.01f, 0.01f, 0.01f};
-  glm::vec3 axis = {1.0f, 0.0f, 0.0f};
-  float angle = glm::radians(0.0f);
-  glm::quat rotQuat = glm::angleAxis(angle, axis);
-
-  return {std::move(meshResource), position, scale, rotQuat};
 }
 
 void Engine::initRenderObjectsList() {
@@ -567,6 +603,8 @@ void Engine::initRenderObjectsList() {
   transform->setScale(eScale);
 
   auto *mesh = newEntity->getComponent<MeshComponent>();
+  auto mat = mesh->getMaterial();
+
   mesh->getMaterial()
       .registerAlbedo(renderContext.bindlessDescriptorSets, 1, renderContext)
       ->registerNormal(renderContext.bindlessDescriptorSets, 2, renderContext);

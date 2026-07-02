@@ -1,7 +1,6 @@
 #include "core/resource/mesh.hpp"
 #include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
-#include "helpers/model_loader.hpp"
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cassert>

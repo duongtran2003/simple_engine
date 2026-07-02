@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 namespace SimpleEngine {
 namespace Core {
@@ -10,6 +11,8 @@ enum class TextureWrapMode { Repeat, ClampToEdge, MirroredRepeat };
 enum class ColorSpace { Linear, NonLinear };
 
 struct RawTexture {
+  std::string name;
+
   std::vector<unsigned char> pixels;
   uint32_t width = 0;
   uint32_t height = 0;

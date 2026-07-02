@@ -27,12 +27,6 @@ private:
   uint32_t height = 0;
   uint32_t channels = 0;
 
-  unsigned char *loadImageData(const std::string &path, int &width, int &height,
-                               int &channels);
-  void unloadImageData(unsigned char *data);
-  void createVulkanImage(unsigned char *data, int &width, int &height,
-                         int &channels);
-
   void readFromRawTexture();
 
 public:
