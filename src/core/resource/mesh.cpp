@@ -7,7 +7,6 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,19 +14,21 @@
 namespace SimpleEngine {
 namespace Core {
 Mesh::Mesh(const std::string &id, const RenderContext &renderContext,
-           const std::string &modelPath)
-    : Resource(id, renderContext), modelPath(modelPath) {}
+           const std::string &path)
+    : Resource(id, renderContext), path(path) {
+  source = Source::fromFile;
+}
 
-bool Mesh::loadMeshData(const std::string &path,
-                        std::vector<Mesh::Vertex> &vertices,
-                        std::vector<uint32_t> &indices) {
-  Helper::ModelLoader::loadGltfMeshData(path, vertices, indices);
-  return true;
-};
+Mesh::Mesh(const std::string &id, const RenderContext &renderContext,
+           std::vector<Vertex> vertices, std::vector<uint32_t> indices)
+    : Resource(id, renderContext), vertices(std::move(vertices)),
+      indices(std::move(indices)) {
+  source = Source::fromMemory;
+}
 
-void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &vertices) {
+void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &v) {
   vk::Device device = renderContext.device;
-  vk::DeviceSize bufferSize = sizeof(Mesh::Vertex) * vertices.size();
+  vk::DeviceSize bufferSize = sizeof(Mesh::Vertex) * v.size();
 
   const auto &[stagingBuffer, stagingBufferMemory] =
       Helper::VulkanHelper::createBuffer(
@@ -37,7 +38,7 @@ void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &vertices) {
           renderContext);
 
   void *dataStaging = device.mapMemory(stagingBufferMemory, 0, bufferSize);
-  memcpy(dataStaging, vertices.data(), bufferSize);
+  memcpy(dataStaging, v.data(), bufferSize);
   device.unmapMemory(stagingBufferMemory);
 
   const auto &[buffer, memory] = Helper::VulkanHelper::createBuffer(
@@ -55,9 +56,9 @@ void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &vertices) {
   device.freeMemory(stagingBufferMemory);
 }
 
-void Mesh::createIndexBuffer(std::vector<uint32_t> &indices) {
+void Mesh::createIndexBuffer(std::vector<uint32_t> &i) {
   vk::Device device = renderContext.device;
-  vk::DeviceSize bufferSize = sizeof(uint32_t) * indices.size();
+  vk::DeviceSize bufferSize = sizeof(uint32_t) * i.size();
 
   const auto &[stagingBuffer, stagingBufferMemory] =
       Helper::VulkanHelper::createBuffer(
@@ -67,7 +68,7 @@ void Mesh::createIndexBuffer(std::vector<uint32_t> &indices) {
           renderContext);
 
   void *dataStaging = device.mapMemory(stagingBufferMemory, 0, bufferSize);
-  memcpy(dataStaging, indices.data(), bufferSize);
+  memcpy(dataStaging, i.data(), bufferSize);
   device.unmapMemory(stagingBufferMemory);
 
   const auto &[buffer, memory] = Helper::VulkanHelper::createBuffer(
@@ -94,20 +95,24 @@ uint32_t Mesh::getVertexCount() const { return vertexCount; }
 uint32_t Mesh::getIndexCount() const { return indexCount; }
 
 bool Mesh::doLoad() {
-  std::vector<Vertex> _vertices;
-  std::vector<uint32_t> _indices;
+  if (source == Source::fromMemory) {
+    createVertexBuffer(vertices);
+    createIndexBuffer(indices);
 
-  if (!loadMeshData(modelPath, _vertices, _indices)) {
-    return false;
+    vertexCount = static_cast<uint32_t>(vertices.size());
+    indexCount = static_cast<uint32_t>(indices.size());
+
+    // Clean up
+    vertices.clear();
+    vertices.shrink_to_fit();
+
+    indices.clear();
+    indices.shrink_to_fit();
+
+    return true;
   }
 
-  createVertexBuffer(_vertices);
-  createIndexBuffer(_indices);
-
-  vertexCount = static_cast<uint32_t>(_vertices.size());
-  indexCount = static_cast<uint32_t>(_indices.size());
-
-  return true;
+  return false;
 }
 
 void Mesh::doUnload() {

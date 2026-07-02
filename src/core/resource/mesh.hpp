@@ -26,7 +26,9 @@ private:
   enum class Source { fromFile, fromMemory };
   Source source;
 
-  std::string *path;
+  std::string path;
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
 
   vk::Buffer vertexBuffer;
   vk::DeviceMemory vertexBufferMemory;
@@ -37,17 +39,15 @@ private:
   vk::DeviceMemory indexBufferMemory;
   vk::DeviceSize indexBufferOffset;
   uint32_t indexCount = 0;
-  std::string modelPath;
 
-  bool loadMeshData(const std::string &path, std::vector<Vertex> &vertices,
-                    std::vector<uint32_t> &indices);
-
-  void createVertexBuffer(std::vector<Vertex> &vertices);
-  void createIndexBuffer(std::vector<uint32_t> &indices);
+  void createVertexBuffer(std::vector<Vertex> &v);
+  void createIndexBuffer(std::vector<uint32_t> &i);
 
 public:
   Mesh(const std::string &id, const RenderContext &renderContext,
-       const std::string &modelPath);
+       const std::string &path);
+  Mesh(const std::string &id, const RenderContext &renderContext,
+       std::vector<Vertex> vertices, std::vector<uint32_t> indices);
 
   vk::Buffer getVertexBuffer() const;
   vk::Buffer getIndexBuffer() const;

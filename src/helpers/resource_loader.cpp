@@ -102,17 +102,17 @@ void ResourceLoader::processGltfNode(const tinygltf::Model &model,
     return;
   }
   const auto &node = model.nodes[nodeIndex];
+  glm::mat4 transformMat = parentTransformMat * getGltfNodeTransform(node);
+
   if (node.mesh >= 0 && node.mesh < model.meshes.size()) {
     const auto &mesh = model.meshes[node.mesh];
-    glm::mat4 transformMat = parentTransformMat * getGltfNodeTransform(node);
-
-    bool hasTangent = false;
-    SceneNode currentNode{.name = node.name.empty() ? mesh.name : node.name,
-                          .transformMat = transformMat,
-                          .vertices = {},
-                          .indices = {}};
 
     for (const auto &primitive : mesh.primitives) {
+      SceneNode currentNode{.name = node.name.empty() ? mesh.name : node.name,
+                            .transformMat = transformMat,
+                            .vertices = {},
+                            .indices = {}};
+
       const tinygltf::Accessor &indexAccessor =
           model.accessors[primitive.indices];
       const tinygltf::BufferView &indexBufferView =
@@ -175,7 +175,7 @@ void ResourceLoader::processGltfNode(const tinygltf::Model &model,
       size_t texStride =
           hasTexCoords ? texCoordAccessor->ByteStride(*texCoordBufferView) : 0;
 
-      hasTangent =
+      bool hasTangent =
           primitive.attributes.find("TANGENT") != primitive.attributes.end();
       const tinygltf::Accessor *tangentAccessor = nullptr;
       const tinygltf::BufferView *tangentBufferView = nullptr;
@@ -264,47 +264,47 @@ void ResourceLoader::processGltfNode(const tinygltf::Model &model,
           }
         }
       }
+
+      if (!hasTangent) {
+        assert(currentNode.indices.size() % 3 == 0);
+        for (size_t i = 0; i < currentNode.indices.size() - 2; i += 3) {
+          glm::vec3 v1 = currentNode.vertices[currentNode.indices[i]].position;
+          glm::vec3 v2 =
+              currentNode.vertices[currentNode.indices[i + 1]].position;
+          glm::vec3 v3 =
+              currentNode.vertices[currentNode.indices[i + 2]].position;
+
+          glm::vec2 uv1 = currentNode.vertices[currentNode.indices[i]].uv;
+          glm::vec2 uv2 = currentNode.vertices[currentNode.indices[i + 1]].uv;
+          glm::vec2 uv3 = currentNode.vertices[currentNode.indices[i + 2]].uv;
+
+          glm::vec4 tangent = glm::vec4(
+              Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 1.0f);
+
+          glm::vec3 v1v2 = v2 - v1;
+          glm::vec3 v1v3 = v3 - v1;
+          float area = glm::length(glm::cross(v1v2, v1v3));
+
+          currentNode.vertices[currentNode.indices[i]].tangent =
+              currentNode.vertices[currentNode.indices[i]].tangent +
+              tangent * area;
+          currentNode.vertices[currentNode.indices[i + 1]].tangent =
+              currentNode.vertices[currentNode.indices[i + 1]].tangent +
+              tangent * area;
+          currentNode.vertices[currentNode.indices[i + 2]].tangent =
+              currentNode.vertices[currentNode.indices[i + 2]].tangent +
+              tangent * area;
+        }
+
+        for (auto &v : currentNode.vertices) {
+          v.tangent = glm::normalize(v.tangent);
+        }
+      }
+      nodes.push_back(currentNode);
     }
 
-    if (!hasTangent) {
-      assert(currentNode.indices.size() % 3 == 0);
-      for (size_t i = 0; i < currentNode.indices.size() - 2; i += 3) {
-        glm::vec3 v1 = currentNode.vertices[currentNode.indices[i]].position;
-        glm::vec3 v2 =
-            currentNode.vertices[currentNode.indices[i + 1]].position;
-        glm::vec3 v3 =
-            currentNode.vertices[currentNode.indices[i + 2]].position;
-
-        glm::vec2 uv1 = currentNode.vertices[currentNode.indices[i]].uv;
-        glm::vec2 uv2 = currentNode.vertices[currentNode.indices[i + 1]].uv;
-        glm::vec2 uv3 = currentNode.vertices[currentNode.indices[i + 2]].uv;
-
-        glm::vec4 tangent = glm::vec4(
-            Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 1.0f);
-
-        glm::vec3 v1v2 = v2 - v1;
-        glm::vec3 v1v3 = v3 - v1;
-        float area = glm::length(glm::cross(v1v2, v1v3));
-
-        currentNode.vertices[currentNode.indices[i]].tangent =
-            currentNode.vertices[currentNode.indices[i]].tangent +
-            tangent * area;
-        currentNode.vertices[currentNode.indices[i + 1]].tangent =
-            currentNode.vertices[currentNode.indices[i + 1]].tangent +
-            tangent * area;
-        currentNode.vertices[currentNode.indices[i + 2]].tangent =
-            currentNode.vertices[currentNode.indices[i + 2]].tangent +
-            tangent * area;
-      }
-
-      for (auto &v : currentNode.vertices) {
-        v.tangent = glm::normalize(v.tangent);
-      }
-    }
-    nodes.push_back(currentNode);
     for (int childIndex : node.children) {
-      processGltfNode(model, childIndex, currentNode.transformMat, nodes,
-                      basePath);
+      processGltfNode(model, childIndex, transformMat, nodes, basePath);
     }
   }
 }
