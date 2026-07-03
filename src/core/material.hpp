@@ -35,9 +35,9 @@ public:
   Material *registerNormal(vk::DescriptorSet &set, uint32_t index,
                            const RenderContext &context);
 
-  bool hasAlbedo() { return hasAlbedoTexture; }
+  bool hasAlbedo() const { return hasAlbedoTexture; }
 
-  bool hasNormal() { return hasNormalTexture; }
+  bool hasNormal() const { return hasNormalTexture; }
 };
 } // namespace Core
 } // namespace SimpleEngine

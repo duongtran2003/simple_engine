@@ -1,4 +1,5 @@
 #include "helpers/asset_loader.hpp"
+#include "core/raw_scene_node.hpp"
 #include "core/raw_texture.hpp"
 #include "core/resource/mesh.hpp"
 #include "helpers/math.hpp"
@@ -6,10 +7,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
+#include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -143,6 +149,208 @@ Core::TextureWrapMode AssetLoader::mapGltfWrap(int gltfWrap) {
   }
 
   return Core::TextureWrapMode::Repeat;
+}
+
+glm::mat4 AssetLoader::getNodeTransform(const tinygltf::Node &node) {
+  if (!node.matrix.empty()) {
+    return glm::make_mat4(node.matrix.data());
+  }
+
+  glm::mat4 transform = glm::mat4(1.0f);
+  if (!node.translation.empty()) {
+    transform = glm::translate(transform, glm::vec3(node.translation[0],
+                                                    node.translation[1],
+                                                    node.translation[2]));
+  }
+  if (!node.rotation.empty()) {
+    glm::quat quat = glm::quat(node.rotation[3], node.rotation[0],
+                               node.rotation[1], node.rotation[2]);
+    transform = transform * glm::mat4_cast(quat);
+  }
+  if (!node.scale.empty()) {
+    transform = glm::scale(
+        transform, glm::vec3(node.scale[0], node.scale[1], node.scale[2]));
+  }
+
+  return transform;
+}
+
+void AssetLoader::processSceneNode(const tinygltf::Model &model, int nodeIndex,
+                                   const glm::mat4 &parentTransform,
+                                   std::vector<Core::RawSceneNode> &nodes) {
+  if (nodeIndex < 0 || nodeIndex >= model.nodes.size()) {
+    return;
+  }
+
+  const auto &currentNode = model.nodes[nodeIndex];
+  glm::mat4 currentTransform = parentTransform * getNodeTransform(currentNode);
+
+  if (currentNode.mesh >= 0 && currentNode.mesh < model.meshes.size()) {
+    const auto &mesh = model.meshes[currentNode.mesh];
+
+    for (const auto &primitive : mesh.primitives) {
+      Core::RawSceneNode rawSceneNode;
+      rawSceneNode.name = mesh.name.empty() ? mesh.name : currentNode.name;
+      Math::extractTransformation(currentTransform, rawSceneNode.translation,
+                                  rawSceneNode.rotation, rawSceneNode.scale);
+
+      // Reading indices
+      const auto &indexAccessor = model.accessors[primitive.indices];
+      const auto &indexBufferView = model.bufferViews[indexAccessor.bufferView];
+      const auto &indexBuffer = model.buffers[indexBufferView.buffer];
+
+      const unsigned char *indexData =
+          &indexBuffer
+               .data[indexBufferView.byteOffset + indexAccessor.byteOffset];
+      size_t indexStride = indexAccessor.ByteStride(indexBufferView);
+      for (size_t i = 0; i < indexAccessor.count; i++) {
+        uint32_t index = 0;
+        if (indexAccessor.componentType ==
+            TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+          index =
+              *reinterpret_cast<const uint16_t *>(indexData + i * indexStride);
+        } else if (indexAccessor.componentType ==
+                   TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+          index =
+              *reinterpret_cast<const uint32_t *>(indexData + i * indexStride);
+        } else if (indexAccessor.componentType ==
+                   TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+          index =
+              *reinterpret_cast<const uint8_t *>(indexData + i * indexStride);
+        }
+
+        rawSceneNode.indices.push_back(index);
+      }
+
+      // Reading attributes
+      const auto &positionAccessor =
+          model.accessors[primitive.attributes.at("POSITION")];
+      const auto &positionBufferView =
+          model.bufferViews[positionAccessor.bufferView];
+      const auto &positionBuffer = model.buffers[positionBufferView.buffer];
+
+      size_t positionStride = positionAccessor.ByteStride(positionBufferView);
+
+      const auto &normalAccessor =
+          model.accessors[primitive.attributes.at("NORMAL")];
+      const auto &normalBufferView =
+          model.bufferViews[normalAccessor.bufferView];
+      const auto &normalBuffer = model.buffers[normalBufferView.buffer];
+
+      size_t normalStride = normalAccessor.ByteStride(normalBufferView);
+
+      bool hasUv =
+          primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end();
+      bool hasTangent =
+          primitive.attributes.find("TANGENT") != primitive.attributes.end();
+
+      const tinygltf::Accessor *uvAccessor = nullptr;
+      const tinygltf::BufferView *uvBufferView = nullptr;
+      const tinygltf::Buffer *uvBuffer = nullptr;
+      size_t uvStride = 0;
+      if (hasUv) {
+        uvAccessor = &model.accessors[primitive.attributes.at("TEXCOORD_0")];
+        uvBufferView = &model.bufferViews[uvAccessor->bufferView];
+        uvBuffer = &model.buffers[uvBufferView->buffer];
+        uvStride = uvAccessor->ByteStride(*uvBufferView);
+      }
+
+      const tinygltf::Accessor *tangentAccessor = nullptr;
+      const tinygltf::BufferView *tangentBufferView = nullptr;
+      const tinygltf::Buffer *tangentBuffer = nullptr;
+      size_t tangentStride = 0;
+      if (hasTangent) {
+        tangentAccessor = &model.accessors[primitive.attributes.at("TANGENT")];
+        tangentBufferView = &model.bufferViews[tangentAccessor->bufferView];
+        tangentBuffer = &model.buffers[tangentBufferView->buffer];
+        tangentStride = tangentAccessor->ByteStride(*tangentBufferView);
+      }
+
+      for (size_t i = 0; i < positionAccessor.count; i++) {
+        Core::Mesh::Vertex v;
+
+        const float *position = reinterpret_cast<const float *>(
+            &positionBuffer
+                 .data[positionBufferView.byteOffset +
+                       positionAccessor.byteOffset + i * positionStride]);
+        v.position = {position[0], position[1], position[2]};
+
+        const float *normal = reinterpret_cast<const float *>(
+            &normalBuffer.data[normalBufferView.byteOffset +
+                               normalAccessor.byteOffset + i * normalStride]);
+        v.normal = {normal[0], normal[1], normal[2]};
+
+        if (hasUv) {
+          const float *uv = reinterpret_cast<const float *>(
+              &uvBuffer->data[uvBufferView->byteOffset + uvAccessor->byteOffset +
+                             i * uvStride]);
+          v.uv = {uv[0], uv[1]};
+        }
+
+        if (hasTangent) {
+          const float *tangent = reinterpret_cast<const float *>(
+              &tangentBuffer
+                   ->data[tangentBufferView->byteOffset +
+                         tangentAccessor->byteOffset + i * tangentStride]);
+          v.tangent = {tangent[0], tangent[1], tangent[2], tangent[3]};
+        }
+
+        rawSceneNode.vertices.push_back(v);
+      }
+
+      if (!hasTangent) {
+        assert(rawSceneNode.indices.size() % 3 == 0);
+        for (size_t i = 0; i < rawSceneNode.indices.size() - 2; i += 3) {
+          glm::vec3 v1 =
+              rawSceneNode.vertices[rawSceneNode.indices[i]].position;
+          glm::vec3 v2 =
+              rawSceneNode.vertices[rawSceneNode.indices[i + 1]].position;
+          glm::vec3 v3 =
+              rawSceneNode.vertices[rawSceneNode.indices[i + 2]].position;
+
+          glm::vec2 uv1 = rawSceneNode.vertices[rawSceneNode.indices[i]].uv;
+          glm::vec2 uv2 = rawSceneNode.vertices[rawSceneNode.indices[i + 1]].uv;
+          glm::vec2 uv3 = rawSceneNode.vertices[rawSceneNode.indices[i + 2]].uv;
+
+          glm::vec4 tangent = glm::vec4(
+              Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 1.0f);
+
+          glm::vec3 v1v2 = v2 - v1;
+          glm::vec3 v1v3 = v3 - v1;
+          float area = glm::length(glm::cross(v1v2, v1v3));
+
+          rawSceneNode.vertices[rawSceneNode.indices[i]].tangent =
+              rawSceneNode.vertices[rawSceneNode.indices[i]].tangent +
+              tangent * area;
+          rawSceneNode.vertices[rawSceneNode.indices[i + 1]].tangent =
+              rawSceneNode.vertices[rawSceneNode.indices[i + 1]].tangent +
+              tangent * area;
+          rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent =
+              rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent +
+              tangent * area;
+        }
+
+        for (auto &v : rawSceneNode.vertices) {
+          v.tangent = glm::normalize(v.tangent);
+        }
+      }
+
+      if (primitive.material >= 0) {
+        const auto &material = model.materials[primitive.material];
+
+        int albedoIndex = material.pbrMetallicRoughness.baseColorTexture.index;
+        int normalIndex = material.normalTexture.index;
+
+        // TODO: Load texture with stbi
+      }
+
+      nodes.push_back(rawSceneNode);
+    }
+  }
+
+  for (int childIndex : currentNode.children) {
+    processSceneNode(model, childIndex, currentTransform, nodes);
+  }
 }
 
 void AssetLoader::loadKtxTexture(const std::string &path,
@@ -345,6 +553,18 @@ void AssetLoader::loadGltfModelFromBinary(
         }
       }
     }
+  }
+}
+void AssetLoader::loadGltfSceneFromGltf(
+    const std::string &path, const std::string &name,
+    std::vector<Core::RawSceneNode> &nodes) {
+  std::string pathToFile =
+      (std::filesystem::path(path) / std::filesystem::path(name)).string();
+  tinygltf::Model model = loadTinyGltfModelFromASCII(pathToFile + ".gltf");
+  tinygltf::Scene scene = model.scenes[model.defaultScene];
+
+  for (int nodeIndex : scene.nodes) {
+    processSceneNode(model, nodeIndex, glm::mat4(1.0f), nodes);
   }
 }
 } // namespace Helper

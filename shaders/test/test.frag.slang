@@ -34,23 +34,25 @@ struct PushConstants {
 
 [shader("fragment")]
 float4 fragMain(VSOutput inVert) : SV_Target {
-  float4 texColor = globalTextures[push.albedoIndex].Sample(inVert.texCoords);
+  // float4 texColor = globalTextures[push.albedoIndex].Sample(inVert.texCoords);
+  float4 texColor = float4(0.2f, 0.5f, 0.3f, 1.0f);
   float3 normal;
-  if (push.useNormalMap) {
-    normal = globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb;
-    normal = normalize(normal * 2.0f - 1.0f);
-
-    float3 N = normalize(inVert.normal);
-    // Gram-Schmidt orthogonal correction
-    float3 T = inVert.tangent - dot(inVert.tangent, N) * N;
-
-    float3 B = cross(T, N);
-    float3x3 TBN = transpose(float3x3(T, B, N));
-
-    normal = normalize(mul(TBN, normal));
-  } else {
-    normal = normalize(inVert.normal);
-  }
+  normal = normalize(inVert.normal);
+  // if (push.useNormalMap) {
+  //   normal = globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb;
+  //   normal = normalize(normal * 2.0f - 1.0f);
+  //
+  //   float3 N = normalize(inVert.normal);
+  //   // Gram-Schmidt orthogonal correction
+  //   float3 T = inVert.tangent - dot(inVert.tangent, N) * N;
+  //
+  //   float3 B = cross(T, N);
+  //   float3x3 TBN = transpose(float3x3(T, B, N));
+  //
+  //   normal = normalize(mul(TBN, normal));
+  // } else {
+  //   normal = normalize(inVert.normal);
+  // }
 
   LightProperty directionalLight = calculateDirectionalLight(ubo.directionalLightDirection, normal);
 

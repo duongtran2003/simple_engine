@@ -28,6 +28,7 @@
 #include "core/input/input.hpp"
 #include "core/input/key_code.hpp"
 #include "core/material.hpp"
+#include "core/raw_scene_node.hpp"
 #include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/graph_resource.hpp"
@@ -486,6 +487,17 @@ void Engine::setupExampleRenderGraph() {
       memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
              sizeof(ubo));
 
+      auto mat = mesh->getMaterial();
+
+      auto &material = mesh->getMaterial();
+      if (material.hasAlbedo()) {
+        material.registerAlbedo(renderContext.bindlessDescriptorSets, 1,
+                                renderContext);
+      }
+      if (material.hasNormal()) {
+        material.registerNormal(renderContext.bindlessDescriptorSets, 2,
+                                renderContext);
+      }
       const auto &albedoBinding = mesh->getMaterial().getAlbedo();
       const auto &normalBinding = mesh->getMaterial().getNormal();
       PushConstants pushConstant{
@@ -511,6 +523,39 @@ void Engine::setupExampleRenderGraph() {
   pass->setExecuteCallbackFn(passCallback);
   renderGraph->addPass(pass);
   renderGraph->compile();
+}
+
+std::vector<Entity *> loadBall(ResourceManager *resourceManager) {
+  std::vector<RawSceneNode> nodes;
+  const std::string scenePath = "resources/models/baseball_01_4k";
+  const std::string sceneName = "baseball_01_4k";
+  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
+  std::cout << "Loaded baseball: " << nodes.size() << "\n";
+
+  std::vector<Entity *> entities;
+  for (const auto &node : nodes) {
+    Entity *e = new Entity(node.name);
+
+    e->addComponent<TransformComponent>();
+    auto transform = e->getComponent<TransformComponent>();
+    transform->setPosition(node.translation)
+        ->setRotation(node.rotation)
+        ->setScale(node.scale);
+
+    e->addComponent<MeshComponent>();
+    ResourceHandle<Mesh> meshResource =
+        resourceManager->load<Mesh>(node.name, node.vertices, node.indices);
+
+    auto mesh = e->getComponent<MeshComponent>();
+    mesh->setMesh(meshResource);
+
+    Material material;
+    mesh->setMaterial(material);
+
+    entities.emplace_back(e);
+  }
+
+  return entities;
 }
 
 // Load different models, this stays here till GUI implementation
@@ -591,29 +636,10 @@ loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
 }
 
 void Engine::initRenderObjectsList() {
-  Entity *newEntity = new Entity("helmet");
-
-  newEntity->addComponent<MeshComponent>();
-  auto [ePosition, eScale, eRot] =
-      loadHelmet(resourceManager, newEntity->getComponent<MeshComponent>());
-
-  newEntity->addComponent<TransformComponent>();
-  auto *transform = newEntity->getComponent<TransformComponent>();
-  transform->setPosition(ePosition);
-  transform->setScale(eScale);
-
-  auto *mesh = newEntity->getComponent<MeshComponent>();
-  auto mat = mesh->getMaterial();
-
-  mesh->getMaterial()
-      .registerAlbedo(renderContext.bindlessDescriptorSets, 1, renderContext)
-      ->registerNormal(renderContext.bindlessDescriptorSets, 2, renderContext);
-
-  glm::quat rot = transform->getRotation();
-  rot = eRot * rot;
-  transform->setRotation(rot);
-
-  renderObjects.push_back(newEntity);
+  renderObjects = loadBall(resourceManager);
+  // NOTE: Temporary fix for small scale objects
+  renderObjects[0]->getComponent<TransformComponent>()->setScale(
+      glm::vec3(20.0f, 20.0f, 20.0f));
 }
 
 void Engine::handleInput(float delta) {
