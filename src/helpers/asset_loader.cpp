@@ -60,6 +60,14 @@ AssetLoader::loadTinyGltfModelFromASCII(const std::string &path) {
   tinygltf::Model model;
   tinygltf::TinyGLTF loader;
 
+  loader.SetImageLoader(
+      [](tinygltf::Image *, const int, std::string *, std::string *, int, int,
+         const unsigned char *, int, void *) -> bool {
+        return true; // Return true to signal "handled" without actually doing
+                     // anything
+      },
+      nullptr);
+
   std::string error;
   std::string warning;
 
@@ -195,34 +203,6 @@ void AssetLoader::processSceneNode(const tinygltf::Model &model, int nodeIndex,
       Math::extractTransformation(currentTransform, rawSceneNode.translation,
                                   rawSceneNode.rotation, rawSceneNode.scale);
 
-      // Reading indices
-      const auto &indexAccessor = model.accessors[primitive.indices];
-      const auto &indexBufferView = model.bufferViews[indexAccessor.bufferView];
-      const auto &indexBuffer = model.buffers[indexBufferView.buffer];
-
-      const unsigned char *indexData =
-          &indexBuffer
-               .data[indexBufferView.byteOffset + indexAccessor.byteOffset];
-      size_t indexStride = indexAccessor.ByteStride(indexBufferView);
-      for (size_t i = 0; i < indexAccessor.count; i++) {
-        uint32_t index = 0;
-        if (indexAccessor.componentType ==
-            TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-          index =
-              *reinterpret_cast<const uint16_t *>(indexData + i * indexStride);
-        } else if (indexAccessor.componentType ==
-                   TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-          index =
-              *reinterpret_cast<const uint32_t *>(indexData + i * indexStride);
-        } else if (indexAccessor.componentType ==
-                   TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
-          index =
-              *reinterpret_cast<const uint8_t *>(indexData + i * indexStride);
-        }
-
-        rawSceneNode.indices.push_back(index);
-      }
-
       // Reading attributes
       const auto &positionAccessor =
           model.accessors[primitive.attributes.at("POSITION")];
@@ -283,8 +263,8 @@ void AssetLoader::processSceneNode(const tinygltf::Model &model, int nodeIndex,
 
         if (hasUv) {
           const float *uv = reinterpret_cast<const float *>(
-              &uvBuffer->data[uvBufferView->byteOffset + uvAccessor->byteOffset +
-                             i * uvStride]);
+              &uvBuffer->data[uvBufferView->byteOffset +
+                              uvAccessor->byteOffset + i * uvStride]);
           v.uv = {uv[0], uv[1]};
         }
 
@@ -292,11 +272,40 @@ void AssetLoader::processSceneNode(const tinygltf::Model &model, int nodeIndex,
           const float *tangent = reinterpret_cast<const float *>(
               &tangentBuffer
                    ->data[tangentBufferView->byteOffset +
-                         tangentAccessor->byteOffset + i * tangentStride]);
+                          tangentAccessor->byteOffset + i * tangentStride]);
           v.tangent = {tangent[0], tangent[1], tangent[2], tangent[3]};
         }
 
         rawSceneNode.vertices.push_back(v);
+      }
+
+      // Reading indices
+      const auto &indexAccessor = model.accessors[primitive.indices];
+      const auto &indexBufferView = model.bufferViews[indexAccessor.bufferView];
+      const auto &indexBuffer = model.buffers[indexBufferView.buffer];
+
+      const unsigned char *indexData =
+          &indexBuffer
+               .data[indexBufferView.byteOffset + indexAccessor.byteOffset];
+      size_t indexStride = indexAccessor.ByteStride(indexBufferView);
+
+      for (size_t i = 0; i < indexAccessor.count; i++) {
+        uint32_t index = 0;
+        if (indexAccessor.componentType ==
+            TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+          index =
+              *reinterpret_cast<const uint16_t *>(indexData + i * indexStride);
+        } else if (indexAccessor.componentType ==
+                   TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+          index =
+              *reinterpret_cast<const uint32_t *>(indexData + i * indexStride);
+        } else if (indexAccessor.componentType ==
+                   TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+          index =
+              *reinterpret_cast<const uint8_t *>(indexData + i * indexStride);
+        }
+
+        rawSceneNode.indices.push_back(index);
       }
 
       if (!hasTangent) {

@@ -26,7 +26,6 @@
 #include "core/engine.hpp"
 #include "core/entity/entity.hpp"
 #include "core/input/input.hpp"
-#include "core/input/key_code.hpp"
 #include "core/material.hpp"
 #include "core/raw_scene_node.hpp"
 #include "core/raw_texture.hpp"
@@ -463,14 +462,15 @@ void Engine::setupExampleRenderGraph() {
       vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
       vk::DeviceSize offsets[] = {0};
 
-      float spinSpeedY = glm::radians(2.0f);
-      glm::quat deltaY =
-          glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
-
-      glm::quat frameRotation = deltaY;
-
-      glm::quat currentRotation = transform->getRotation();
-      transform->setRotation(frameRotation * currentRotation);
+      // float spinSpeedY = glm::radians(2.0f);
+      // glm::quat deltaY =
+      //     glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f,
+      //     0.0f));
+      //
+      // glm::quat frameRotation = deltaY;
+      //
+      // glm::quat currentRotation = transform->getRotation();
+      // transform->setRotation(frameRotation * currentRotation);
 
       glm::mat4 model = transform->getTransformMatrix();
       RenderContext::UniformBufferObject ubo{};
@@ -524,6 +524,39 @@ void Engine::setupExampleRenderGraph() {
   pass->setExecuteCallbackFn(passCallback);
   renderGraph->addPass(pass);
   renderGraph->compile();
+}
+
+std::vector<Entity *> loadScene(ResourceManager *resourceManager) {
+  std::vector<RawSceneNode> nodes;
+  const std::string scenePath = "resources/scenes/bistro";
+  const std::string sceneName = "bistro";
+  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
+  std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
+
+  std::vector<Entity *> entities;
+  for (const auto &node : nodes) {
+    Entity *e = new Entity(node.name);
+
+    e->addComponent<TransformComponent>();
+    auto transform = e->getComponent<TransformComponent>();
+    transform->setPosition(node.translation)
+        ->setRotation(node.rotation)
+        ->setScale(node.scale);
+
+    e->addComponent<MeshComponent>();
+    ResourceHandle<Mesh> meshResource =
+        resourceManager->load<Mesh>(node.name, node.vertices, node.indices);
+
+    auto mesh = e->getComponent<MeshComponent>();
+    mesh->setMesh(meshResource);
+
+    Material material;
+    mesh->setMaterial(material);
+
+    entities.emplace_back(e);
+  }
+
+  return entities;
 }
 
 std::vector<Entity *> loadBall(ResourceManager *resourceManager) {
@@ -637,10 +670,11 @@ loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
 }
 
 void Engine::initRenderObjectsList() {
-  renderObjects = loadBall(resourceManager);
-  // NOTE: Temporary fix for small scale objects
-  renderObjects[0]->getComponent<TransformComponent>()->setScale(
-      glm::vec3(20.0f, 20.0f, 20.0f));
+  renderObjects = loadScene(resourceManager);
+  // renderObjects = loadBall(resourceManager);
+  // // NOTE: Temporary fix for small scale objects
+  // renderObjects[0]->getComponent<TransformComponent>()->setScale(
+  //     glm::vec3(20.0f, 20.0f, 20.0f));
 }
 
 void Engine::handleInput(float delta) {
