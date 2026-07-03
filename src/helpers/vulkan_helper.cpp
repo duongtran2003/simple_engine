@@ -1,6 +1,6 @@
 #include "helpers/vulkan_helper.hpp"
-#include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
+#include "enums/texture.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
 #include <stdexcept>
@@ -177,41 +177,41 @@ VulkanHelper::createImage(uint32_t width, uint32_t height, vk::Format format,
 }
 
 vk::Sampler VulkanHelper::createImageSampler(
-    Core::TextureFilter magFilter, Core::TextureFilter minFilter,
-    Core::TextureWrapMode wrapS, Core::TextureWrapMode wrapT,
+    Enums::Texture::Filter magFilter, Enums::Texture::Filter minFilter,
+    Enums::Texture::Wrap wrapS, Enums::Texture::Wrap wrapT,
     const Core::RenderContext &context) {
   vk::PhysicalDeviceProperties deviceProperties =
       context.physicalDevice.getProperties();
 
   vk::Filter vkMagFilter;
-  if (magFilter == Core::TextureFilter::Linear) {
+  if (magFilter == Enums::Texture::Filter::Linear) {
     vkMagFilter = vk::Filter::eLinear;
-  } else if (magFilter == Core::TextureFilter::Nearest) {
+  } else {
     vkMagFilter = vk::Filter::eNearest;
   }
 
   vk::Filter vkMinFilter;
-  if (minFilter == Core::TextureFilter::Linear) {
+  if (minFilter == Enums::Texture::Filter::Linear) {
     vkMinFilter = vk::Filter::eLinear;
-  } else if (minFilter == Core::TextureFilter::Nearest) {
+  } else {
     vkMinFilter = vk::Filter::eNearest;
   }
 
   vk::SamplerAddressMode vkUWrap;
-  if (wrapS == Core::TextureWrapMode::MirroredRepeat) {
+  if (wrapS == Enums::Texture::Wrap::MirroredRepeat) {
     vkUWrap = vk::SamplerAddressMode::eMirroredRepeat;
-  } else if (wrapS == Core::TextureWrapMode::Repeat) {
+  } else if (wrapS == Enums::Texture::Wrap::Repeat) {
     vkUWrap = vk::SamplerAddressMode::eRepeat;
-  } else if (wrapS == Core::TextureWrapMode::ClampToEdge) {
+  } else {
     vkUWrap = vk::SamplerAddressMode::eClampToEdge;
   }
 
   vk::SamplerAddressMode vkVWrap;
-  if (wrapT == Core::TextureWrapMode::MirroredRepeat) {
+  if (wrapT == Enums::Texture::Wrap::MirroredRepeat) {
     vkVWrap = vk::SamplerAddressMode::eMirroredRepeat;
-  } else if (wrapT == Core::TextureWrapMode::Repeat) {
+  } else if (wrapT == Enums::Texture::Wrap::Repeat) {
     vkVWrap = vk::SamplerAddressMode::eRepeat;
-  } else if (wrapT == Core::TextureWrapMode::ClampToEdge) {
+  } else {
     vkVWrap = vk::SamplerAddressMode::eClampToEdge;
   }
 

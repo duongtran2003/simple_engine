@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
+#include "enums/texture.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
 #include <glm/ext/vector_float2.hpp>
@@ -33,10 +33,10 @@ public:
               vk::SampleCountFlagBits sampleCount,
               const Core::RenderContext &context);
 
-  static vk::Sampler createImageSampler(Core::TextureFilter magFilter,
-                                        Core::TextureFilter minFilter,
-                                        Core::TextureWrapMode wrapS,
-                                        Core::TextureWrapMode wrapT,
+  static vk::Sampler createImageSampler(Enums::Texture::Filter magFilter,
+                                        Enums::Texture::Filter minFilter,
+                                        Enums::Texture::Wrap wrapS,
+                                        Enums::Texture::Wrap wrapT,
                                         const Core::RenderContext &context);
 
   static vk::CommandBuffer

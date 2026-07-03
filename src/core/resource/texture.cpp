@@ -2,6 +2,7 @@
 #include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
 #include "core/resource/resource.hpp"
+#include "enums/texture.hpp"
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
@@ -25,19 +26,19 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext,
 void Texture::readFromRawTexture() {
   vk::Format textureFormat;
   if (rawTexture.componentCount == 1) {
-    textureFormat = rawTexture.colorSpace == ColorSpace::Linear
+    textureFormat = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
                         ? vk::Format::eR8Unorm
                         : vk::Format::eR8Srgb;
   } else if (rawTexture.componentCount == 2) {
-    textureFormat = rawTexture.colorSpace == ColorSpace::Linear
+    textureFormat = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
                         ? vk::Format::eR8G8Unorm
                         : vk::Format::eR8G8Srgb;
   } else if (rawTexture.componentCount == 3) {
-    textureFormat = rawTexture.colorSpace == ColorSpace::Linear
+    textureFormat = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
                         ? vk::Format::eR8G8B8Unorm
                         : vk::Format::eR8G8B8Srgb;
   } else {
-    textureFormat = rawTexture.colorSpace == ColorSpace::Linear
+    textureFormat = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
                         ? vk::Format::eR8G8B8A8Unorm
                         : vk::Format::eR8G8B8A8Srgb;
   }

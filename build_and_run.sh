@@ -15,7 +15,7 @@ if [ ! -d "$TARGET_DIR" ]; then
 fi
 
 cd "$TARGET_DIR"
-ninja SimpleEngine 
+ninja SimpleEngine -j4
 
 echo "--------------------------------------------------"
 echo "Launching SimpleEngine (${PRESET})..."

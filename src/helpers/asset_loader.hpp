@@ -3,6 +3,7 @@
 #include "core/raw_scene_node.hpp"
 #include "core/raw_texture.hpp"
 #include "core/resource/mesh.hpp"
+#include "enums/texture.hpp"
 #include <cstdint>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float3.hpp>
@@ -36,8 +37,8 @@ private:
                                            Core::RawTexture &rawTexture);
 
   // Mappers
-  static Core::TextureFilter mapGltfFilter(int gltfFilter);
-  static Core::TextureWrapMode mapGltfWrap(int gltfWrap);
+  static Enums::Texture::Filter mapGltfFilter(int gltfFilter);
+  static Enums::Texture::Wrap mapGltfWrap(int gltfWrap);
 
   static glm::mat4 getNodeTransform(const tinygltf::Node &node);
   static void processSceneNode(const tinygltf::Model &model, int nodeIndex,

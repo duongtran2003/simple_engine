@@ -2,6 +2,7 @@
 #include "core/raw_scene_node.hpp"
 #include "core/raw_texture.hpp"
 #include "core/resource/mesh.hpp"
+#include "enums/texture.hpp"
 #include "helpers/math.hpp"
 #include <cassert>
 #include <cstddef>
@@ -125,30 +126,30 @@ void AssetLoader::loadTextureFromTinyGltfModel(tinygltf::Model &model,
     rawTexture.wrapS = mapGltfWrap(sampler.wrapS);
     rawTexture.wrapT = mapGltfWrap(sampler.wrapT);
   } else {
-    rawTexture.magFilter = Core::TextureFilter::Nearest;
-    rawTexture.minFilter = Core::TextureFilter::Nearest;
-    rawTexture.wrapS = Core::TextureWrapMode::Repeat;
-    rawTexture.wrapT = Core::TextureWrapMode::Repeat;
+    rawTexture.magFilter = Enums::Texture::Filter::Nearest;
+    rawTexture.minFilter = Enums::Texture::Filter::Nearest;
+    rawTexture.wrapS = Enums::Texture::Wrap::Repeat;
+    rawTexture.wrapT = Enums::Texture::Wrap::Repeat;
   }
 }
 
-Core::TextureFilter AssetLoader::mapGltfFilter(int gltfFilter) {
+Enums::Texture::Filter AssetLoader::mapGltfFilter(int gltfFilter) {
   if (gltfFilter == 9728 || gltfFilter == 9984 || gltfFilter == 9986) {
-    return Core::TextureFilter::Nearest;
+    return Enums::Texture::Filter::Nearest;
   }
 
-  return Core::TextureFilter::Linear;
+  return Enums::Texture::Filter::Linear;
 }
 
-Core::TextureWrapMode AssetLoader::mapGltfWrap(int gltfWrap) {
+Enums::Texture::Wrap AssetLoader::mapGltfWrap(int gltfWrap) {
   if (gltfWrap == 33071) {
-    return Core::TextureWrapMode::ClampToEdge;
+    return Enums::Texture::Wrap::ClampToEdge;
   }
   if (gltfWrap == 33648) {
-    return Core::TextureWrapMode::MirroredRepeat;
+    return Enums::Texture::Wrap::MirroredRepeat;
   }
 
-  return Core::TextureWrapMode::Repeat;
+  return Enums::Texture::Wrap::Repeat;
 }
 
 glm::mat4 AssetLoader::getNodeTransform(const tinygltf::Node &node) {
@@ -469,7 +470,7 @@ void AssetLoader::loadGltfModelFromBinary(
           albedo.name = material.name + "_abledo";
           loadTextureFromTinyGltfModel(model, albedoIndex, albedo);
           textures.push_back(albedo);
-          albedo.colorSpace = Core::ColorSpace::NonLinear;
+          albedo.colorSpace = Enums::Texture::ColorSpace::NonLinear;
         }
 
         if (normalIndex >= 0) {
@@ -477,7 +478,7 @@ void AssetLoader::loadGltfModelFromBinary(
           normal.name = material.name + "_normal";
           loadTextureFromTinyGltfModel(model, normalIndex, normal);
           textures.push_back(normal);
-          normal.colorSpace = Core::ColorSpace::Linear;
+          normal.colorSpace = Enums::Texture::ColorSpace::Linear;
         }
       }
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/input/key_code.hpp"
 #include "core/render_context.hpp"
+#include "enums/input.hpp"
 #include <GLFW/glfw3.h>
 #include <array>
 #include <glm/ext/vector_float2.hpp>
@@ -21,7 +21,7 @@ public:
 private:
   static void keyCallback(GLFWwindow *window, int key, int scancode, int action,
                           int mods);
-  static void mouseCallback(GLFWwindow* window, double xpos, double ypos);
+  static void mouseCallback(GLFWwindow *window, double xpos, double ypos);
 
   const RenderContext &context;
   std::array<bool, 512> keys{false};
@@ -36,9 +36,9 @@ public:
   Input() = delete;
   Input(const RenderContext &context);
 
-  bool isKeyJustPressed(Key key) const;
-  bool isKeyHeld(Key key) const;
-  bool isKeyJustReleased(Key key) const;
+  bool isKeyJustPressed(Enums::Input::Key key) const;
+  bool isKeyHeld(Enums::Input::Key key) const;
+  bool isKeyJustReleased(Enums::Input::Key key) const;
   bool isMouseLocked() const;
   glm::vec2 getMouseDelta() const;
   void clearMouseDelta();

@@ -3,7 +3,7 @@
 #include "core/component/transform_component.hpp"
 #include "core/entity/entity.hpp"
 #include "core/input/input.hpp"
-#include "core/input/key_code.hpp"
+#include "enums/input.hpp"
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/quaternion_geometric.hpp>
 #include <glm/ext/quaternion_trigonometric.hpp>
@@ -61,27 +61,28 @@ void Camera::handleInput(float delta) {
   float speed = velocity * delta;
   auto transform = getTransform();
 
-  if (input.isKeyHeld(Key::W)) {
+  using eKey = Enums::Input::Key;
+  if (input.isKeyHeld(eKey::W)) {
     glm::vec3 position = transform->getPosition();
     position += getForward() * speed;
     transform->setPosition(position);
-  } else if (input.isKeyHeld(Key::S)) {
+  } else if (input.isKeyHeld(eKey::S)) {
     glm::vec3 position = transform->getPosition();
     position -= getForward() * speed;
     transform->setPosition(position);
-  } else if (input.isKeyHeld(Key::A)) {
+  } else if (input.isKeyHeld(eKey::A)) {
     glm::vec3 position = transform->getPosition();
     position -= getRight() * speed;
     transform->setPosition(position);
-  } else if (input.isKeyHeld(Key::D)) {
+  } else if (input.isKeyHeld(eKey::D)) {
     glm::vec3 position = transform->getPosition();
     position += getRight() * speed;
     transform->setPosition(position);
-  } else if (input.isKeyHeld(Key::Space)) {
+  } else if (input.isKeyHeld(eKey::Space)) {
     glm::vec3 position = transform->getPosition();
     position += getUp() * speed;
     transform->setPosition(position);
-  } else if (input.isKeyHeld(Key::LeftCtrl)) {
+  } else if (input.isKeyHeld(eKey::LeftCtrl)) {
     glm::vec3 position = transform->getPosition();
     position -= getUp() * speed;
     transform->setPosition(position);

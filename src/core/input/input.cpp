@@ -1,9 +1,8 @@
 #include "core/input/input.hpp"
-#include "core/input/key_code.hpp"
 #include "core/render_context.hpp"
+#include "enums/input.hpp"
 #include <GLFW/glfw3.h>
 #include <glm/ext/vector_float2.hpp>
-#include <iostream>
 
 namespace SimpleEngine {
 namespace Core {
@@ -81,18 +80,18 @@ void Input::handleMouseMove(double xpos, double ypos) {
   }
 }
 
-bool Input::isKeyJustPressed(Key key) const {
+bool Input::isKeyJustPressed(Enums::Input::Key key) const {
   int keyCode = static_cast<int>(key);
   return keyStates[keyCode] == KeyState::JustPressed;
 }
 
-bool Input::isKeyHeld(Key key) const {
+bool Input::isKeyHeld(Enums::Input::Key key) const {
   int keyCode = static_cast<int>(key);
   return keyStates[keyCode] == KeyState::Held ||
          keyStates[keyCode] == KeyState::JustPressed;
 }
 
-bool Input::isKeyJustReleased(Key key) const {
+bool Input::isKeyJustReleased(Enums::Input::Key key) const {
   int keyCode = static_cast<int>(key);
   return keyStates[keyCode] == KeyState::JustReleased;
 }

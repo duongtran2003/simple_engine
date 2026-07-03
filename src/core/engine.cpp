@@ -41,6 +41,7 @@
 #include "core/resource/texture.hpp"
 #include "core/scene/scene.hpp"
 #include "core/system/culling_system.hpp"
+#include "enums/input.hpp"
 #include "helpers/asset_loader.hpp"
 #include "helpers/vulkan_helper.hpp"
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
@@ -643,16 +644,17 @@ void Engine::initRenderObjectsList() {
 }
 
 void Engine::handleInput(float delta) {
-  if (input->isKeyJustPressed(Key::Escape) ||
-      input->isKeyJustPressed(Key::CapsLock)) {
+  using eKey = Enums::Input::Key;
+  if (input->isKeyJustPressed(eKey::Escape) ||
+      input->isKeyJustPressed(eKey::CapsLock)) {
     glfwSetWindowShouldClose(renderContext.window, true);
   }
 
-  if (input->isKeyJustPressed(Key::L)) {
+  if (input->isKeyJustPressed(eKey::L)) {
     input->toggleMouseLock();
   }
 
-  if (input->isKeyJustPressed(Key::N)) {
+  if (input->isKeyJustPressed(eKey::N)) {
     useNormalMap = !useNormalMap;
   }
 }

@@ -3,8 +3,8 @@
 #include <GLFW/glfw3.h>
 
 namespace SimpleEngine {
-namespace Core {
-
+namespace Enums {
+namespace Input {
 enum class Key : int {
   A = GLFW_KEY_A,
   B = GLFW_KEY_B,
@@ -59,6 +59,6 @@ enum class Key : int {
   Left = GLFW_KEY_LEFT,
   Right = GLFW_KEY_RIGHT
 };
-
-} // namespace Core
+};
+} // namespace Enums
 } // namespace SimpleEngine
