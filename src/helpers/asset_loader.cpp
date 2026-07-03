@@ -199,7 +199,7 @@ void AssetLoader::processSceneNode(const tinygltf::Model &model, int nodeIndex,
 
     for (const auto &primitive : mesh.primitives) {
       Core::RawSceneNode rawSceneNode;
-      rawSceneNode.name = mesh.name.empty() ? mesh.name : currentNode.name;
+      rawSceneNode.name = mesh.name.empty() ? currentNode.name : mesh.name;
       Math::extractTransformation(currentTransform, rawSceneNode.translation,
                                   rawSceneNode.rotation, rawSceneNode.scale);
 
