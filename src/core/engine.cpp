@@ -61,13 +61,19 @@ Engine::Engine() {
                                                     .width = 1280,
                                                     .height = 720};
   renderContext = RenderContext(createInfo);
-  renderContext.setMsaaSamples(vk::SampleCountFlagBits::e16);
+  renderContext.setMsaaSamples(vk::SampleCountFlagBits::e1);
   resourceManager = new ResourceManager(renderContext);
   input = new Input(renderContext);
   camera = new Camera(*input);
   camera->setVFov(60.0f);
   float aspect = (float)renderContext.width / (float)renderContext.height;
   camera->setAspectRatio(aspect);
+  camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
+
+  glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
+  glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f), cameraRotateAxis);
+  camera->getTransform()->setRotation(cameraRot *
+                                      camera->getTransform()->getRotation());
 
   cullingSystem = new CullingSystem(camera);
   scene = new Scene(renderContext, *camera, *cullingSystem);
@@ -407,17 +413,18 @@ void Engine::setupExampleRenderGraph() {
         commandBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
     vk::RenderingAttachmentInfoKHR colorAttachment{
-        .imageView = colorResource->getView(),
-        .imageLayout = colorResource->getLayout(),
-
-        .resolveMode = vk::ResolveModeFlagBits::eAverage,
-        .resolveImageView = finalColor->getView(),
-        .resolveImageLayout = finalColor->getLayout(),
-
+        .imageView = finalColor->getView(),
+        .imageLayout = finalColor->getLayout(),
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eDontCare,
         .clearValue =
             vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
+
+    if (renderContext.msaaSamples != vk::SampleCountFlagBits::e1) {
+      colorAttachment.resolveMode = vk::ResolveModeFlagBits::eAverage;
+      colorAttachment.resolveImageView = finalColor->getView();
+      colorAttachment.resolveImageLayout = finalColor->getLayout();
+    }
 
     vk::RenderingAttachmentInfoKHR depthAttachment{
         .imageView = depthImage->getView(),
@@ -479,10 +486,16 @@ void Engine::setupExampleRenderGraph() {
       ubo.view = camera->getCamera()->getViewMatrix();
       ubo.proj = camera->getCamera()->getProjectionMatrix();
 
-      ubo.directionalLightDirection = glm::vec3(-4.0f, -3.0f, -1.0f);
+      // ubo.directionalLightDirection = glm::vec3(-4.0f, -3.0f, -1.0f);
+      // ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
+      //
+      // ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
+      // ubo.pointLightColor = glm::vec3(1.0f);
+
+      ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
       ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
-      ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
+      ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
       ubo.pointLightColor = glm::vec3(1.0f);
 
       memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
@@ -528,8 +541,8 @@ void Engine::setupExampleRenderGraph() {
 
 std::vector<Entity *> loadScene(ResourceManager *resourceManager) {
   std::vector<RawSceneNode> nodes;
-  const std::string scenePath = "resources/scenes/bistro";
-  const std::string sceneName = "bistro";
+  const std::string scenePath = "resources/scenes/sponza";
+  const std::string sceneName = "Sponza";
   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
 

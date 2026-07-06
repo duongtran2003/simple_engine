@@ -197,9 +197,13 @@ void AssetLoader::processSceneNode(const tinygltf::Model &model, int nodeIndex,
   if (currentNode.mesh >= 0 && currentNode.mesh < model.meshes.size()) {
     const auto &mesh = model.meshes[currentNode.mesh];
 
+    uint32_t currentMeshIndex = 0;
     for (const auto &primitive : mesh.primitives) {
+      currentMeshIndex += 1;
       Core::RawSceneNode rawSceneNode;
-      rawSceneNode.name = mesh.name.empty() ? currentNode.name : mesh.name;
+      rawSceneNode.name =
+          mesh.name.empty() ? currentNode.name + "_mesh_" : mesh.name;
+      rawSceneNode.name += "_" + std::to_string(currentMeshIndex);
       Math::extractTransformation(currentTransform, rawSceneNode.translation,
                                   rawSceneNode.rotation, rawSceneNode.scale);
 
