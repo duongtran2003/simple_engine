@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -391,22 +392,11 @@ void Engine::setupExampleRenderGraph() {
       renderContext.msaaSamples, renderContext);
   renderGraph->addResource(depthResource);
 
-  GraphResource *colorResource = new GraphResource(
-      "color_image", renderContext.swapChainExtent.width,
-      renderContext.swapChainExtent.height,
-      renderContext.swapChainSurfaceFormat.format, vk::ImageLayout::eUndefined,
-      vk::ImageAspectFlagBits::eColor, vk::ImageUsageFlagBits::eColorAttachment,
-      renderContext.msaaSamples, renderContext);
-  renderGraph->addResource(colorResource);
-
   RenderPass *pass = new RenderPass("example_pass", renderContext);
   pass->addOutput("final_color");
   const auto passCallback = [&](vk::CommandBuffer &commandBuffer) {
     GraphResource *finalColor = renderGraph->getResource("final_color");
     finalColor->transitionLayout(commandBuffer,
-                                 vk::ImageLayout::eColorAttachmentOptimal);
-    GraphResource *colorImage = renderGraph->getResource("color_image");
-    colorImage->transitionLayout(commandBuffer,
                                  vk::ImageLayout::eColorAttachmentOptimal);
     GraphResource *depthImage = renderGraph->getResource("depth_image");
     depthImage->transitionLayout(
@@ -419,12 +409,6 @@ void Engine::setupExampleRenderGraph() {
         .storeOp = vk::AttachmentStoreOp::eDontCare,
         .clearValue =
             vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
-
-    if (renderContext.msaaSamples != vk::SampleCountFlagBits::e1) {
-      colorAttachment.resolveMode = vk::ResolveModeFlagBits::eAverage;
-      colorAttachment.resolveImageView = finalColor->getView();
-      colorAttachment.resolveImageLayout = finalColor->getLayout();
-    }
 
     vk::RenderingAttachmentInfoKHR depthAttachment{
         .imageView = depthImage->getView(),
@@ -501,17 +485,6 @@ void Engine::setupExampleRenderGraph() {
       memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
              sizeof(ubo));
 
-      auto mat = mesh->getMaterial();
-
-      auto &material = mesh->getMaterial();
-      if (material.hasAlbedo()) {
-        material.registerAlbedo(renderContext.bindlessDescriptorSets, 1,
-                                renderContext);
-      }
-      if (material.hasNormal()) {
-        material.registerNormal(renderContext.bindlessDescriptorSets, 2,
-                                renderContext);
-      }
       const auto &albedoBinding = mesh->getMaterial().getAlbedo();
       const auto &normalBinding = mesh->getMaterial().getNormal();
       PushConstants pushConstant{
@@ -539,7 +512,8 @@ void Engine::setupExampleRenderGraph() {
   renderGraph->compile();
 }
 
-std::vector<Entity *> loadScene(ResourceManager *resourceManager) {
+std::vector<Entity *> loadScene(ResourceManager *resourceManager,
+                                RenderContext &renderContext) {
   std::vector<RawSceneNode> nodes;
   const std::string scenePath = "resources/scenes/sponza";
   const std::string sceneName = "Sponza";
@@ -547,6 +521,10 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager) {
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
 
   std::vector<Entity *> entities;
+
+  std::unordered_map<std::string, int> textureSlots;
+  int nextSlot = -1;
+
   for (const auto &node : nodes) {
     Entity *e = new Entity(node.name);
 
@@ -564,7 +542,40 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager) {
     mesh->setMesh(meshResource);
 
     Material material;
+    if (node.textures.size() >= 1) {
+      ResourceHandle<Texture> albedo = resourceManager->load<Texture>(
+          node.textures[0].name, node.textures[0]);
+
+      material.setAlbedo({.index = 0, .handle = albedo});
+
+      if (textureSlots.find(albedo->getId()) == textureSlots.end()) {
+        // New resource loaded
+        nextSlot += 1;
+        textureSlots[albedo.getId()] = nextSlot;
+      }
+
+      material.registerAlbedo(renderContext.bindlessDescriptorSets,
+                              textureSlots.find(albedo.getId())->second,
+                              renderContext);
+    }
+    if (node.textures.size() >= 2) {
+      ResourceHandle<Texture> normal = resourceManager->load<Texture>(
+          node.textures[1].name, node.textures[1]);
+
+      material.setNormal({.index = 0, .handle = normal});
+
+      if (textureSlots.find(normal->getId()) == textureSlots.end()) {
+        // New resource loaded
+        nextSlot += 1;
+        textureSlots[normal.getId()] = nextSlot;
+      }
+
+      material.registerNormal(renderContext.bindlessDescriptorSets,
+                              textureSlots.find(normal.getId())->second,
+                              renderContext);
+    }
     mesh->setMaterial(material);
+    std::cout << "3\n";
 
     entities.emplace_back(e);
   }
@@ -683,7 +694,7 @@ loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
 }
 
 void Engine::initRenderObjectsList() {
-  renderObjects = loadScene(resourceManager);
+  renderObjects = loadScene(resourceManager, renderContext);
   // renderObjects = loadBall(resourceManager);
   // // NOTE: Temporary fix for small scale objects
   // renderObjects[0]->getComponent<TransformComponent>()->setScale(

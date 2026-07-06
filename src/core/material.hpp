@@ -5,6 +5,7 @@
 #include "core/resource/texture.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
+#include <glm/ext/vector_float3.hpp>
 
 namespace SimpleEngine {
 namespace Core {
@@ -21,6 +22,8 @@ private:
 
   bool hasAlbedoTexture = false;
   bool hasNormalTexture = false;
+
+  glm::vec3 baseColorFactor;
 
 public:
   Material();

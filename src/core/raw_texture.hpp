@@ -2,10 +2,15 @@
 
 #include "enums/texture.hpp"
 #include <cstdint>
+#include <glm/ext/vector_float4.hpp>
 #include <string>
 #include <vector>
 namespace SimpleEngine {
 namespace Core {
+
+struct PbrTextureProperty {
+  glm::vec4 baseColorFactor;
+};
 
 struct RawTexture {
   std::string name;
@@ -14,6 +19,8 @@ struct RawTexture {
   uint32_t width = 0;
   uint32_t height = 0;
   uint32_t componentCount = 4;
+
+  PbrTextureProperty pbrProperty = {.baseColorFactor = glm::vec4(1.0f)};
 
   Enums::Texture::Filter magFilter = Enums::Texture::Filter::Linear;
   Enums::Texture::Filter minFilter = Enums::Texture::Filter::Linear;

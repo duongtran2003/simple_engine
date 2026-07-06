@@ -18,8 +18,11 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
@@ -60,13 +63,10 @@ AssetLoader::loadTinyGltfModelFromASCII(const std::string &path) {
   tinygltf::Model model;
   tinygltf::TinyGLTF loader;
 
-  loader.SetImageLoader(
-      [](tinygltf::Image *, const int, std::string *, std::string *, int, int,
-         const unsigned char *, int, void *) -> bool {
-        return true; // Return true to signal "handled" without actually doing
-                     // anything
-      },
-      nullptr);
+  loader.SetImageLoader([](tinygltf::Image *, const int, std::string *,
+                           std::string *, int, int, const unsigned char *, int,
+                           void *) -> bool { return true; },
+                        nullptr);
 
   std::string error;
   std::string warning;
@@ -90,9 +90,10 @@ AssetLoader::loadTinyGltfModelFromASCII(const std::string &path) {
   return model;
 }
 
-void AssetLoader::loadTextureFromTinyGltfModel(tinygltf::Model &model,
-                                               int textureIndex,
-                                               Core::RawTexture &rawTexture) {
+void AssetLoader::loadTextureFromTinyGltfModel(
+    const tinygltf::Model &model, int textureIndex,
+    Core::RawTexture &rawTexture, TextureLoadMode loadMode,
+    std::optional<std::string_view> scenePath) {
   if (textureIndex < 0 || textureIndex >= model.textures.size()) {
     throw std::runtime_error(
         "AssetLoader::loadTextureFromTinyGltfModel::ERROR: Out of bound. "
@@ -113,10 +114,21 @@ void AssetLoader::loadTextureFromTinyGltfModel(tinygltf::Model &model,
   }
 
   const tinygltf::Image &image = model.images[imageIndex];
-  rawTexture.pixels = image.image;
-  rawTexture.width = static_cast<uint32_t>(image.width);
-  rawTexture.height = static_cast<uint32_t>(image.height);
-  rawTexture.componentCount = static_cast<uint32_t>(image.component);
+  if (loadMode == TextureLoadMode::fromBinary) {
+    rawTexture.pixels = image.image;
+    rawTexture.width = static_cast<uint32_t>(image.width);
+    rawTexture.height = static_cast<uint32_t>(image.height);
+    rawTexture.componentCount = static_cast<uint32_t>(image.component);
+  } else if (loadMode == TextureLoadMode::fromUri) {
+    if (!scenePath.has_value()) {
+      throw std::runtime_error(
+          "AssetLoader::loadTextureFromTinyGltfModel::ERROR: No scene path is "
+          "provided to load texture from uri.");
+    }
+    std::string texturePath =
+        (std::filesystem::path(scenePath.value()) / image.uri).string();
+    loadImageTexture(texturePath, rawTexture);
+  }
 
   int samplerIndex = texture.sampler;
   if (samplerIndex < 0 || samplerIndex >= model.samplers.size()) {
@@ -184,9 +196,11 @@ glm::mat4 AssetLoader::getNodeTransform(const tinygltf::Node &node) {
   return transform;
 }
 
-void AssetLoader::processSceneNode(const tinygltf::Model &model, int nodeIndex,
-                                   const glm::mat4 &parentTransform,
-                                   std::vector<Core::RawSceneNode> &nodes) {
+void AssetLoader::processSceneNode(
+    const tinygltf::Model &model, int nodeIndex,
+    const glm::mat4 &parentTransform, std::vector<Core::RawSceneNode> &nodes,
+    std::unordered_map<std::string, int> &texturesMap,
+    const std::string &scenePath) {
   if (nodeIndex < 0 || nodeIndex >= model.nodes.size()) {
     return;
   }
@@ -355,7 +369,41 @@ void AssetLoader::processSceneNode(const tinygltf::Model &model, int nodeIndex,
         int albedoIndex = material.pbrMetallicRoughness.baseColorTexture.index;
         int normalIndex = material.normalTexture.index;
 
-        // TODO: Load texture with stbi
+        if (albedoIndex >= 0) {
+          Core::RawTexture albedo = {};
+          albedo.name = material.name + "_" +
+                        std::to_string(primitive.material) + "_abledo";
+          auto it = texturesMap.find(albedo.name);
+          if (it == texturesMap.end()) {
+            loadTextureFromTinyGltfModel(model, albedoIndex, albedo,
+                                         TextureLoadMode::fromUri, scenePath);
+            texturesMap[albedo.name] = 1;
+          }
+          albedo.colorSpace = Enums::Texture::ColorSpace::NonLinear;
+
+          const std::vector<double> &colorFactor =
+              material.pbrMetallicRoughness.baseColorFactor;
+          if (!colorFactor.empty()) {
+            albedo.pbrProperty.baseColorFactor = {
+                colorFactor[0], colorFactor[1], colorFactor[2], colorFactor[3]};
+          }
+
+          rawSceneNode.textures.push_back(albedo);
+        }
+
+        if (normalIndex >= 0) {
+          Core::RawTexture normal = {};
+          normal.name = material.name + "_" +
+                        std::to_string(primitive.material) + "_normal";
+          auto it = texturesMap.find(normal.name);
+          if (it == texturesMap.end()) {
+            loadTextureFromTinyGltfModel(model, normalIndex, normal,
+                                         TextureLoadMode::fromUri, scenePath);
+            texturesMap[normal.name] = 1;
+          }
+          normal.colorSpace = Enums::Texture::ColorSpace::Linear;
+          rawSceneNode.textures.push_back(normal);
+        }
       }
 
       nodes.push_back(rawSceneNode);
@@ -363,12 +411,32 @@ void AssetLoader::processSceneNode(const tinygltf::Model &model, int nodeIndex,
   }
 
   for (int childIndex : currentNode.children) {
-    processSceneNode(model, childIndex, currentTransform, nodes);
+    processSceneNode(model, childIndex, currentTransform, nodes, texturesMap,
+                     scenePath);
   }
 }
 
 void AssetLoader::loadKtxTexture(const std::string &path,
                                  Core::RawTexture &rawTexture) {}
+void AssetLoader::loadImageTexture(const std::string &path,
+                                   Core::RawTexture &rawTexture) {
+  int w, h, channels;
+  unsigned char *pixels =
+      stbi_load(path.c_str(), &w, &h, &channels, STBI_rgb_alpha);
+
+  if (!pixels) {
+    throw std::runtime_error(
+        "AssetLoader::LoadImageTexture::ERROR: Failed to load texture at " +
+        path);
+  }
+
+  size_t imageSize = w * h * 4;
+  rawTexture.pixels = std::vector<unsigned char>(pixels, pixels + imageSize);
+  rawTexture.width = w;
+  rawTexture.height = h;
+  rawTexture.componentCount = 4;
+  stbi_image_free(pixels);
+}
 void AssetLoader::loadGltfModelFromBinary(
     const std::string &path, const std::string &name,
     std::vector<Core::Mesh::Vertex> &vertices, std::vector<uint32_t> &indices,
@@ -480,18 +548,30 @@ void AssetLoader::loadGltfModelFromBinary(
 
         if (albedoIndex >= 0) {
           Core::RawTexture albedo = {};
-          albedo.name = material.name + "_abledo";
-          loadTextureFromTinyGltfModel(model, albedoIndex, albedo);
-          textures.push_back(albedo);
+          albedo.name = material.name + "_" +
+                        std::to_string(primitive.material) + "_abledo";
+          loadTextureFromTinyGltfModel(model, albedoIndex, albedo,
+                                       TextureLoadMode::fromBinary);
+
+          const std::vector<double> &colorFactor =
+              material.pbrMetallicRoughness.baseColorFactor;
+          if (!colorFactor.empty()) {
+            albedo.pbrProperty.baseColorFactor = {
+                colorFactor[0], colorFactor[1], colorFactor[2], colorFactor[3]};
+          }
+
           albedo.colorSpace = Enums::Texture::ColorSpace::NonLinear;
+          textures.push_back(albedo);
         }
 
         if (normalIndex >= 0) {
           Core::RawTexture normal = {};
-          normal.name = material.name + "_normal";
-          loadTextureFromTinyGltfModel(model, normalIndex, normal);
-          textures.push_back(normal);
+          normal.name = material.name + "_" +
+                        std::to_string(primitive.material) + "_normal";
+          loadTextureFromTinyGltfModel(model, normalIndex, normal,
+                                       TextureLoadMode::fromBinary);
           normal.colorSpace = Enums::Texture::ColorSpace::Linear;
+          textures.push_back(normal);
         }
       }
 
@@ -577,8 +657,10 @@ void AssetLoader::loadGltfSceneFromGltf(
   tinygltf::Model model = loadTinyGltfModelFromASCII(pathToFile + ".gltf");
   tinygltf::Scene scene = model.scenes[model.defaultScene];
 
+  std::unordered_map<std::string, int> texturesMap;
   for (int nodeIndex : scene.nodes) {
-    processSceneNode(model, nodeIndex, glm::mat4(1.0f), nodes);
+    processSceneNode(model, nodeIndex, glm::mat4(1.0f), nodes, texturesMap,
+                     path);
   }
 }
 } // namespace Helper
