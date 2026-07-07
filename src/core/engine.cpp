@@ -482,8 +482,8 @@ void Engine::setupExampleRenderGraph() {
           .modelMatrix = model,
           .cameraPos = camera->getTransform()->getPosition(),
           .albedoIndex = albedoIndex,
-          .normalIndex = normalIndex,
-          .useNormalMap = static_cast<uint32_t>(useNormalMap ? 1 : 0)};
+          .normalIndex = 0,
+          .useNormalMap = static_cast<uint32_t>(normalIndex != 0 ? 1 : 0)};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
                                   vk::ShaderStageFlagBits::eVertex |

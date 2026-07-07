@@ -23,10 +23,9 @@ public:
   struct PushConstants {
     alignas(16) glm::mat4 modelMatrix;
     alignas(16) glm::vec3 cameraPos;
-    alignas(16) glm::vec4 baseCol;
-    alignas(16) uint32_t albedoIndex;
-    alignas(16) uint32_t normalIndex;
-    alignas(16) uint32_t useNormalMap;
+    alignas(4) uint32_t albedoIndex;
+    alignas(4) uint32_t normalIndex;
+    alignas(4) uint32_t useNormalMap;
   };
 
 private:

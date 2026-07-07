@@ -24,7 +24,6 @@ ConstantBuffer<UniformBuffer> ubo;
 struct PushConstants {
   float4x4 modelMatrix;
   float3 cameraPos;
-  float4 baseCol;
   uint albedoIndex;
   uint normalIndex;
   bool useNormalMap;
