@@ -658,7 +658,8 @@ void AssetLoader::loadGltfModelFromBinary(
         }
 
         for (auto &v : vertices) {
-          v.tangent = glm::normalize(v.tangent);
+          v.tangent =
+              glm::vec4(glm::normalize(glm::vec3(v.tangent)), v.tangent.w);
         }
       }
     }
