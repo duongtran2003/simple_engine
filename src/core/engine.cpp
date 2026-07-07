@@ -475,13 +475,14 @@ void Engine::setupExampleRenderGraph() {
       memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
              sizeof(ubo));
 
+      const auto &mat = mesh->getMaterial();
       const auto &albedoBinding = mesh->getMaterial().getAlbedo();
       const auto &normalBinding = mesh->getMaterial().getNormal();
       PushConstants pushConstant{
           .modelMatrix = model,
           .cameraPos = camera->getTransform()->getPosition(),
-          .albedoIndex = albedoBinding.index,
-          .normalIndex = normalBinding.index,
+          .albedoIndex = mat.hasAlbedo() ? albedoBinding.index : 0,
+          .normalIndex = mat.hasNormal() ? normalBinding.index : 0,
           .useNormalMap = static_cast<uint32_t>(useNormalMap ? 1 : 0)};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
@@ -508,7 +509,7 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
   std::vector<Entity *> entities;
 
   std::unordered_map<std::string, int> textureSlots;
-  int nextSlot = -1;
+  int nextSlot = 0;
 
   for (const auto &node : nodes) {
     Entity *e = new Entity(node.name);
@@ -533,22 +534,22 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
       ResourceHandle<Texture> albedo =
           resourceManager->load<Texture>(rawAlbedo.name, rawAlbedo);
 
-      int slot = 0;
       auto it = textureSlots.find(albedo.getId());
       if (it == textureSlots.end()) {
         nextSlot += 1;
         textureSlots[albedo.getId()] = nextSlot;
       }
 
-      slot = textureSlots[albedo.getId()];
+      material.setPbrBaseColorFactor(
+          node.textures[0].pbrProperty.baseColorFactor);
+
+      int slot = textureSlots[albedo.getId()];
       material.setAlbedo(
           {.index = static_cast<uint32_t>(slot), .handle = albedo});
 
       material.registerAlbedo(renderContext.bindlessDescriptorSets,
                               textureSlots.find(albedo.getId())->second,
                               renderContext);
-      material.setPbrBaseColorFactor(
-          node.textures[0].pbrProperty.baseColorFactor);
     }
 
     const RawTexture &rawNormal = node.textures[static_cast<size_t>(
@@ -557,14 +558,13 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
       ResourceHandle<Texture> normal =
           resourceManager->load<Texture>(rawNormal.name, rawNormal);
 
-      int slot = 0;
       auto it = textureSlots.find(normal.getId());
       if (it == textureSlots.end()) {
         nextSlot += 1;
         textureSlots[normal.getId()] = nextSlot;
       }
 
-      slot = textureSlots[normal.getId()];
+      int slot = textureSlots[normal.getId()];
       material.setNormal(
           {.index = static_cast<uint32_t>(slot), .handle = normal});
 
@@ -572,8 +572,8 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
                               textureSlots.find(normal.getId())->second,
                               renderContext);
     }
-    mesh->setMaterial(material);
 
+    mesh->setMaterial(material);
     entities.emplace_back(e);
   }
 
