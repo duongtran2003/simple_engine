@@ -16,7 +16,6 @@
 #include <glm/trigonometric.hpp>
 #include <stdexcept>
 #include <string>
-#include <tuple>
 #include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -476,14 +475,14 @@ void Engine::setupExampleRenderGraph() {
              sizeof(ubo));
 
       const auto &mat = mesh->getMaterial();
-      const auto &albedoBinding = mesh->getMaterial().getAlbedo();
-      const auto &normalBinding = mesh->getMaterial().getNormal();
+      uint32_t albedoIndex = mat.hasAlbedo() ? mat.getAlbedo().index : 0;
+      uint32_t normalIndex = mat.hasNormal() ? mat.getNormal().index : 0;
+      
       PushConstants pushConstant{
           .modelMatrix = model,
           .cameraPos = camera->getTransform()->getPosition(),
-          .baseCol = mat.getPbrBaseColorFactor(),
-          .albedoIndex = albedoBinding.index,
-          .normalIndex = normalBinding.index,
+          .albedoIndex = albedoIndex,
+          .normalIndex = normalIndex,
           .useNormalMap = static_cast<uint32_t>(useNormalMap ? 1 : 0)};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
@@ -552,8 +551,6 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
         material.registerAlbedo(renderContext.bindlessDescriptorSets,
                                 textureSlots.find(albedo.getId())->second,
                                 renderContext);
-      } else {
-        material.setAlbedo({.index = 0, .handle = {}});
       }
     }
 
@@ -577,8 +574,6 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
       material.registerNormal(renderContext.bindlessDescriptorSets,
                               textureSlots.find(normal.getId())->second,
                               renderContext);
-    } else {
-      material.setNormal({.index = static_cast<uint32_t>(0), .handle = {}});
     }
 
     mesh->setMaterial(material);
@@ -625,96 +620,96 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
   return entities;
 }
 
-std::vector<Entity *> loadBall(ResourceManager *resourceManager,
-                               RenderContext &renderContext, Camera *camera) {
-  std::vector<RawSceneNode> nodes;
-  const std::string scenePath = "resources/models/baseball_01_4k";
-  const std::string sceneName = "baseball_01_4k";
-  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
-  std::cout << "Loaded baseball: " << nodes.size() << "\n";
-
-  std::vector<Entity *> entities =
-      processNodesList(nodes, resourceManager, renderContext);
-
-  return entities;
-}
+// std::vector<Entity *> loadBall(ResourceManager *resourceManager,
+//                                RenderContext &renderContext, Camera *camera) {
+//   std::vector<RawSceneNode> nodes;
+//   const std::string scenePath = "resources/models/baseball_01_4k";
+//   const std::string sceneName = "baseball_01_4k";
+//   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
+//   std::cout << "Loaded baseball: " << nodes.size() << "\n";
+//
+//   std::vector<Entity *> entities =
+//       processNodesList(nodes, resourceManager, renderContext);
+//
+//   return entities;
+// }
 
 // Load different models, this stays here till GUI implementation
-std::tuple<glm::vec3, glm::vec3, glm::quat>
-loadHelmet(ResourceManager *resourceManager, MeshComponent *meshComponent) {
-  const std::string modelPath = "resources/models/damaged_helmet";
-  const std::string name = "DamagedHelmet";
-  std::vector<Mesh::Vertex> vertices;
-  std::vector<uint32_t> indices;
-  std::vector<RawTexture> textures;
-  Helper::AssetLoader::loadGltfModelFromBinary(modelPath, name, vertices,
-                                               indices, textures);
-
-  ResourceHandle<Mesh> mesh =
-      resourceManager->load<Mesh>(name, vertices, indices);
-  Core::Material material;
-  if (textures.size() >= 1) {
-    ResourceHandle<Texture> albedo =
-        resourceManager->load<Texture>(textures[0].name, textures[0]);
-
-    material.setAlbedo({.index = 0, .handle = albedo});
-  }
-
-  if (textures.size() >= 2) {
-    ResourceHandle<Texture> normal =
-        resourceManager->load<Texture>(textures[1].name, textures[1]);
-
-    material.setNormal({.index = 0, .handle = normal});
-  }
-
-  meshComponent->setMesh(mesh)->setMaterial(material);
-
-  glm::vec3 position = {0.0f, 0.0f, 0.0f};
-  glm::vec3 scale = {1.0f, 1.0f, 1.0f};
-  glm::vec3 axis = {1.0f, 0.0f, 0.0f};
-  float angle = glm::radians(90.0f);
-  glm::quat rotQuat = glm::angleAxis(angle, axis);
-
-  return {position, scale, rotQuat};
-}
-
-std::tuple<glm::vec3, glm::vec3, glm::quat>
-loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
-  const std::string modelPath = "resources/models/corset";
-  const std::string name = "Corset";
-  std::vector<Mesh::Vertex> vertices;
-  std::vector<uint32_t> indices;
-  std::vector<RawTexture> textures;
-  Helper::AssetLoader::loadGltfModelFromBinary(modelPath, name, vertices,
-                                               indices, textures);
-
-  ResourceHandle<Mesh> mesh =
-      resourceManager->load<Mesh>(name, vertices, indices);
-  Core::Material material;
-  if (textures.size() >= 1) {
-    ResourceHandle<Texture> albedo =
-        resourceManager->load<Texture>(textures[0].name, textures[0]);
-
-    material.setAlbedo({.index = 0, .handle = albedo});
-  }
-
-  if (textures.size() >= 2) {
-    ResourceHandle<Texture> normal =
-        resourceManager->load<Texture>(textures[1].name, textures[1]);
-
-    material.setNormal({.index = 0, .handle = normal});
-  }
-
-  meshComponent->setMesh(mesh)->setMaterial(material);
-
-  glm::vec3 position = {0.0f, -0.8f, 0.0f};
-  glm::vec3 scale = {30.0f, 30.0f, 30.0f};
-  glm::vec3 axis = {0.0f, 1.0f, 0.0f};
-  float angle = glm::radians(180.0f);
-  glm::quat rotQuat = glm::angleAxis(angle, axis);
-
-  return {position, scale, rotQuat};
-}
+// std::tuple<glm::vec3, glm::vec3, glm::quat>
+// loadHelmet(ResourceManager *resourceManager, MeshComponent *meshComponent) {
+//   const std::string modelPath = "resources/models/damaged_helmet";
+//   const std::string name = "DamagedHelmet";
+//   std::vector<Mesh::Vertex> vertices;
+//   std::vector<uint32_t> indices;
+//   std::vector<RawTexture> textures;
+//   Helper::AssetLoader::loadGltfModelFromBinary(modelPath, name, vertices,
+//                                                indices, textures);
+//
+//   ResourceHandle<Mesh> mesh =
+//       resourceManager->load<Mesh>(name, vertices, indices);
+//   Core::Material material;
+//   if (textures.size() >= 1) {
+//     ResourceHandle<Texture> albedo =
+//         resourceManager->load<Texture>(textures[0].name, textures[0]);
+//
+//     material.setAlbedo({.index = 0, .handle = albedo});
+//   }
+//
+//   if (textures.size() >= 2) {
+//     ResourceHandle<Texture> normal =
+//         resourceManager->load<Texture>(textures[1].name, textures[1]);
+//
+//     material.setNormal({.index = 0, .handle = normal});
+//   }
+//
+//   meshComponent->setMesh(mesh)->setMaterial(material);
+//
+//   glm::vec3 position = {0.0f, 0.0f, 0.0f};
+//   glm::vec3 scale = {1.0f, 1.0f, 1.0f};
+//   glm::vec3 axis = {1.0f, 0.0f, 0.0f};
+//   float angle = glm::radians(90.0f);
+//   glm::quat rotQuat = glm::angleAxis(angle, axis);
+//
+//   return {position, scale, rotQuat};
+// }
+//
+// std::tuple<glm::vec3, glm::vec3, glm::quat>
+// loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
+//   const std::string modelPath = "resources/models/corset";
+//   const std::string name = "Corset";
+//   std::vector<Mesh::Vertex> vertices;
+//   std::vector<uint32_t> indices;
+//   std::vector<RawTexture> textures;
+//   Helper::AssetLoader::loadGltfModelFromBinary(modelPath, name, vertices,
+//                                                indices, textures);
+//
+//   ResourceHandle<Mesh> mesh =
+//       resourceManager->load<Mesh>(name, vertices, indices);
+//   Core::Material material;
+//   if (textures.size() >= 1) {
+//     ResourceHandle<Texture> albedo =
+//         resourceManager->load<Texture>(textures[0].name, textures[0]);
+//
+//     material.setAlbedo({.index = 0, .handle = albedo});
+//   }
+//
+//   if (textures.size() >= 2) {
+//     ResourceHandle<Texture> normal =
+//         resourceManager->load<Texture>(textures[1].name, textures[1]);
+//
+//     material.setNormal({.index = 0, .handle = normal});
+//   }
+//
+//   meshComponent->setMesh(mesh)->setMaterial(material);
+//
+//   glm::vec3 position = {0.0f, -0.8f, 0.0f};
+//   glm::vec3 scale = {30.0f, 30.0f, 30.0f};
+//   glm::vec3 axis = {0.0f, 1.0f, 0.0f};
+//   float angle = glm::radians(180.0f);
+//   glm::quat rotQuat = glm::angleAxis(angle, axis);
+//
+//   return {position, scale, rotQuat};
+// }
 
 void Engine::initRenderObjectsList() {
   renderObjects = loadScene(resourceManager, renderContext, camera);
