@@ -36,17 +36,17 @@ struct PushConstants {
 
 [shader("fragment")]
 float4 fragMain(VSOutput inVert) : SV_Target {
-  float4 texColor = globalTextures[push.albedoIndex].Sample(inVert.texCoords) * ubo.pbrBaseColorFactor;
+  float4 texColor = push.albedoIndex != 0 ? globalTextures[push.albedoIndex].Sample(inVert.texCoords) * ubo.pbrBaseColorFactor : ubo.pbrBaseColorFactor;
   float3 normal;
   if (push.useNormalMap) {
-    normal = globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb;
+    normal = push.normalIndex != 0 ? globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb : float3(0.0f, 0.0f, 1.0f);
     normal = normalize(normal * 2.0f - 1.0f);
 
     float3 N = normalize(inVert.normal);
     // Gram-Schmidt orthogonal correction
     float3 T = float3(inVert.tangent.xyz) - dot(float3(inVert.tangent.xyz), N) * N;
 
-    float3 B = cross(T, N);
+    float3 B = cross(T, N) * inVert.tangent.w;
     float3x3 TBN = transpose(float3x3(T, B, N));
 
     normal = normalize(mul(TBN, normal));
