@@ -14,6 +14,7 @@ namespace Core {
 
 class RawSceneNode {
 public:
+  enum class TextureIndexer { Albedo = 0, Normal = 1 };
   std::string name;
 
   // Mesh component

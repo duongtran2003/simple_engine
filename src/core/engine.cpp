@@ -56,6 +56,8 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 namespace SimpleEngine {
 namespace Core {
 
+RenderContext::UniformBufferObject ubo{};
+
 Engine::Engine() {
   RenderContext::RenderContextCreateInfo createInfo{.appName = "Simple Engine",
                                                     .inFlightFrame = 2,
@@ -69,12 +71,6 @@ Engine::Engine() {
   camera->setVFov(60.0f);
   float aspect = (float)renderContext.width / (float)renderContext.height;
   camera->setAspectRatio(aspect);
-  camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
-
-  glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
-  glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f), cameraRotateAxis);
-  camera->getTransform()->setRotation(cameraRot *
-                                      camera->getTransform()->getRotation());
 
   cullingSystem = new CullingSystem(camera);
   scene = new Scene(renderContext, *camera, *cullingSystem);
@@ -464,7 +460,6 @@ void Engine::setupExampleRenderGraph() {
       // transform->setRotation(frameRotation * currentRotation);
 
       glm::mat4 model = transform->getTransformMatrix();
-      RenderContext::UniformBufferObject ubo{};
       ubo.normalModel =
           glm::mat4(glm::transpose(glm::inverse(glm::mat3(model))));
       ubo.view = camera->getCamera()->getViewMatrix();
@@ -476,12 +471,6 @@ void Engine::setupExampleRenderGraph() {
       //
       // ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
       // ubo.pointLightColor = glm::vec3(1.0f);
-
-      ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
-      ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
-
-      ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
-      ubo.pointLightColor = glm::vec3(1.0f);
 
       memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
              sizeof(ubo));
@@ -513,14 +502,9 @@ void Engine::setupExampleRenderGraph() {
   renderGraph->compile();
 }
 
-std::vector<Entity *> loadScene(ResourceManager *resourceManager,
-                                RenderContext &renderContext) {
-  std::vector<RawSceneNode> nodes;
-  const std::string scenePath = "resources/scenes/sponza";
-  const std::string sceneName = "Sponza";
-  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
-  std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
-
+std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
+                                       ResourceManager *resourceManager,
+                                       RenderContext &renderContext) {
   std::vector<Entity *> entities;
 
   std::unordered_map<std::string, int> textureSlots;
@@ -543,17 +527,22 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
     mesh->setMesh(meshResource);
 
     Material material;
-    if (node.textures.size() >= 1) {
-      ResourceHandle<Texture> albedo = resourceManager->load<Texture>(
-          node.textures[0].name, node.textures[0]);
+    const RawTexture &rawAlbedo = node.textures[static_cast<size_t>(
+        RawSceneNode::TextureIndexer::Albedo)];
+    if (rawAlbedo.isValid) {
+      ResourceHandle<Texture> albedo =
+          resourceManager->load<Texture>(rawAlbedo.name, rawAlbedo);
 
-      material.setAlbedo({.index = 0, .handle = albedo});
-
-      if (textureSlots.find(albedo->getId()) == textureSlots.end()) {
-        // New resource loaded
+      int slot = 0;
+      auto it = textureSlots.find(albedo.getId());
+      if (it == textureSlots.end()) {
         nextSlot += 1;
         textureSlots[albedo.getId()] = nextSlot;
       }
+
+      slot = textureSlots[albedo.getId()];
+      material.setAlbedo(
+          {.index = static_cast<uint32_t>(slot), .handle = albedo});
 
       material.registerAlbedo(renderContext.bindlessDescriptorSets,
                               textureSlots.find(albedo.getId())->second,
@@ -561,24 +550,29 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
       material.setPbrBaseColorFactor(
           node.textures[0].pbrProperty.baseColorFactor);
     }
-    if (node.textures.size() >= 2) {
-      ResourceHandle<Texture> normal = resourceManager->load<Texture>(
-          node.textures[1].name, node.textures[1]);
 
-      material.setNormal({.index = 0, .handle = normal});
+    const RawTexture &rawNormal = node.textures[static_cast<size_t>(
+        RawSceneNode::TextureIndexer::Normal)];
+    if (rawNormal.isValid) {
+      ResourceHandle<Texture> normal =
+          resourceManager->load<Texture>(rawNormal.name, rawNormal);
 
-      if (textureSlots.find(normal->getId()) == textureSlots.end()) {
-        // New resource loaded
+      int slot = 0;
+      auto it = textureSlots.find(normal.getId());
+      if (it == textureSlots.end()) {
         nextSlot += 1;
         textureSlots[normal.getId()] = nextSlot;
       }
+
+      slot = textureSlots[normal.getId()];
+      material.setNormal(
+          {.index = static_cast<uint32_t>(slot), .handle = normal});
 
       material.registerNormal(renderContext.bindlessDescriptorSets,
                               textureSlots.find(normal.getId())->second,
                               renderContext);
     }
     mesh->setMaterial(material);
-    std::cout << "3\n";
 
     entities.emplace_back(e);
   }
@@ -586,35 +580,43 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
   return entities;
 }
 
-std::vector<Entity *> loadBall(ResourceManager *resourceManager) {
+std::vector<Entity *> loadScene(ResourceManager *resourceManager,
+                                RenderContext &renderContext, Camera *camera) {
+  camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
+
+  glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
+  glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f), cameraRotateAxis);
+  camera->getTransform()->setRotation(cameraRot *
+                                      camera->getTransform()->getRotation());
+
+  ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
+  ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
+
+  ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
+  ubo.pointLightColor = glm::vec3(1.0f);
+
+  std::vector<RawSceneNode> nodes;
+  const std::string scenePath = "resources/scenes/sponza";
+  const std::string sceneName = "Sponza";
+  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
+  std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
+
+  std::vector<Entity *> entities =
+      processNodesList(nodes, resourceManager, renderContext);
+
+  return entities;
+}
+
+std::vector<Entity *> loadBall(ResourceManager *resourceManager,
+                               RenderContext &renderContext, Camera *camera) {
   std::vector<RawSceneNode> nodes;
   const std::string scenePath = "resources/models/baseball_01_4k";
   const std::string sceneName = "baseball_01_4k";
   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
   std::cout << "Loaded baseball: " << nodes.size() << "\n";
 
-  std::vector<Entity *> entities;
-  for (const auto &node : nodes) {
-    Entity *e = new Entity(node.name);
-
-    e->addComponent<TransformComponent>();
-    auto transform = e->getComponent<TransformComponent>();
-    transform->setPosition(node.translation)
-        ->setRotation(node.rotation)
-        ->setScale(node.scale);
-
-    e->addComponent<MeshComponent>();
-    ResourceHandle<Mesh> meshResource =
-        resourceManager->load<Mesh>(node.name, node.vertices, node.indices);
-
-    auto mesh = e->getComponent<MeshComponent>();
-    mesh->setMesh(meshResource);
-
-    Material material;
-    mesh->setMaterial(material);
-
-    entities.emplace_back(e);
-  }
+  std::vector<Entity *> entities =
+      processNodesList(nodes, resourceManager, renderContext);
 
   return entities;
 }
@@ -697,8 +699,8 @@ loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
 }
 
 void Engine::initRenderObjectsList() {
-  renderObjects = loadScene(resourceManager, renderContext);
-  // renderObjects = loadBall(resourceManager);
+  renderObjects = loadScene(resourceManager, renderContext, camera);
+  // renderObjects = loadBall(resourceManager, renderContext, camera);
   // // NOTE: Temporary fix for small scale objects
   // renderObjects[0]->getComponent<TransformComponent>()->setScale(
   //     glm::vec3(20.0f, 20.0f, 20.0f));

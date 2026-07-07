@@ -34,7 +34,7 @@ struct PushConstants {
 struct VSOutput {
   float4 pos: SV_Position;
   float3 normal;
-  float3 tangent;
+  float4 tangent;
   float2 texCoords;
   float3 worldSpacePos;
 };
@@ -47,7 +47,7 @@ VSOutput vertMain(VSInput input) {
   output.worldSpacePos = mul(push.modelMatrix, float4(input.inPosition, 1.0f)).xyz;
 
   output.normal = normalize(mul(float3x3(ubo.normalModel), input.inNormal));
-  output.tangent = normalize(mul(float3x3(ubo.normalModel), input.inTangent.xyz));
+  output.tangent = float4(normalize(mul(float3x3(ubo.normalModel), input.inTangent.xyz)), 1.0f);
   output.texCoords = input.inTexCoords;
 
   return output;

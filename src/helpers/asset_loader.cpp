@@ -364,6 +364,7 @@ void AssetLoader::processSceneNode(
       }
 
       if (primitive.material >= 0) {
+        rawSceneNode.textures.resize(2);
         const auto &material = model.materials[primitive.material];
 
         int albedoIndex = material.pbrMetallicRoughness.baseColorTexture.index;
@@ -386,9 +387,14 @@ void AssetLoader::processSceneNode(
           if (!colorFactor.empty()) {
             albedo.pbrProperty.baseColorFactor = {
                 colorFactor[0], colorFactor[1], colorFactor[2], colorFactor[3]};
+          } else {
+            albedo.pbrProperty.baseColorFactor = glm::vec4(1.0f);
           }
+          albedo.isValid = true;
 
-          rawSceneNode.textures.push_back(albedo);
+          size_t albedoIdx =
+              static_cast<size_t>(Core::RawSceneNode::TextureIndexer::Albedo);
+          rawSceneNode.textures[albedoIdx] = albedo;
         }
 
         if (normalIndex >= 0) {
@@ -402,7 +408,11 @@ void AssetLoader::processSceneNode(
             texturesMap[normal.name] = 1;
           }
           normal.colorSpace = Enums::Texture::ColorSpace::Linear;
-          rawSceneNode.textures.push_back(normal);
+          normal.isValid = true;
+
+          size_t normalIdx =
+              static_cast<size_t>(Core::RawSceneNode::TextureIndexer::Normal);
+          rawSceneNode.textures[normalIdx] = normal;
         }
       }
 
@@ -437,6 +447,8 @@ void AssetLoader::loadImageTexture(const std::string &path,
   rawTexture.componentCount = 4;
   stbi_image_free(pixels);
 }
+
+// DEPRECATED
 void AssetLoader::loadGltfModelFromBinary(
     const std::string &path, const std::string &name,
     std::vector<Core::Mesh::Vertex> &vertices, std::vector<uint32_t> &indices,
@@ -541,6 +553,7 @@ void AssetLoader::loadGltfModelFromBinary(
       }
 
       if (primitive.material >= 0) {
+        textures.resize(2);
         const auto &material = model.materials[primitive.material];
 
         int albedoIndex = material.pbrMetallicRoughness.baseColorTexture.index;
@@ -558,6 +571,8 @@ void AssetLoader::loadGltfModelFromBinary(
           if (!colorFactor.empty()) {
             albedo.pbrProperty.baseColorFactor = {
                 colorFactor[0], colorFactor[1], colorFactor[2], colorFactor[3]};
+          } else {
+            albedo.pbrProperty.baseColorFactor = glm::vec4(1.0f);
           }
 
           albedo.colorSpace = Enums::Texture::ColorSpace::NonLinear;

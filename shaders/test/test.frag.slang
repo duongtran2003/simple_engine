@@ -1,7 +1,7 @@
 struct VSOutput {
   float4 pos: SV_Position;
   float3 normal;
-  float3 tangent;
+  float4 tangent;
   float2 texCoords;
   float3 worldSpacePos;
 };
@@ -44,9 +44,9 @@ float4 fragMain(VSOutput inVert) : SV_Target {
 
     float3 N = normalize(inVert.normal);
     // Gram-Schmidt orthogonal correction
-    float3 T = inVert.tangent - dot(inVert.tangent, N) * N;
+    float3 T = float3(inVert.tangent.xyz) - dot(float3(inVert.tangent.xyz), N) * N;
 
-    float3 B = cross(T, N);
+    float3 B = cross(T, N) * inVert.tangent.w;
     float3x3 TBN = transpose(float3x3(T, B, N));
 
     normal = normalize(mul(TBN, normal));
