@@ -179,17 +179,25 @@ void RenderContext::pickPhysicalDevice() {
   std::vector<vk::PhysicalDevice> physicalDevices =
       instance.enumeratePhysicalDevices();
 
-  auto isDeviceSuitable = [](vk::PhysicalDevice &device) {
+  size_t deviceIndex = 0;
+  int bestScore = 0;
+
+  for (size_t i = 0; i < physicalDevices.size(); i++) {
+    const auto &currentDevice = physicalDevices[i];
+
     bool supportsVulkan1_3 =
-        device.getProperties().apiVersion >= vk::ApiVersion13;
-    auto queueFamilies = device.getQueueFamilyProperties();
+        currentDevice.getProperties().apiVersion >= vk::ApiVersion13;
+    bool isDiscrete = currentDevice.getProperties().deviceType ==
+                      vk::PhysicalDeviceType::eDiscreteGpu;
+
+    auto queueFamilies = currentDevice.getQueueFamilyProperties();
     bool supportsGraphics =
         std::ranges::any_of(queueFamilies, [](auto const &queueFamilyProperty) {
           return !!(queueFamilyProperty.queueFlags &
                     vk::QueueFlagBits::eGraphics);
         });
 
-    auto deviceExtensions = device.enumerateDeviceExtensionProperties();
+    auto deviceExtensions = currentDevice.enumerateDeviceExtensionProperties();
     bool supportsRequiredExtensions = std::ranges::all_of(
         requiredDeviceExtensions,
         [&deviceExtensions](auto const &requiredDeviceExtension) {
@@ -201,7 +209,7 @@ void RenderContext::pickPhysicalDevice() {
               });
         });
 
-    auto features = device.template getFeatures2<
+    auto features = currentDevice.template getFeatures2<
         vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
         vk::PhysicalDeviceVulkan13Features,
         vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
@@ -216,21 +224,29 @@ void RenderContext::pickPhysicalDevice() {
             .template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>()
             .extendedDynamicState;
 
-    return supportsVulkan1_3 && supportsGraphics &&
-           supportsRequiredExtensions && supportsRequiredFeatures;
-  };
-
-  auto const deviceIt = std::ranges::find_if(
-      physicalDevices, [&](vk::PhysicalDevice &physicalDevice) {
-        return isDeviceSuitable(physicalDevice);
-      });
-
-  if (deviceIt == physicalDevices.end()) {
-    throw std::runtime_error(
-        "Engine::pickPhysicalDevice::ERROR: Failed to find physical device.");
+    int score = 0;
+    if (supportsVulkan1_3) {
+      score += 1;
+    }
+    if (supportsGraphics) {
+      score += 1;
+    }
+    if (supportsRequiredExtensions) {
+      score += 1;
+    }
+    if (supportsRequiredFeatures) {
+      score += 1;
+    }
+    if (isDiscrete) {
+      score += 1;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      deviceIndex = i;
+    }
   }
 
-  physicalDevice = *deviceIt;
+  physicalDevice = physicalDevices[deviceIndex];
 }
 
 void RenderContext::createDevice() {

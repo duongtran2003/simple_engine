@@ -482,7 +482,7 @@ void Engine::setupExampleRenderGraph() {
           .modelMatrix = model,
           .cameraPos = camera->getTransform()->getPosition(),
           .albedoIndex = albedoIndex,
-          .normalIndex = 0,
+          .normalIndex = normalIndex,
           .useNormalMap = static_cast<uint32_t>(normalIndex != 0 ? 1 : 0)};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
