@@ -378,11 +378,15 @@ void AssetLoader::processSceneNode(
           albedo.name = material.name + "_" +
                         std::to_string(primitive.material) + "_abledo";
 
-          auto it = texturesMap.find(albedo.name);
-          if (it == texturesMap.end() && albedoIndex >= 0) {
-            loadTextureFromTinyGltfModel(model, albedoIndex, albedo,
-                                         TextureLoadMode::fromUri, scenePath);
-            texturesMap[albedo.name] = 1;
+          if (albedoIndex >= 0) {
+            auto it = texturesMap.find(albedo.name);
+            if (it == texturesMap.end()) {
+              loadTextureFromTinyGltfModel(model, albedoIndex, albedo,
+                                           TextureLoadMode::fromUri, scenePath);
+              texturesMap[albedo.name] = 1;
+            } else {
+              albedo.hasLoadedImage = true;
+            }
           }
 
           albedo.colorSpace = Enums::Texture::ColorSpace::NonLinear;
@@ -409,6 +413,8 @@ void AssetLoader::processSceneNode(
             loadTextureFromTinyGltfModel(model, normalIndex, normal,
                                          TextureLoadMode::fromUri, scenePath);
             texturesMap[normal.name] = 1;
+          } else {
+            normal.hasLoadedImage = true;
           }
           normal.colorSpace = Enums::Texture::ColorSpace::Linear;
           normal.isValid = true;

@@ -14,7 +14,8 @@ struct PbrTextureProperty {
 
 struct RawTexture {
   std::string name;
-  bool isValid;
+  bool isValid = false;
+  bool hasLoadedImage = false;
 
   std::vector<unsigned char> pixels;
   uint32_t width = 0;

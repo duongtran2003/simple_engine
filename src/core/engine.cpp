@@ -477,7 +477,7 @@ void Engine::setupExampleRenderGraph() {
       const auto &mat = mesh->getMaterial();
       uint32_t albedoIndex = mat.hasAlbedo() ? mat.getAlbedo().index : 0;
       uint32_t normalIndex = mat.hasNormal() ? mat.getNormal().index : 0;
-      
+
       PushConstants pushConstant{
           .modelMatrix = model,
           .cameraPos = camera->getTransform()->getPosition(),
@@ -534,7 +534,7 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
       material.setPbrBaseColorFactor(
           node.textures[0].pbrProperty.baseColorFactor);
 
-      if (!rawAlbedo.pixels.empty()) {
+      if (!rawAlbedo.pixels.empty() || rawAlbedo.hasLoadedImage) {
         ResourceHandle<Texture> albedo =
             resourceManager->load<Texture>(rawAlbedo.name, rawAlbedo);
 
@@ -557,7 +557,6 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
     const RawTexture &rawNormal = node.textures[static_cast<size_t>(
         RawSceneNode::TextureIndexer::Normal)];
     if (rawNormal.isValid) {
-      throw std::runtime_error("WTF HAS NORMALL????");
       ResourceHandle<Texture> normal =
           resourceManager->load<Texture>(rawNormal.name, rawNormal);
 
@@ -585,31 +584,22 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
 
 std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
-  // camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
-  //
-  // glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
-  // glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f),
-  // cameraRotateAxis); camera->getTransform()->setRotation(cameraRot *
-  //                                     camera->getTransform()->getRotation());
+  camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
 
-  ubo.directionalLightDirection = glm::vec3(-4.0f, -3.0f, -1.0f);
+  glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
+  glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f), cameraRotateAxis);
+  camera->getTransform()->setRotation(cameraRot *
+                                      camera->getTransform()->getRotation());
+
+  ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
   ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
-  ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
+  ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
   ubo.pointLightColor = glm::vec3(1.0f);
 
-  // ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
-  // ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
-  //
-  // ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
-  // ubo.pointLightColor = glm::vec3(1.0f);
-
   std::vector<RawSceneNode> nodes;
-  // const std::string scenePath = "resources/scenes/sponza";
-  // const std::string sceneName = "Sponza";
-
-  const std::string scenePath = "resources/scenes/orientation_test";
-  const std::string sceneName = "OrientationTest";
+  const std::string scenePath = "resources/scenes/sponza";
+  const std::string sceneName = "Sponza";
 
   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
@@ -621,7 +611,8 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
 }
 
 // std::vector<Entity *> loadBall(ResourceManager *resourceManager,
-//                                RenderContext &renderContext, Camera *camera) {
+//                                RenderContext &renderContext, Camera *camera)
+//                                {
 //   std::vector<RawSceneNode> nodes;
 //   const std::string scenePath = "resources/models/baseball_01_4k";
 //   const std::string sceneName = "baseball_01_4k";
