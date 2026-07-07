@@ -481,8 +481,9 @@ void Engine::setupExampleRenderGraph() {
       PushConstants pushConstant{
           .modelMatrix = model,
           .cameraPos = camera->getTransform()->getPosition(),
-          .albedoIndex = mat.hasAlbedo() ? albedoBinding.index : 0,
-          .normalIndex = mat.hasNormal() ? normalBinding.index : 0,
+          .baseCol = mat.getPbrBaseColorFactor(),
+          .albedoIndex = albedoBinding.index,
+          .normalIndex = normalBinding.index,
           .useNormalMap = static_cast<uint32_t>(useNormalMap ? 1 : 0)};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
@@ -531,30 +532,35 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
     const RawTexture &rawAlbedo = node.textures[static_cast<size_t>(
         RawSceneNode::TextureIndexer::Albedo)];
     if (rawAlbedo.isValid) {
-      ResourceHandle<Texture> albedo =
-          resourceManager->load<Texture>(rawAlbedo.name, rawAlbedo);
-
-      auto it = textureSlots.find(albedo.getId());
-      if (it == textureSlots.end()) {
-        nextSlot += 1;
-        textureSlots[albedo.getId()] = nextSlot;
-      }
-
       material.setPbrBaseColorFactor(
           node.textures[0].pbrProperty.baseColorFactor);
 
-      int slot = textureSlots[albedo.getId()];
-      material.setAlbedo(
-          {.index = static_cast<uint32_t>(slot), .handle = albedo});
+      if (!rawAlbedo.pixels.empty()) {
+        ResourceHandle<Texture> albedo =
+            resourceManager->load<Texture>(rawAlbedo.name, rawAlbedo);
 
-      material.registerAlbedo(renderContext.bindlessDescriptorSets,
-                              textureSlots.find(albedo.getId())->second,
-                              renderContext);
+        auto it = textureSlots.find(albedo.getId());
+        if (it == textureSlots.end()) {
+          nextSlot += 1;
+          textureSlots[albedo.getId()] = nextSlot;
+        }
+
+        int slot = textureSlots[albedo.getId()];
+        material.setAlbedo(
+            {.index = static_cast<uint32_t>(slot), .handle = albedo});
+
+        material.registerAlbedo(renderContext.bindlessDescriptorSets,
+                                textureSlots.find(albedo.getId())->second,
+                                renderContext);
+      } else {
+        material.setAlbedo({.index = 0, .handle = {}});
+      }
     }
 
     const RawTexture &rawNormal = node.textures[static_cast<size_t>(
         RawSceneNode::TextureIndexer::Normal)];
     if (rawNormal.isValid) {
+      throw std::runtime_error("WTF HAS NORMALL????");
       ResourceHandle<Texture> normal =
           resourceManager->load<Texture>(rawNormal.name, rawNormal);
 
@@ -571,6 +577,8 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
       material.registerNormal(renderContext.bindlessDescriptorSets,
                               textureSlots.find(normal.getId())->second,
                               renderContext);
+    } else {
+      material.setNormal({.index = static_cast<uint32_t>(0), .handle = {}});
     }
 
     mesh->setMaterial(material);
@@ -582,22 +590,32 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
 
 std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
-  camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
+  // camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
+  //
+  // glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
+  // glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f),
+  // cameraRotateAxis); camera->getTransform()->setRotation(cameraRot *
+  //                                     camera->getTransform()->getRotation());
 
-  glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
-  glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f), cameraRotateAxis);
-  camera->getTransform()->setRotation(cameraRot *
-                                      camera->getTransform()->getRotation());
-
-  ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
+  ubo.directionalLightDirection = glm::vec3(-4.0f, -3.0f, -1.0f);
   ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
-  ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
+  ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
   ubo.pointLightColor = glm::vec3(1.0f);
 
+  // ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
+  // ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
+  //
+  // ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
+  // ubo.pointLightColor = glm::vec3(1.0f);
+
   std::vector<RawSceneNode> nodes;
-  const std::string scenePath = "resources/scenes/sponza";
-  const std::string sceneName = "Sponza";
+  // const std::string scenePath = "resources/scenes/sponza";
+  // const std::string sceneName = "Sponza";
+
+  const std::string scenePath = "resources/scenes/orientation_test";
+  const std::string sceneName = "OrientationTest";
+
   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
 

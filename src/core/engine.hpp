@@ -13,6 +13,7 @@
 #include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <vector>
 
 namespace SimpleEngine {
@@ -20,11 +21,12 @@ namespace Core {
 class Engine {
 public:
   struct PushConstants {
-    glm::mat4 modelMatrix;
-    glm::vec3 cameraPos;
-    uint32_t albedoIndex;
-    uint32_t normalIndex;
-    uint32_t useNormalMap;
+    alignas(16) glm::mat4 modelMatrix;
+    alignas(16) glm::vec3 cameraPos;
+    alignas(16) glm::vec4 baseCol;
+    alignas(16) uint32_t albedoIndex;
+    alignas(16) uint32_t normalIndex;
+    alignas(16) uint32_t useNormalMap;
   };
 
 private:

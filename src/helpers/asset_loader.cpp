@@ -368,22 +368,22 @@ void AssetLoader::processSceneNode(
         const auto &material = model.materials[primitive.material];
 
         int albedoIndex = material.pbrMetallicRoughness.baseColorTexture.index;
+        const std::vector<double> &colorFactor =
+            material.pbrMetallicRoughness.baseColorFactor;
         int normalIndex = material.normalTexture.index;
 
-        if (albedoIndex >= 0) {
+        if (albedoIndex >= 0 || !colorFactor.empty()) {
           Core::RawTexture albedo = {};
           albedo.name = material.name + "_" +
                         std::to_string(primitive.material) + "_abledo";
           auto it = texturesMap.find(albedo.name);
-          if (it == texturesMap.end()) {
+          if (it == texturesMap.end() && albedoIndex >= 0) {
             loadTextureFromTinyGltfModel(model, albedoIndex, albedo,
                                          TextureLoadMode::fromUri, scenePath);
             texturesMap[albedo.name] = 1;
           }
           albedo.colorSpace = Enums::Texture::ColorSpace::NonLinear;
 
-          const std::vector<double> &colorFactor =
-              material.pbrMetallicRoughness.baseColorFactor;
           if (!colorFactor.empty()) {
             albedo.pbrProperty.baseColorFactor = {
                 colorFactor[0], colorFactor[1], colorFactor[2], colorFactor[3]};

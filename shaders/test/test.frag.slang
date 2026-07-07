@@ -28,6 +28,7 @@ Sampler2D globalTextures[];
 struct PushConstants {
   float4x4 modelMatrix;
   float3 cameraPos;
+  float4 baseCol;
   uint albedoIndex;
   uint normalIndex;
   bool useNormalMap;
@@ -38,8 +39,8 @@ struct PushConstants {
 float4 fragMain(VSOutput inVert) : SV_Target {
   float4 texColor = push.albedoIndex != 0 ? globalTextures[push.albedoIndex].Sample(inVert.texCoords) * ubo.pbrBaseColorFactor : ubo.pbrBaseColorFactor;
   float3 normal;
-  if (push.useNormalMap) {
-    normal = push.normalIndex != 0 ? globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb : float3(0.0f, 0.0f, 1.0f);
+  if (push.useNormalMap && push.normalIndex != 0) {
+    normal = globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb;
     normal = normalize(normal * 2.0f - 1.0f);
 
     float3 N = normalize(inVert.normal);
@@ -64,7 +65,7 @@ float4 fragMain(VSOutput inVert) : SV_Target {
 
   float3 color = texColor.rgb * (ambient + diffuse) + specular;
   float3 toneMapped = reinhardToneMap(color);
-  return float4(toneMapped, texColor.a);
+  return float4(color, texColor.a);
 }
 
 float3 reinhardToneMap(float3 color) {
