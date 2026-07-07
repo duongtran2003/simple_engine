@@ -11,6 +11,8 @@ struct UniformBuffer {
   float4x4 view;
   float4x4 proj;
 
+  float4 pbrBaseColorFactor;
+
   float3 directionalLightDirection;
   float3 directionalLightColor;
 
@@ -34,7 +36,7 @@ struct PushConstants {
 
 [shader("fragment")]
 float4 fragMain(VSOutput inVert) : SV_Target {
-  float4 texColor = globalTextures[push.albedoIndex].Sample(inVert.texCoords);
+  float4 texColor = globalTextures[push.albedoIndex].Sample(inVert.texCoords) * ubo.pbrBaseColorFactor;
   float3 normal;
   if (push.useNormalMap) {
     normal = globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb;

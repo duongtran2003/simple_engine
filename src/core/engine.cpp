@@ -469,6 +469,7 @@ void Engine::setupExampleRenderGraph() {
           glm::mat4(glm::transpose(glm::inverse(glm::mat3(model))));
       ubo.view = camera->getCamera()->getViewMatrix();
       ubo.proj = camera->getCamera()->getProjectionMatrix();
+      ubo.pbrBaseColorFactor = mesh->getMaterial().getPbrBaseColorFactor();
 
       // ubo.directionalLightDirection = glm::vec3(-4.0f, -3.0f, -1.0f);
       // ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
@@ -557,6 +558,8 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
       material.registerAlbedo(renderContext.bindlessDescriptorSets,
                               textureSlots.find(albedo.getId())->second,
                               renderContext);
+      material.setPbrBaseColorFactor(
+          node.textures[0].pbrProperty.baseColorFactor);
     }
     if (node.textures.size() >= 2) {
       ResourceHandle<Texture> normal = resourceManager->load<Texture>(

@@ -2,6 +2,7 @@
 #include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
+#include <glm/ext/vector_float4.hpp>
 
 namespace SimpleEngine {
 namespace Core {
@@ -34,6 +35,15 @@ Material *Material::registerAlbedo(vk::DescriptorSet &set, uint32_t index,
   context.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 
   return this;
+}
+
+Material *Material::setPbrBaseColorFactor(glm::vec4 factor) {
+  pbrProperty.baseColorFactor = factor;
+  return this;
+}
+
+const glm::vec4 Material::getPbrBaseColorFactor() const {
+  return pbrProperty.baseColorFactor;
 }
 
 Material *Material::setNormal(TextureBinding binding) {

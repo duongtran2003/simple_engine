@@ -10,6 +10,8 @@ struct UniformBuffer {
   float4x4 view;
   float4x4 proj;
 
+  float4 pbrBaseColorFactor;
+
   float3 directionalLightDirection;
   float3 directionalLightColor;
 
