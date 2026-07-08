@@ -578,29 +578,28 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
 std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
-  // camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
-  //
-  // glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
-  // glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f),
-  // cameraRotateAxis); camera->getTransform()->setRotation(cameraRot *
-  //                                     camera->getTransform()->getRotation());
-  //
-  // ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
-  // ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
-  //
-  // ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
-  // ubo.pointLightColor = glm::vec3(1.0f);
+  std::vector<RawSceneNode> nodes;
+  const std::string scenePath = "resources/scenes/sponza";
+  const std::string sceneName = "Sponza";
+  camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
 
-  camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
-  ubo.directionalLightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
+  glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
+  glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f), cameraRotateAxis);
+  camera->getTransform()->setRotation(cameraRot *
+                                      camera->getTransform()->getRotation());
+
+  ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
   ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
-  ubo.pointLightPosition = glm::vec3(0.0f, 5.0f, 5.0f);
+  ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
   ubo.pointLightColor = glm::vec3(1.0f);
-
-  std::vector<RawSceneNode> nodes;
-  const std::string scenePath = "resources/scenes/normal_tangent_mirror_test";
-  const std::string sceneName = "NormalTangentMirrorTest";
+  //
+  // camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
+  // ubo.directionalLightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
+  // ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
+  //
+  // ubo.pointLightPosition = glm::vec3(0.0f, 5.0f, 5.0f);
+  // ubo.pointLightColor = glm::vec3(1.0f);
 
   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
@@ -615,104 +614,8 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
   return entities;
 }
 
-// std::vector<Entity *> loadBall(ResourceManager *resourceManager,
-//                                RenderContext &renderContext, Camera *camera)
-//                                {
-//   std::vector<RawSceneNode> nodes;
-//   const std::string scenePath = "resources/models/baseball_01_4k";
-//   const std::string sceneName = "baseball_01_4k";
-//   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
-//   std::cout << "Loaded baseball: " << nodes.size() << "\n";
-//
-//   std::vector<Entity *> entities =
-//       processNodesList(nodes, resourceManager, renderContext);
-//
-//   return entities;
-// }
-
-// Load different models, this stays here till GUI implementation
-// std::tuple<glm::vec3, glm::vec3, glm::quat>
-// loadHelmet(ResourceManager *resourceManager, MeshComponent *meshComponent) {
-//   const std::string modelPath = "resources/models/damaged_helmet";
-//   const std::string name = "DamagedHelmet";
-//   std::vector<Mesh::Vertex> vertices;
-//   std::vector<uint32_t> indices;
-//   std::vector<RawTexture> textures;
-//   Helper::AssetLoader::loadGltfModelFromBinary(modelPath, name, vertices,
-//                                                indices, textures);
-//
-//   ResourceHandle<Mesh> mesh =
-//       resourceManager->load<Mesh>(name, vertices, indices);
-//   Core::Material material;
-//   if (textures.size() >= 1) {
-//     ResourceHandle<Texture> albedo =
-//         resourceManager->load<Texture>(textures[0].name, textures[0]);
-//
-//     material.setAlbedo({.index = 0, .handle = albedo});
-//   }
-//
-//   if (textures.size() >= 2) {
-//     ResourceHandle<Texture> normal =
-//         resourceManager->load<Texture>(textures[1].name, textures[1]);
-//
-//     material.setNormal({.index = 0, .handle = normal});
-//   }
-//
-//   meshComponent->setMesh(mesh)->setMaterial(material);
-//
-//   glm::vec3 position = {0.0f, 0.0f, 0.0f};
-//   glm::vec3 scale = {1.0f, 1.0f, 1.0f};
-//   glm::vec3 axis = {1.0f, 0.0f, 0.0f};
-//   float angle = glm::radians(90.0f);
-//   glm::quat rotQuat = glm::angleAxis(angle, axis);
-//
-//   return {position, scale, rotQuat};
-// }
-//
-// std::tuple<glm::vec3, glm::vec3, glm::quat>
-// loadCorset(ResourceManager *resourceManager, MeshComponent *meshComponent) {
-//   const std::string modelPath = "resources/models/corset";
-//   const std::string name = "Corset";
-//   std::vector<Mesh::Vertex> vertices;
-//   std::vector<uint32_t> indices;
-//   std::vector<RawTexture> textures;
-//   Helper::AssetLoader::loadGltfModelFromBinary(modelPath, name, vertices,
-//                                                indices, textures);
-//
-//   ResourceHandle<Mesh> mesh =
-//       resourceManager->load<Mesh>(name, vertices, indices);
-//   Core::Material material;
-//   if (textures.size() >= 1) {
-//     ResourceHandle<Texture> albedo =
-//         resourceManager->load<Texture>(textures[0].name, textures[0]);
-//
-//     material.setAlbedo({.index = 0, .handle = albedo});
-//   }
-//
-//   if (textures.size() >= 2) {
-//     ResourceHandle<Texture> normal =
-//         resourceManager->load<Texture>(textures[1].name, textures[1]);
-//
-//     material.setNormal({.index = 0, .handle = normal});
-//   }
-//
-//   meshComponent->setMesh(mesh)->setMaterial(material);
-//
-//   glm::vec3 position = {0.0f, -0.8f, 0.0f};
-//   glm::vec3 scale = {30.0f, 30.0f, 30.0f};
-//   glm::vec3 axis = {0.0f, 1.0f, 0.0f};
-//   float angle = glm::radians(180.0f);
-//   glm::quat rotQuat = glm::angleAxis(angle, axis);
-//
-//   return {position, scale, rotQuat};
-// }
-
 void Engine::initRenderObjectsList() {
   renderObjects = loadScene(resourceManager, renderContext, camera);
-  // renderObjects = loadBall(resourceManager, renderContext, camera);
-  // // NOTE: Temporary fix for small scale objects
-  // renderObjects[0]->getComponent<TransformComponent>()->setScale(
-  //     glm::vec3(20.0f, 20.0f, 20.0f));
 }
 
 void Engine::handleInput(float delta) {
