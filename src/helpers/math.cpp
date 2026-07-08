@@ -12,30 +12,19 @@ namespace SimpleEngine {
 namespace Helper {
 glm::vec3 Math::calculateTangent(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC,
                                  glm::vec2 uvA, glm::vec2 uvB, glm::vec2 uvC) {
-  // E1 = vec(AB) => E1 = vec(B) - vec(A) = P1
-  glm::vec3 P1 = posB - posA;
-  // E2 = vec(BC) => E2 = vec(C) - vec(B) = P2
-  glm::vec3 P2 = posC - posB;
+  glm::vec3 E1 = posB - posA;
+  glm::vec3 E2 = posC - posA;
 
-  // delta V1 = vB - vA = A
-  float A = uvB.x - uvA.x;
-  // delta U1 = uB - uA = B
-  float B = uvB.y - uvA.y;
+  float deltaUAB = uvB.x - uvA.x;
+  float deltaVAB = uvB.y - uvA.y;
 
-  // delta V2 = vC - vB = C
-  float C = uvC.x - uvB.x;
-  // delta U2 = uC - uB = D
-  float D = uvC.y - uvB.y;
+  float deltaUAC = uvC.x - uvA.x;
+  float deltaVAC = uvC.y - uvA.y;
 
-  // det = |A  B|
-  //       |C  D|
-  float det = A * D - B * C;
-  // detX = |P1  B|
-  //        |P2  D|
-  glm::vec3 detX = P1 * D - B * P2;
-  // x represents tangent vector T
-  glm::vec3 x = detX / det;
+  float D = deltaUAB * deltaVAC - deltaVAB * deltaUAC;
+  glm::vec3 Dx = E1 * deltaVAC - deltaVAB * E2;
 
+  glm::vec3 x = Dx / D;
   return glm::normalize(x);
 }
 

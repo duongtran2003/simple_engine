@@ -330,6 +330,10 @@ void AssetLoader::processSceneNode(
 
       if (!hasTangent) {
         assert(rawSceneNode.indices.size() % 3 == 0);
+        for (auto &v : rawSceneNode.vertices) {
+          v.tangent = glm::vec4(0.0f);
+        }
+
         for (size_t i = 0; i < rawSceneNode.indices.size() - 2; i += 3) {
           glm::vec3 v1 =
               rawSceneNode.vertices[rawSceneNode.indices[i]].position;
@@ -350,10 +354,6 @@ void AssetLoader::processSceneNode(
           float degreeAngle = glm::degrees(
               glm::acos(glm::dot(glm::normalize(v1v2), glm::normalize(v1v3))));
 
-          std::cout << "Calculated tangent: " << tangent.x << " " << tangent.y
-                    << " " << tangent.z << " with angle: " << degreeAngle
-                    << "\n";
-
           rawSceneNode.vertices[rawSceneNode.indices[i]].tangent =
               rawSceneNode.vertices[rawSceneNode.indices[i]].tangent +
               tangent * degreeAngle;
@@ -363,30 +363,15 @@ void AssetLoader::processSceneNode(
           rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent =
               rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent +
               tangent * degreeAngle;
-
-          glm::vec4 t1 = rawSceneNode.vertices[rawSceneNode.indices[i]].tangent;
-          glm::vec4 t2 =
-              rawSceneNode.vertices[rawSceneNode.indices[i + 1]].tangent;
-          glm::vec4 t3 =
-              rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent;
-
-          std::cout << "Accumulated tangent::v1: " << t1.x << " " << t1.y << " "
-                    << t1.z << "\n";
-
-          std::cout << "Accumulated tangent::v2: " << t2.x << " " << t2.y << " "
-                    << t2.z << "\n";
-
-          std::cout << "Accumulated tangent::v3: " << t3.x << " " << t3.y << " "
-                    << t3.z << "\n";
         }
 
         for (auto &v : rawSceneNode.vertices) {
-          v.tangent = glm::vec4(glm::vec3(glm::normalize(v.tangent)), 1.0f);
+          if (glm::length(glm::vec3(v.tangent)) > 0.0f) {
+            v.tangent = glm::vec4(glm::vec3(glm::normalize(v.tangent)), 1.0f);
+          } else {
+            v.tangent = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+          }
         }
-
-        std::cout << "\n\n\n\nNo tangent, generate in runtime\n\n\n\n";
-      } else {
-        std::cout << "\n\n\n\nAlready has tangent\n\n\n\n";
       }
 
       if (primitive.material >= 0) {
