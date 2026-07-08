@@ -599,8 +599,8 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
   ubo.pointLightColor = glm::vec3(1.0f);
 
   std::vector<RawSceneNode> nodes;
-  const std::string scenePath = "resources/scenes/normal_tangent_test";
-  const std::string sceneName = "NormalTangentTest";
+  const std::string scenePath = "resources/scenes/normal_tangent_mirror_test";
+  const std::string sceneName = "NormalTangentMirrorTest";
 
   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
