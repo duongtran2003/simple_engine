@@ -455,8 +455,6 @@ void AssetLoader::processSceneNode(
   }
 }
 
-void AssetLoader::loadKtxTexture(const std::string &path,
-                                 Core::RawTexture &rawTexture) {}
 void AssetLoader::loadImageTexture(const std::string &path,
                                    Core::RawTexture &rawTexture) {
   int w, h, channels;
