@@ -4,6 +4,7 @@
 #include "core/resource/mesh.hpp"
 #include "enums/texture.hpp"
 #include "helpers/math.hpp"
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -17,6 +18,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/trigonometric.hpp>
 #include <iostream>
 #include <optional>
 #include <stdexcept>
@@ -341,26 +343,50 @@ void AssetLoader::processSceneNode(
           glm::vec2 uv3 = rawSceneNode.vertices[rawSceneNode.indices[i + 2]].uv;
 
           glm::vec4 tangent = glm::vec4(
-              Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 1.0f);
+              Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 0.0f);
 
           glm::vec3 v1v2 = v2 - v1;
           glm::vec3 v1v3 = v3 - v1;
-          float area = glm::length(glm::cross(v1v2, v1v3));
+          float degreeAngle = glm::degrees(
+              glm::acos(glm::dot(glm::normalize(v1v2), glm::normalize(v1v3))));
+
+          std::cout << "Calculated tangent: " << tangent.x << " " << tangent.y
+                    << " " << tangent.z << " with angle: " << degreeAngle
+                    << "\n";
 
           rawSceneNode.vertices[rawSceneNode.indices[i]].tangent =
               rawSceneNode.vertices[rawSceneNode.indices[i]].tangent +
-              tangent * area;
+              tangent * degreeAngle;
           rawSceneNode.vertices[rawSceneNode.indices[i + 1]].tangent =
               rawSceneNode.vertices[rawSceneNode.indices[i + 1]].tangent +
-              tangent * area;
+              tangent * degreeAngle;
           rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent =
               rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent +
-              tangent * area;
+              tangent * degreeAngle;
+
+          glm::vec4 t1 = rawSceneNode.vertices[rawSceneNode.indices[i]].tangent;
+          glm::vec4 t2 =
+              rawSceneNode.vertices[rawSceneNode.indices[i + 1]].tangent;
+          glm::vec4 t3 =
+              rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent;
+
+          std::cout << "Accumulated tangent::v1: " << t1.x << " " << t1.y << " "
+                    << t1.z << "\n";
+
+          std::cout << "Accumulated tangent::v2: " << t2.x << " " << t2.y << " "
+                    << t2.z << "\n";
+
+          std::cout << "Accumulated tangent::v3: " << t3.x << " " << t3.y << " "
+                    << t3.z << "\n";
         }
 
         for (auto &v : rawSceneNode.vertices) {
-          v.tangent = glm::normalize(v.tangent);
+          v.tangent = glm::vec4(glm::vec3(glm::normalize(v.tangent)), 1.0f);
         }
+
+        std::cout << "\n\n\n\nNo tangent, generate in runtime\n\n\n\n";
+      } else {
+        std::cout << "\n\n\n\nAlready has tangent\n\n\n\n";
       }
 
       if (primitive.material >= 0) {
@@ -412,6 +438,15 @@ void AssetLoader::processSceneNode(
           if (it == texturesMap.end()) {
             loadTextureFromTinyGltfModel(model, normalIndex, normal,
                                          TextureLoadMode::fromUri, scenePath);
+            // Flipping the green channel of the normal map
+            if (!normal.pixels.empty() && normal.componentCount >= 3) {
+              size_t totalPixels = normal.width * normal.height;
+              for (size_t i = 0; i < totalPixels; i++) {
+                size_t offset = i * normal.componentCount;
+                normal.pixels[offset + 1] = 255 - normal.pixels[offset + 1];
+              }
+            }
+
             texturesMap[normal.name] = 1;
           } else {
             normal.hasLoadedImage = true;

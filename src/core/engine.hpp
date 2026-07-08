@@ -25,7 +25,6 @@ public:
     alignas(16) glm::vec3 cameraPos;
     alignas(4) uint32_t albedoIndex;
     alignas(4) uint32_t normalIndex;
-    alignas(4) uint32_t useNormalMap;
   };
 
 private:
@@ -41,8 +40,6 @@ private:
 
   std::chrono::high_resolution_clock::time_point lastFrameTime;
   float deltaTime = 0.0f;
-
-  bool useNormalMap = true;
 
   void setupExampleRenderGraph();
   void initRenderObjectsList();

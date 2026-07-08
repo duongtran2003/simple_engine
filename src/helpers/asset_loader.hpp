@@ -50,10 +50,12 @@ private:
   static Enums::Texture::Wrap mapGltfWrap(int gltfWrap);
 
   static glm::mat4 getNodeTransform(const tinygltf::Node &node);
-  static void processSceneNode(const tinygltf::Model &model, int nodeIndex,
-                               const glm::mat4 &parentTransform,
-                               std::vector<Core::RawSceneNode> &nodes, std::unordered_map<std::string, int>& texturesMap,
-                               const std::string &scenePath);
+  static void
+  processSceneNode(const tinygltf::Model &model, int nodeIndex,
+                   const glm::mat4 &parentTransform,
+                   std::vector<Core::RawSceneNode> &nodes,
+                   std::unordered_map<std::string, int> &texturesMap,
+                   const std::string &scenePath);
 };
 } // namespace Helper
 } // namespace SimpleEngine

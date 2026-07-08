@@ -465,12 +465,6 @@ void Engine::setupExampleRenderGraph() {
       ubo.proj = camera->getCamera()->getProjectionMatrix();
       ubo.pbrBaseColorFactor = mesh->getMaterial().getPbrBaseColorFactor();
 
-      // ubo.directionalLightDirection = glm::vec3(-4.0f, -3.0f, -1.0f);
-      // ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
-      //
-      // ubo.pointLightPosition = glm::vec3(-5.0f, 5.0f, -5.0f);
-      // ubo.pointLightColor = glm::vec3(1.0f);
-
       memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
              sizeof(ubo));
 
@@ -478,12 +472,11 @@ void Engine::setupExampleRenderGraph() {
       uint32_t albedoIndex = mat.hasAlbedo() ? mat.getAlbedo().index : 0;
       uint32_t normalIndex = mat.hasNormal() ? mat.getNormal().index : 0;
 
-      PushConstants pushConstant{
-          .modelMatrix = model,
-          .cameraPos = camera->getTransform()->getPosition(),
-          .albedoIndex = albedoIndex,
-          .normalIndex = normalIndex,
-          .useNormalMap = static_cast<uint32_t>(normalIndex != 0 ? 1 : 0)};
+      PushConstants pushConstant{.modelMatrix = model,
+                                 .cameraPos =
+                                     camera->getTransform()->getPosition(),
+                                 .albedoIndex = albedoIndex,
+                                 .normalIndex = normalIndex};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
                                   vk::ShaderStageFlagBits::eVertex |
@@ -584,28 +577,40 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
 
 std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
-  camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
 
-  glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
-  glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f), cameraRotateAxis);
-  camera->getTransform()->setRotation(cameraRot *
-                                      camera->getTransform()->getRotation());
+  // camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
+  //
+  // glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
+  // glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f),
+  // cameraRotateAxis); camera->getTransform()->setRotation(cameraRot *
+  //                                     camera->getTransform()->getRotation());
+  //
+  // ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
+  // ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
+  //
+  // ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
+  // ubo.pointLightColor = glm::vec3(1.0f);
 
-  ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
+  camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
+  ubo.directionalLightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
   ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
-  ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
+  ubo.pointLightPosition = glm::vec3(0.0f, 5.0f, 5.0f);
   ubo.pointLightColor = glm::vec3(1.0f);
 
   std::vector<RawSceneNode> nodes;
-  const std::string scenePath = "resources/scenes/sponza";
-  const std::string sceneName = "Sponza";
+  const std::string scenePath = "resources/scenes/normal_tangent_test";
+  const std::string sceneName = "NormalTangentTest";
 
   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
 
   std::vector<Entity *> entities =
       processNodesList(nodes, resourceManager, renderContext);
+
+  for (const auto &e : entities) {
+    e->getComponent<TransformComponent>()->setPosition({0.0f, 0.0f, 0.0f});
+  }
 
   return entities;
 }
@@ -719,10 +724,6 @@ void Engine::handleInput(float delta) {
 
   if (input->isKeyJustPressed(eKey::L)) {
     input->toggleMouseLock();
-  }
-
-  if (input->isKeyJustPressed(eKey::N)) {
-    useNormalMap = !useNormalMap;
   }
 }
 
