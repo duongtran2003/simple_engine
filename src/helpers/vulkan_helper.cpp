@@ -75,21 +75,21 @@ void VulkanHelper::transitionImageLayout(vk::CommandBuffer &commandBuffer,
     barrier.dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
     barrier.dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite;
   } else if (newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
-    barrier.srcStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite |
+    barrier.dstStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests;
+    barrier.dstAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite |
                             vk::AccessFlagBits2::eDepthStencilAttachmentRead;
   } else if (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-    barrier.srcStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eShaderRead;
+    barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
+    barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
   } else if (newLayout == vk::ImageLayout::eTransferSrcOptimal) {
-    barrier.srcStageMask = vk::PipelineStageFlagBits2::eAllTransfer;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead;
+    barrier.dstStageMask = vk::PipelineStageFlagBits2::eAllTransfer;
+    barrier.dstAccessMask = vk::AccessFlagBits2::eTransferRead;
   } else if (newLayout == vk::ImageLayout::eTransferDstOptimal) {
-    barrier.srcStageMask = vk::PipelineStageFlagBits2::eAllTransfer;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
+    barrier.dstStageMask = vk::PipelineStageFlagBits2::eAllTransfer;
+    barrier.dstAccessMask = vk::AccessFlagBits2::eTransferWrite;
   } else if (newLayout == vk::ImageLayout::ePresentSrcKHR) {
-    barrier.srcStageMask = vk::PipelineStageFlagBits2::eNone;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eNone;
+    barrier.dstStageMask = vk::PipelineStageFlagBits2::eNone;
+    barrier.dstAccessMask = vk::AccessFlagBits2::eNone;
   } else {
     throw std::runtime_error(
         std::string("VulkanHelper::transitionImageLayout::ERROR: "

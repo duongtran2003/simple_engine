@@ -302,7 +302,7 @@ void Engine::renderFrame() {
   commandBuffer.end();
 
   vk::PipelineStageFlags waitDestinationStageMask =
-      vk::PipelineStageFlagBits::eColorAttachmentOutput;
+      vk::PipelineStageFlagBits::eTransfer;
 
   vk::SubmitInfo submitInfo{
       .waitSemaphoreCount = 1,
