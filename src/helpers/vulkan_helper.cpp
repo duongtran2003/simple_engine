@@ -2,6 +2,7 @@
 #include "core/render_context.hpp"
 #include "enums/texture.hpp"
 #include "vulkan/vulkan.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -30,7 +31,8 @@ VulkanHelper::findMemoryType(uint32_t memoryTypeBits,
 }
 
 void VulkanHelper::transitionImageLayout(vk::CommandBuffer &commandBuffer,
-                                         vk::Image image,
+                                         vk::Image image, uint32_t mipLevels,
+                                         uint32_t baseMipLevel,
                                          vk::ImageLayout oldLayout,
                                          vk::ImageLayout newLayout,
                                          vk::ImageAspectFlags aspectMask) {
@@ -38,16 +40,17 @@ void VulkanHelper::transitionImageLayout(vk::CommandBuffer &commandBuffer,
     return;
   }
 
-  vk::ImageMemoryBarrier2 barrier{.oldLayout = oldLayout,
-                                  .newLayout = newLayout,
-                                  .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
-                                  .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
-                                  .image = image,
-                                  .subresourceRange = {.aspectMask = aspectMask,
-                                                       .baseMipLevel = 0,
-                                                       .levelCount = 1,
-                                                       .baseArrayLayer = 0,
-                                                       .layerCount = 1}};
+  vk::ImageMemoryBarrier2 barrier{
+      .oldLayout = oldLayout,
+      .newLayout = newLayout,
+      .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
+      .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
+      .image = image,
+      .subresourceRange = {.aspectMask = aspectMask,
+                           .baseMipLevel = baseMipLevel,
+                           .levelCount = mipLevels,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1}};
 
   if (oldLayout == vk::ImageLayout::eUndefined) {
     barrier.srcStageMask = vk::PipelineStageFlagBits2::eNone;
@@ -131,8 +134,8 @@ VulkanHelper::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
 }
 
 std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView>
-VulkanHelper::createImage(uint32_t width, uint32_t height, vk::Format format,
-                          vk::ImageUsageFlags usage,
+VulkanHelper::createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
+                          vk::Format format, vk::ImageUsageFlags usage,
                           vk::ImageAspectFlags aspectMask,
                           vk::SampleCountFlagBits sampleCount,
                           const Core::RenderContext &context) {
@@ -140,7 +143,7 @@ VulkanHelper::createImage(uint32_t width, uint32_t height, vk::Format format,
       .imageType = vk::ImageType::e2D,
       .format = format,
       .extent = {width, height, 1},
-      .mipLevels = 1,
+      .mipLevels = mipLevels,
       .arrayLayers = 1,
       .samples = sampleCount,
       .tiling = vk::ImageTiling::eOptimal,
@@ -168,7 +171,7 @@ VulkanHelper::createImage(uint32_t width, uint32_t height, vk::Format format,
       .format = format,
       .subresourceRange = {.aspectMask = aspectMask,
                            .baseMipLevel = 0,
-                           .levelCount = 1,
+                           .levelCount = mipLevels,
                            .baseArrayLayer = 0,
                            .layerCount = 1}};
   vk::ImageView imageView = context.device.createImageView(imageViewCreateInfo);
@@ -222,9 +225,10 @@ vk::Sampler VulkanHelper::createImageSampler(
       .addressModeU = vkUWrap,
       .addressModeV = vkVWrap,
       .addressModeW = vk::SamplerAddressMode::eRepeat,
-      .mipLodBias = 0.0f,
-      .anisotropyEnable = vk::False,
-      .maxAnisotropy = deviceProperties.limits.maxSamplerAnisotropy,
+      .mipLodBias = -0.5f,
+      .anisotropyEnable = vk::True,
+      .maxAnisotropy =
+          std::min(16.0f, deviceProperties.limits.maxSamplerAnisotropy),
       .compareEnable = vk::False,
       .compareOp = vk::CompareOp::eAlways,
       .minLod = 0.0f,

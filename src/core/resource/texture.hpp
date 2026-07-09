@@ -22,12 +22,16 @@ private:
   vk::DeviceSize offset;
   vk::ImageView imageView;
   vk::Sampler sampler;
+  vk::Format format;
+
+  uint32_t mipLevels;
 
   uint32_t width = 0;
   uint32_t height = 0;
   uint32_t channels = 0;
 
   void readFromRawTexture();
+  void generateMipmaps(vk::CommandBuffer& commandBuffer);
 
 public:
   Texture(const std::string &id, const RenderContext &renderContext);

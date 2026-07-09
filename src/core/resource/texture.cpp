@@ -5,9 +5,13 @@
 #include "enums/texture.hpp"
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <stb_image.h>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,29 +27,104 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext,
   source = Source::fromRawTexture;
 }
 
-void Texture::readFromRawTexture() {
-  vk::Format textureFormat;
-  if (rawTexture.componentCount == 1) {
-    textureFormat = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
-                        ? vk::Format::eR8Unorm
-                        : vk::Format::eR8Srgb;
-  } else if (rawTexture.componentCount == 2) {
-    textureFormat = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
-                        ? vk::Format::eR8G8Unorm
-                        : vk::Format::eR8G8Srgb;
-  } else if (rawTexture.componentCount == 3) {
-    textureFormat = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
-                        ? vk::Format::eR8G8B8Unorm
-                        : vk::Format::eR8G8B8Srgb;
-  } else {
-    textureFormat = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
-                        ? vk::Format::eR8G8B8A8Unorm
-                        : vk::Format::eR8G8B8A8Srgb;
+void Texture::generateMipmaps(vk::CommandBuffer &commandBuffer) {
+  vk::FormatProperties formatProperties =
+      renderContext.physicalDevice.getFormatProperties(format);
+  if (!(formatProperties.optimalTilingFeatures &
+        vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
+    throw std::runtime_error(
+        "Texture::generateMipmaps::ERROR: Format is not supported.");
   }
+
+  uint32_t mipHeight = height;
+  uint32_t mipWidth = width;
+  for (uint32_t i = 1; i < mipLevels; i++) {
+    Helper::VulkanHelper::transitionImageLayout(
+        commandBuffer, image, 1, i - 1, vk::ImageLayout::eTransferDstOptimal,
+        vk::ImageLayout::eTransferSrcOptimal, vk::ImageAspectFlagBits::eColor);
+
+    vk::ArrayWrapper1D<vk::Offset3D, 2> srcOffsets, dstOffsets;
+
+    srcOffsets[0] = vk::Offset3D(0, 0, 0);
+    srcOffsets[1] = vk::Offset3D(mipWidth, mipHeight, 0);
+
+    dstOffsets[0] = vk::Offset3D(0, 0, 0);
+    dstOffsets[1] = vk::Offset3D(mipWidth > 1 ? mipWidth / 2 : 1,
+                                 mipHeight > 1 ? mipHeight / 2 : 1, 0);
+
+    vk::ImageSubresourceLayers blitSrcSubResource = {
+        .aspectMask = vk::ImageAspectFlagBits::eColor,
+        .mipLevel = i - 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1};
+
+    vk::ImageSubresourceLayers blitDstSubResource = {
+        .aspectMask = vk::ImageAspectFlagBits::eColor,
+        .mipLevel = i,
+        .baseArrayLayer = 0,
+        .layerCount = 1};
+
+    vk::ImageBlit blit = {.srcSubresource = blitSrcSubResource,
+                          .srcOffsets = srcOffsets,
+                          .dstSubresource = blitDstSubResource,
+                          .dstOffsets = dstOffsets};
+
+    commandBuffer.blitImage(image, vk::ImageLayout::eTransferSrcOptimal, image,
+                            vk::ImageLayout::eTransferDstOptimal, {blit},
+                            vk::Filter::eLinear);
+
+    Helper::VulkanHelper::transitionImageLayout(
+        commandBuffer, image, 1, i - 1, vk::ImageLayout::eTransferSrcOptimal,
+        vk::ImageLayout::eShaderReadOnlyOptimal,
+        vk::ImageAspectFlagBits::eColor);
+
+    if (mipWidth > 1) {
+      mipWidth /= 2;
+    }
+
+    if (mipHeight > 1) {
+      mipHeight /= 2;
+    }
+  }
+
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer, image, 1, mipLevels - 1,
+      vk::ImageLayout::eTransferDstOptimal,
+      vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor);
+}
+
+void Texture::readFromRawTexture() {
+  if (rawTexture.componentCount == 1) {
+    format = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
+                 ? vk::Format::eR8Unorm
+                 : vk::Format::eR8Srgb;
+  } else if (rawTexture.componentCount == 2) {
+    format = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
+                 ? vk::Format::eR8G8Unorm
+                 : vk::Format::eR8G8Srgb;
+  } else if (rawTexture.componentCount == 3) {
+    format = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
+                 ? vk::Format::eR8G8B8Unorm
+                 : vk::Format::eR8G8B8Srgb;
+  } else {
+    format = rawTexture.colorSpace == Enums::Texture::ColorSpace::Linear
+                 ? vk::Format::eR8G8B8A8Unorm
+                 : vk::Format::eR8G8B8A8Srgb;
+  }
+
+  width = rawTexture.width;
+  height = rawTexture.height;
+  channels = rawTexture.componentCount;
+  mipLevels = rawTexture.useMipmap
+                  ? static_cast<uint32_t>(
+                        std::floor(std::log2(std::max(width, height))) + 1)
+                  : 1;
+
   auto [newImage, newImageMemory, newImageView] =
       Helper::VulkanHelper::createImage(
-          rawTexture.width, rawTexture.height, textureFormat,
+          rawTexture.width, rawTexture.height, mipLevels, format,
           vk::ImageUsageFlagBits::eTransferDst |
+              vk::ImageUsageFlagBits::eTransferSrc |
               vk::ImageUsageFlagBits::eSampled,
           vk::ImageAspectFlagBits::eColor, vk::SampleCountFlagBits::e1,
           renderContext);
@@ -65,30 +144,34 @@ void Texture::readFromRawTexture() {
       Helper::VulkanHelper::beginSingleTimeCommands(renderContext);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, newImage, vk::ImageLayout::eUndefined,
+      commandBuffer, newImage, mipLevels, 0, vk::ImageLayout::eUndefined,
       vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eColor);
   Helper::VulkanHelper::copyBufferToImage(
       commandBuffer, stagingBuffer, newImage, rawTexture.width,
       rawTexture.height, vk::ImageAspectFlagBits::eColor);
-  Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, newImage, vk::ImageLayout::eTransferDstOptimal,
-      vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor);
+
+  image = newImage;
+  memory = newImageMemory;
+  imageView = newImageView;
+  offset = imageSize;
+  sampler = Helper::VulkanHelper::createImageSampler(
+      rawTexture.magFilter, rawTexture.minFilter, rawTexture.wrapS,
+      rawTexture.wrapT, renderContext);
+
+  if (rawTexture.useMipmap) {
+    generateMipmaps(commandBuffer);
+  } else {
+    Helper::VulkanHelper::transitionImageLayout(
+        commandBuffer, newImage, mipLevels, 0,
+        vk::ImageLayout::eTransferDstOptimal,
+        vk::ImageLayout::eShaderReadOnlyOptimal,
+        vk::ImageAspectFlagBits::eColor);
+  }
 
   Helper::VulkanHelper::endSingleTimeCommands(commandBuffer, renderContext);
 
   renderContext.device.destroyBuffer(stagingBuffer);
   renderContext.device.freeMemory(stagingMemory);
-
-  this->image = newImage;
-  this->memory = newImageMemory;
-  this->imageView = newImageView;
-  this->sampler = Helper::VulkanHelper::createImageSampler(
-      rawTexture.magFilter, rawTexture.minFilter, rawTexture.wrapS,
-      rawTexture.wrapT, renderContext);
-  this->width = rawTexture.width;
-  this->height = rawTexture.height;
-  this->channels = rawTexture.componentCount;
-  this->offset = imageSize;
 
   // Clean up
   rawTexture.pixels.clear();
@@ -97,12 +180,14 @@ void Texture::readFromRawTexture() {
 }
 
 bool Texture::doLoad() {
+  bool hasLoaded = false;
+
   if (source == Source::fromRawTexture) {
     readFromRawTexture();
-    return true;
+    hasLoaded = true;
   }
 
-  return false;
+  return hasLoaded;
 }
 
 void Texture::doUnload() {

@@ -4,7 +4,6 @@
 #include "core/resource/mesh.hpp"
 #include "enums/texture.hpp"
 #include "helpers/math.hpp"
-#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -388,6 +387,7 @@ void AssetLoader::processSceneNode(
           Core::RawTexture albedo = {};
           albedo.name = material.name + "_" +
                         std::to_string(primitive.material) + "_abledo";
+          albedo.useMipmap = true;
 
           if (albedoIndex >= 0) {
             auto it = texturesMap.find(albedo.name);
@@ -419,6 +419,8 @@ void AssetLoader::processSceneNode(
           Core::RawTexture normal = {};
           normal.name = material.name + "_" +
                         std::to_string(primitive.material) + "_normal";
+          normal.useMipmap = true;
+
           auto it = texturesMap.find(normal.name);
           if (it == texturesMap.end()) {
             loadTextureFromTinyGltfModel(model, normalIndex, normal,

@@ -18,7 +18,9 @@ public:
                                  const vk::PhysicalDevice &physicalDevice);
 
   static void transitionImageLayout(vk::CommandBuffer &commandBuffer,
-                                    vk::Image image, vk::ImageLayout oldLayout,
+                                    vk::Image image, uint32_t mipLevels,
+                                    uint32_t baseMipLevel,
+                                    vk::ImageLayout oldLayout,
                                     vk::ImageLayout newLayout,
                                     vk::ImageAspectFlags aspectMask);
 
@@ -27,11 +29,10 @@ public:
                vk::MemoryPropertyFlags properties,
                const Core::RenderContext &context);
 
-  static std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView>
-  createImage(uint32_t width, uint32_t height, vk::Format format,
-              vk::ImageUsageFlags usage, vk::ImageAspectFlags aspectMask,
-              vk::SampleCountFlagBits sampleCount,
-              const Core::RenderContext &context);
+  static std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView> createImage(
+      uint32_t width, uint32_t height, uint32_t mipLevels, vk::Format format,
+      vk::ImageUsageFlags usage, vk::ImageAspectFlags aspectMask,
+      vk::SampleCountFlagBits sampleCount, const Core::RenderContext &context);
 
   static vk::Sampler createImageSampler(Enums::Texture::Filter magFilter,
                                         Enums::Texture::Filter minFilter,

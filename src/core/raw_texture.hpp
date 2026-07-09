@@ -17,6 +17,8 @@ struct RawTexture {
   bool isValid = false;
   bool hasLoadedImage = false;
 
+  bool useMipmap = false;
+
   std::vector<unsigned char> pixels;
   uint32_t width = 0;
   uint32_t height = 0;
