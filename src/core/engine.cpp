@@ -38,7 +38,6 @@
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
 #include "core/resource/texture.hpp"
-#include "core/scene/scene.hpp"
 #include "core/system/culling_system.hpp"
 #include "enums/input.hpp"
 #include "helpers/asset_loader.hpp"
@@ -72,7 +71,6 @@ Engine::Engine() {
   camera->setAspectRatio(aspect);
 
   cullingSystem = new CullingSystem(camera);
-  scene = new Scene(renderContext, *camera, *cullingSystem);
 
   createGraphicsPipeline();
   renderGraph = new RenderGraph(renderContext);
@@ -575,12 +573,16 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
   return entities;
 }
 
-std::vector<Entity *> loadScene(ResourceManager *resourceManager,
-                                RenderContext &renderContext, Camera *camera) {
-
+std::vector<Entity *> loadSponza(ResourceManager *resourceManager,
+                                 RenderContext &renderContext, Camera *camera) {
   std::vector<RawSceneNode> nodes;
+
   const std::string scenePath = "resources/scenes/sponza";
   const std::string sceneName = "Sponza";
+
+  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
+  std::cout << "Loaded " << sceneName << ": " << nodes.size() << " nodes.\n";
+
   camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
 
   glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
@@ -593,22 +595,65 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
 
   ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
   ubo.pointLightColor = glm::vec3(1.0f);
-  //
-  // camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
-  // ubo.directionalLightDirection = glm::vec3(0.0f, -5.0f, -5.0f);
-  // ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
-  //
-  // ubo.pointLightPosition = glm::vec3(0.0f, 5.0f, 5.0f);
-  // ubo.pointLightColor = glm::vec3(1.0f);
+
+  std::vector<Entity *> entities =
+      processNodesList(nodes, resourceManager, renderContext);
+
+  return entities;
+}
+
+std::vector<Entity *> loadBall(ResourceManager *resourceManager,
+                               RenderContext &renderContext, Camera *camera) {
+  std::vector<RawSceneNode> nodes;
+
+  const std::string scenePath = "resources/models/baseball_01_4k";
+  const std::string sceneName = "baseball_01_4k";
 
   Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
-  std::cout << "Loaded " << sceneName << ": " << nodes.size() << "\n";
+  std::cout << "Loaded " << sceneName << ": " << nodes.size() << " nodes.\n";
+
+  camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
+
+  ubo.directionalLightDirection = glm::vec3(-3.0f, -5.0f, -5.0f);
+  ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
+
+  ubo.pointLightPosition = glm::vec3(-3.0f, 5.0f, -3.0f);
+  ubo.pointLightColor = glm::vec3(1.0f);
 
   std::vector<Entity *> entities =
       processNodesList(nodes, resourceManager, renderContext);
 
   for (const auto &e : entities) {
-    e->getComponent<TransformComponent>()->setPosition({0.0f, 0.0f, 0.0f});
+    e->getComponent<TransformComponent>()->setScale({20.0f, 20.0f, 20.0f});
+  }
+
+  return entities;
+}
+
+std::vector<Entity *> loadScene(ResourceManager *resourceManager,
+                                RenderContext &renderContext, Camera *camera) {
+
+  std::vector<Entity *> entities;
+  std::cout << "Select scene to load: \n";
+  std::cout << "0. Ball\n1. Sponza\n";
+
+  enum class EScene { Ball, Sponza };
+
+  int scene;
+  bool isLoaded = false;
+
+  while (!isLoaded) {
+    glfwPollEvents();
+    std::cin >> scene;
+    if (scene == static_cast<int>(EScene::Ball)) {
+      entities = loadBall(resourceManager, renderContext, camera);
+      isLoaded = true;
+    } else if (scene == static_cast<int>(EScene::Sponza)) {
+      entities = loadSponza(resourceManager, renderContext, camera);
+      isLoaded = true;
+    } else {
+      std::cout << "Invalid scene\n";
+    }
   }
 
   return entities;

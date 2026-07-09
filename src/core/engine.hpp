@@ -6,7 +6,6 @@
 #include "core/render_context.hpp"
 #include "core/render_graph/render_graph.hpp"
 #include "core/resource/resource_manager.hpp"
-#include "core/scene/scene.hpp"
 #include "core/system/culling_system.hpp"
 #include <chrono>
 #include <cstdint>
@@ -34,7 +33,6 @@ private:
   Input *input = nullptr;
   Camera *camera = nullptr;
   CullingSystem *cullingSystem = nullptr;
-  Scene *scene = nullptr;
 
   std::vector<Entity *> renderObjects;
 
