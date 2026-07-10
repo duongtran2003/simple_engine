@@ -20,10 +20,15 @@ namespace Core {
 class Engine {
 public:
   struct PushConstants {
-    alignas(16) glm::mat4 modelMatrix;
-    alignas(16) glm::vec3 cameraPos;
     alignas(4) uint32_t albedoIndex;
     alignas(4) uint32_t normalIndex;
+    alignas(4) uint32_t uniformIndex;
+  };
+
+  struct ObjectData {
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 normalModel;
+    alignas(16) glm::vec4 pbrBaseColorFactor;
   };
 
 private:

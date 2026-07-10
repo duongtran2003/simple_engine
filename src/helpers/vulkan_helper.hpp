@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/render_context.hpp"
 #include "enums/texture.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
@@ -8,6 +7,11 @@
 #include <tuple>
 #include <utility>
 namespace SimpleEngine {
+
+namespace Core {
+class RenderContext;
+}
+
 namespace Helper {
 class VulkanHelper {
 public:

@@ -498,12 +498,17 @@ void RenderContext::createDescriptorPool() {
       .type = vk::DescriptorType::eCombinedImageSampler,
       .descriptorCount = MAX_BINDLESS_TEXTURES};
 
-  std::array poolSizes = {uniformPoolSize, bindlessTexturePoolSize};
+  vk::DescriptorPoolSize ssboPoolSize = {.type =
+                                             vk::DescriptorType::eStorageBuffer,
+                                         .descriptorCount = inFlightFrame};
+
+  std::array poolSizes = {uniformPoolSize, bindlessTexturePoolSize,
+                          ssboPoolSize};
 
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet |
                vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
-      .maxSets = inFlightFrame + 1,
+      .maxSets = inFlightFrame * 2 + 1,
       .poolSizeCount = poolSizes.size(),
       .pPoolSizes = poolSizes.data()};
 
@@ -544,6 +549,17 @@ void RenderContext::createDescriptorSetLayout() {
 
   bindlessDescriptorSetLayout =
       device.createDescriptorSetLayout(bindlessLayoutInfo);
+
+  vk::DescriptorSetLayoutBinding ssboLayoutBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eStorageBuffer,
+      .descriptorCount = 1,
+      .stageFlags = vk::ShaderStageFlagBits::eVertex |
+                    vk::ShaderStageFlagBits::eFragment};
+
+  vk::DescriptorSetLayoutCreateInfo ssboLayoutInfo{
+      .bindingCount = 1, .pBindings = &ssboLayoutBinding};
+  ssboDescriptorSetLayout = device.createDescriptorSetLayout(ssboLayoutInfo);
 }
 
 void RenderContext::createDescriptorSets() {
@@ -574,16 +590,31 @@ void RenderContext::createDescriptorSets() {
     device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
   }
 
+  std::vector<vk::DescriptorSetLayout> ssboLayouts(inFlightFrame,
+                                                   ssboDescriptorSetLayout);
+
+  vk::DescriptorSetAllocateInfo ssboAllocateInfo{
+      .descriptorPool = descriptorPool,
+      .descriptorSetCount = inFlightFrame,
+      .pSetLayouts = ssboLayouts.data()};
+
+  ssboDescriptorSets = device.allocateDescriptorSets(ssboAllocateInfo);
+
   vk::DescriptorSetAllocateInfo bindlessSetAllocateInfo{
       .descriptorPool = descriptorPool,
       .descriptorSetCount = 1,
       .pSetLayouts = &bindlessDescriptorSetLayout};
+
   bindlessDescriptorSets =
       device.allocateDescriptorSets(bindlessSetAllocateInfo)[0];
 }
 
 void *RenderContext::getCurrentFrameUniformBufferPtr() {
   return uniformBuffers[frameIndex].mapped;
+}
+
+void *RenderContext::getCurrentFrameStorageBufferPtr() {
+  return storageBuffers[frameIndex].mapped;
 }
 
 } // namespace Core

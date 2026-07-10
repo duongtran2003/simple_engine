@@ -1,7 +1,10 @@
 #pragma once
 
+#include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <GLFW/glfw3.h>
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <glm/detail/qualifier.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
@@ -9,6 +12,7 @@
 #include <glm/ext/vector_float4.hpp>
 #include <string>
 #include <sys/types.h>
+#include <utility>
 #include <vector>
 
 namespace SimpleEngine {
@@ -17,11 +21,9 @@ namespace Core {
 class RenderContext {
 public:
   struct UniformBufferObject {
-    alignas(16) glm::mat4 normalModel;
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
-
-    alignas(16) glm::vec4 pbrBaseColorFactor;
+    alignas(16) glm::vec3 cameraPos;
 
     alignas(16) glm::vec3 directionalLightDirection;
     alignas(16) glm::vec3 directionalLightColor;
@@ -71,11 +73,14 @@ public:
   vk::DescriptorSetLayout descriptorSetLayout;
 
   vk::DescriptorSetLayout bindlessDescriptorSetLayout;
+  vk::DescriptorSetLayout ssboDescriptorSetLayout;
 
   std::vector<vk::DescriptorSet> descriptorSets;
   vk::DescriptorSet bindlessDescriptorSets;
+  std::vector<vk::DescriptorSet> ssboDescriptorSets;
 
   std::vector<UboBuffer> uniformBuffers;
+  std::vector<UboBuffer> storageBuffers;
 
   uint32_t inFlightFrame = 2;
   std::vector<vk::Semaphore> presentCompleteSemaphores;
@@ -93,6 +98,9 @@ public:
 
   RenderContext *setMsaaSamples(vk::SampleCountFlagBits sampleCount);
   void *getCurrentFrameUniformBufferPtr();
+  void *getCurrentFrameStorageBufferPtr();
+
+  template <typename T> void createStorageBuffers(size_t numObjects);
 
 private:
   void initWindow(const RenderContextCreateInfo &createInfo);
@@ -115,5 +123,39 @@ private:
 
   vk::SampleCountFlagBits getMaxMsaaSampleCount();
 };
+
+template <typename T>
+void RenderContext::createStorageBuffers(size_t numObjects) {
+  size_t allocateCount = std::max(numObjects, static_cast<size_t>(1));
+  vk::DeviceSize bufferSize = sizeof(T) * allocateCount;
+
+  for (size_t i = 0; i < inFlightFrame; i++) {
+    const auto &[buffer, memory] = Helper::VulkanHelper::createBuffer(
+        bufferSize, vk::BufferUsageFlagBits::eStorageBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible |
+            vk::MemoryPropertyFlagBits::eHostCoherent,
+        *this);
+
+    UboBuffer uboBuffer{
+        .buffer = std::move(buffer),
+        .memory = std::move(memory),
+    };
+    uboBuffer.mapped = device.mapMemory(uboBuffer.memory, 0, bufferSize);
+    storageBuffers.push_back(uboBuffer);
+
+    vk::DescriptorBufferInfo bufferInfo{
+        .buffer = storageBuffers[i].buffer, .offset = 0, .range = bufferSize};
+
+    vk::WriteDescriptorSet descriptorWrite{
+        .dstSet = ssboDescriptorSets[i],
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .pBufferInfo = &bufferInfo};
+
+    device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+  }
+}
 } // namespace Core
 } // namespace SimpleEngine

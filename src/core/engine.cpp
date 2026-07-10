@@ -178,9 +178,10 @@ void Engine::createGraphicsPipeline() {
       .depthBoundsTestEnable = vk::False,
       .stencilTestEnable = vk::False};
 
-  std::array<vk::DescriptorSetLayout, 2> layouts = {
+  std::array<vk::DescriptorSetLayout, 3> layouts = {
       renderContext.descriptorSetLayout,
-      renderContext.bindlessDescriptorSetLayout};
+      renderContext.bindlessDescriptorSetLayout,
+      renderContext.ssboDescriptorSetLayout};
 
   vk::PushConstantRange pushConstantRange{
       .stageFlags =
@@ -426,14 +427,25 @@ void Engine::setupExampleRenderGraph() {
     commandBuffer.setViewport(0, renderContext.viewport);
     commandBuffer.setScissor(0, renderContext.scissor);
 
-    std::array<vk::DescriptorSet, 2> descriptorSets = {
+    std::array<vk::DescriptorSet, 3> descriptorSets = {
         renderContext.descriptorSets[renderContext.frameIndex],
-        renderContext.bindlessDescriptorSets};
+        renderContext.bindlessDescriptorSets,
+        renderContext.ssboDescriptorSets[renderContext.frameIndex]};
     commandBuffer.bindDescriptorSets(
         vk::PipelineBindPoint::eGraphics, renderContext.pipelineLayout, 0,
         descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 
-    for (Entity *e : renderObjects) {
+    ubo.view = camera->getCamera()->getViewMatrix();
+    ubo.proj = camera->getCamera()->getProjectionMatrix();
+    ubo.cameraPos = camera->getTransform()->getPosition();
+    memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo, sizeof(ubo));
+
+    ObjectData *ssboDataArray = static_cast<ObjectData *>(
+        renderContext.getCurrentFrameStorageBufferPtr());
+
+    for (size_t i = 0; i < renderObjects.size(); i++) {
+      Entity *e = renderObjects[i];
+
       auto *mesh = e->getComponent<MeshComponent>();
       auto *transform = e->getComponent<TransformComponent>();
 
@@ -446,35 +458,19 @@ void Engine::setupExampleRenderGraph() {
       vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
       vk::DeviceSize offsets[] = {0};
 
-      // float spinSpeedY = glm::radians(2.0f);
-      // glm::quat deltaY =
-      //     glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f,
-      //     0.0f));
-      //
-      // glm::quat frameRotation = deltaY;
-      //
-      // glm::quat currentRotation = transform->getRotation();
-      // transform->setRotation(frameRotation * currentRotation);
+      const auto &mat = mesh->getMaterial();
 
       glm::mat4 model = transform->getTransformMatrix();
-      ubo.normalModel =
-          glm::mat4(glm::transpose(glm::inverse(glm::mat3(model))));
-      ubo.view = camera->getCamera()->getViewMatrix();
-      ubo.proj = camera->getCamera()->getProjectionMatrix();
-      ubo.pbrBaseColorFactor = mesh->getMaterial().getPbrBaseColorFactor();
+      ssboDataArray[i].model = model;
+      ssboDataArray[i].normalModel = glm::transpose(glm::inverse(model));
+      ssboDataArray[i].pbrBaseColorFactor = mat.getPbrBaseColorFactor();
 
-      memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo,
-             sizeof(ubo));
-
-      const auto &mat = mesh->getMaterial();
       uint32_t albedoIndex = mat.hasAlbedo() ? mat.getAlbedo().index : 0;
       uint32_t normalIndex = mat.hasNormal() ? mat.getNormal().index : 0;
 
-      PushConstants pushConstant{.modelMatrix = model,
-                                 .cameraPos =
-                                     camera->getTransform()->getPosition(),
-                                 .albedoIndex = albedoIndex,
-                                 .normalIndex = normalIndex};
+      PushConstants pushConstant{.albedoIndex = albedoIndex,
+                                 .normalIndex = normalIndex,
+                                 .uniformIndex = static_cast<uint32_t>(i)};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
                                   vk::ShaderStageFlagBits::eVertex |
@@ -602,6 +598,31 @@ std::vector<Entity *> loadSponza(ResourceManager *resourceManager,
   return entities;
 }
 
+std::vector<Entity *> loadOrientationTest(ResourceManager *resourceManager,
+                                          RenderContext &renderContext,
+                                          Camera *camera) {
+  std::vector<RawSceneNode> nodes;
+
+  const std::string scenePath = "resources/scenes/orientation_test";
+  const std::string sceneName = "OrientationTest";
+
+  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
+  std::cout << "Loaded " << sceneName << ": " << nodes.size() << " nodes.\n";
+
+  camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
+
+  ubo.directionalLightDirection = glm::vec3(-3.0f, -5.0f, -5.0f);
+  ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
+
+  ubo.pointLightPosition = glm::vec3(-3.0f, 5.0f, -3.0f);
+  ubo.pointLightColor = glm::vec3(1.0f);
+
+  std::vector<Entity *> entities =
+      processNodesList(nodes, resourceManager, renderContext);
+
+  return entities;
+}
+
 std::vector<Entity *> loadBall(ResourceManager *resourceManager,
                                RenderContext &renderContext, Camera *camera) {
   std::vector<RawSceneNode> nodes;
@@ -635,9 +656,9 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
 
   std::vector<Entity *> entities;
   std::cout << "Select scene to load: \n";
-  std::cout << "0. Ball\n1. Sponza\n";
+  std::cout << "0. Ball\n1. Sponza\n2. Orientation Test\n";
 
-  enum class EScene { Ball, Sponza };
+  enum class EScene { Ball, Sponza, OrientationTest };
 
   int scene;
   bool isLoaded = false;
@@ -651,6 +672,9 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
     } else if (scene == static_cast<int>(EScene::Sponza)) {
       entities = loadSponza(resourceManager, renderContext, camera);
       isLoaded = true;
+    } else if (scene == static_cast<int>(EScene::OrientationTest)) {
+      entities = loadOrientationTest(resourceManager, renderContext, camera);
+      isLoaded = true;
     } else {
       std::cout << "Invalid scene\n";
     }
@@ -661,6 +685,7 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
 
 void Engine::initRenderObjectsList() {
   renderObjects = loadScene(resourceManager, renderContext, camera);
+  renderContext.createStorageBuffers<ObjectData>(renderObjects.size());
 }
 
 void Engine::handleInput(float delta) {

@@ -7,11 +7,9 @@ struct VSOutput {
 };
 
 struct UniformBuffer {
-  float4x4 normalModel;
   float4x4 view;
   float4x4 proj;
-
-  float4 pbrBaseColorFactor;
+  float3 cameraPos;
 
   float3 directionalLightDirection;
   float3 directionalLightColor;
@@ -25,17 +23,24 @@ ConstantBuffer<UniformBuffer> ubo;
 [[vk::binding(0, 1)]]
 Sampler2D globalTextures[];
 
+struct ObjectData {
+  float4x4 model;
+  float4x4 normalModel;
+  float4 pbrBaseColorFactor;
+};
+[[vk::binding(0, 2)]]
+StructuredBuffer<ObjectData> objectBuffers;
+
 struct PushConstants {
-  float4x4 modelMatrix;
-  float3 cameraPos;
   uint albedoIndex;
   uint normalIndex;
+  uint uniformIndex;
 };
 [[vk::push_constant]] PushConstants push;
 
 [shader("fragment")]
 float4 fragMain(VSOutput inVert) : SV_Target {
-  float4 texColor = push.albedoIndex != 0 ? globalTextures[push.albedoIndex].Sample(inVert.texCoords) * ubo.pbrBaseColorFactor : ubo.pbrBaseColorFactor;
+  float4 texColor = push.albedoIndex != 0 ? globalTextures[push.albedoIndex].Sample(inVert.texCoords) * objectBuffers[push.uniformIndex].pbrBaseColorFactor : objectBuffers[push.uniformIndex].pbrBaseColorFactor;
   float3 normal;
   if (push.normalIndex != 0) {
     normal = globalTextures[push.normalIndex].Sample(inVert.texCoords).rgb;
@@ -55,7 +60,7 @@ float4 fragMain(VSOutput inVert) : SV_Target {
 
   LightProperty directionalLight = calculateDirectionalLight(ubo.directionalLightDirection, normal);
 
-  LightProperty pointLight = calculatePointLight(ubo.pointLightPosition, push.cameraPos, inVert.worldSpacePos, normal, 128.0f);
+  LightProperty pointLight = calculatePointLight(ubo.pointLightPosition, ubo.cameraPos, inVert.worldSpacePos, normal, 128.0f);
 
   float3 ambient = directionalLight.ambient * ubo.directionalLightColor;
   float3 diffuse = directionalLight.diffuse * ubo.directionalLightColor + pointLight.diffuse * ubo.pointLightColor;
