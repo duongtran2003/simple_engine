@@ -20,7 +20,6 @@ find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
 find_package(imgui CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_program(SLANGC_EXECUTABLE NAMES slangc REQUIRED)
-find_package(Ktx CONFIG REQUIRED)
 
 file(GLOB_RECURSE CORE_SOURCES 
     CONFIGURE_DEPENDS 
@@ -38,7 +37,6 @@ target_link_libraries(EngineCore PUBLIC
     glm::glm
     tinyobjloader::tinyobjloader
     imgui::imgui
-    KTX::ktx
 )
 
 target_compile_definitions(EngineCore PUBLIC
