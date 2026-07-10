@@ -269,7 +269,7 @@ void Engine::renderFrame() {
   renderGraph->execute(commandBuffer);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 0, 0,
+      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
       vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageAspectFlagBits::eColor);
 
@@ -296,7 +296,7 @@ void Engine::renderFrame() {
                           vk::ImageLayout::eTransferDstOptimal, copyRegion);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 0, 0,
+      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
       vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::ePresentSrcKHR,
       vk::ImageAspectFlagBits::eColor);
 

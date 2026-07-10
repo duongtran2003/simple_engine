@@ -100,7 +100,7 @@ void GraphResource::deallocateMemory() {
 
 void GraphResource::transitionLayout(vk::CommandBuffer &commandBuffer,
                                      vk::ImageLayout dstLayout) {
-  Helper::VulkanHelper::transitionImageLayout(commandBuffer, image, 0, 0, layout,
+  Helper::VulkanHelper::transitionImageLayout(commandBuffer, image, 1, 0, layout,
                                               dstLayout, aspectMask);
   layout = dstLayout;
 }
