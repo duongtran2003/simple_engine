@@ -46,11 +46,11 @@ void Texture::generateMipmaps(vk::CommandBuffer &commandBuffer) {
     vk::ArrayWrapper1D<vk::Offset3D, 2> srcOffsets, dstOffsets;
 
     srcOffsets[0] = vk::Offset3D(0, 0, 0);
-    srcOffsets[1] = vk::Offset3D(mipWidth, mipHeight, 0);
+    srcOffsets[1] = vk::Offset3D(mipWidth, mipHeight, 1);
 
     dstOffsets[0] = vk::Offset3D(0, 0, 0);
     dstOffsets[1] = vk::Offset3D(mipWidth > 1 ? mipWidth / 2 : 1,
-                                 mipHeight > 1 ? mipHeight / 2 : 1, 0);
+                                 mipHeight > 1 ? mipHeight / 2 : 1, 1);
 
     vk::ImageSubresourceLayers blitSrcSubResource = {
         .aspectMask = vk::ImageAspectFlagBits::eColor,
