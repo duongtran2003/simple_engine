@@ -99,9 +99,12 @@ void GraphResource::deallocateMemory() {
 }
 
 void GraphResource::transitionLayout(vk::CommandBuffer &commandBuffer,
-                                     vk::ImageLayout dstLayout) {
-  Helper::VulkanHelper::transitionImageLayout(commandBuffer, image, 1, 0, layout,
-                                              dstLayout, aspectMask);
+                                     vk::ImageLayout dstLayout,
+                                     bool fromLastLayout) {
+  vk::ImageLayout lastLayout =
+      fromLastLayout ? layout : vk::ImageLayout::eUndefined;
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer, image, 1, 0, lastLayout, dstLayout, aspectMask);
   layout = dstLayout;
 }
 } // namespace Core

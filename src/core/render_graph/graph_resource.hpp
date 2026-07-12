@@ -56,7 +56,7 @@ public:
   uint32_t getHeight() const;
 
   void transitionLayout(vk::CommandBuffer &commandBuffer,
-                        vk::ImageLayout dstLayout);
+                        vk::ImageLayout dstLayout, bool fromLastLayout);
 };
 } // namespace Core
 } // namespace SimpleEngine

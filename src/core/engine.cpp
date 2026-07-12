@@ -274,8 +274,9 @@ void Engine::renderFrame() {
       vk::ImageAspectFlagBits::eColor);
 
   GraphResource *outputResource = renderGraph->getOutputResource();
-  outputResource->transitionLayout(commandBuffer,
-                                   vk::ImageLayout::eTransferSrcOptimal);
+  bool fromLastLayout = true;
+  outputResource->transitionLayout(
+      commandBuffer, vk::ImageLayout::eTransferSrcOptimal, fromLastLayout);
 
   vk::ImageCopy copyRegion{
       .srcSubresource = {.aspectMask = outputResource->getAspectMask(),
@@ -390,17 +391,20 @@ void Engine::setupExampleRenderGraph() {
   pass->addOutput("final_color");
   const auto passCallback = [&](vk::CommandBuffer &commandBuffer) {
     GraphResource *finalColor = renderGraph->getResource("final_color");
+    bool fromLastLayout = false;
     finalColor->transitionLayout(commandBuffer,
-                                 vk::ImageLayout::eColorAttachmentOptimal);
+                                 vk::ImageLayout::eColorAttachmentOptimal,
+                                 fromLastLayout);
     GraphResource *depthImage = renderGraph->getResource("depth_image");
     depthImage->transitionLayout(
-        commandBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+        commandBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+        fromLastLayout);
 
     vk::RenderingAttachmentInfoKHR colorAttachment{
         .imageView = finalColor->getView(),
         .imageLayout = finalColor->getLayout(),
         .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eDontCare,
+        .storeOp = vk::AttachmentStoreOp::eStore,
         .clearValue =
             vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
 
