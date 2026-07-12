@@ -6,6 +6,7 @@
 #include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/matrix.hpp>
 
 namespace SimpleEngine {
 namespace Core {
@@ -16,7 +17,11 @@ private:
   glm::vec3 scale = glm::vec3(1.0f);
 
   glm::mat4 mutable transformMatrix = glm::mat4(1.0f);
+  glm::mat4 mutable normalTransformMatrix =
+      glm::transpose(glm::inverse(transformMatrix));
   bool mutable isTransformDirty = true;
+
+  void calculateTransformMatrices() const;
 
 public:
   TransformComponent *setPosition(glm::vec3 pos);
@@ -24,6 +29,8 @@ public:
   TransformComponent *setScale(glm::vec3 s);
 
   glm::mat4 getTransformMatrix() const;
+  glm::mat4 getNormalTransformMatrix() const;
+
   glm::vec3 getPosition() const;
   glm::quat getRotation() const;
   glm::vec3 getScale() const;

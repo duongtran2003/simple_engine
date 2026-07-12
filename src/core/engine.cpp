@@ -464,9 +464,8 @@ void Engine::setupExampleRenderGraph() {
 
       const auto &mat = mesh->getMaterial();
 
-      glm::mat4 model = transform->getTransformMatrix();
-      ssboDataArray[i].model = model;
-      ssboDataArray[i].normalModel = glm::transpose(glm::inverse(model));
+      ssboDataArray[i].model = transform->getTransformMatrix();
+      ssboDataArray[i].normalModel = transform->getNormalTransformMatrix();
       ssboDataArray[i].pbrBaseColorFactor = mat.getPbrBaseColorFactor();
 
       uint32_t albedoIndex = mat.hasAlbedo() ? mat.getAlbedo().index : 0;

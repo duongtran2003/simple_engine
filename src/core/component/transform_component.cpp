@@ -5,6 +5,7 @@
 #include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/matrix.hpp>
 
 namespace SimpleEngine {
 namespace Core {
@@ -35,11 +36,7 @@ glm::quat TransformComponent::getRotation() const { return rotation; }
 
 glm::vec3 TransformComponent::getScale() const { return scale; }
 
-glm::mat4 TransformComponent::getTransformMatrix() const {
-  if (!isTransformDirty) {
-    return transformMatrix;
-  }
-
+void TransformComponent::calculateTransformMatrices() const {
   glm::mat4 model = glm::translate(glm::mat4(1.0f), position) *
                     glm::mat4_cast(rotation) *
                     glm::scale(glm::mat4(1.0f), scale);
@@ -47,7 +44,21 @@ glm::mat4 TransformComponent::getTransformMatrix() const {
   isTransformDirty = false;
 
   transformMatrix = model;
+  normalTransformMatrix = glm::transpose(glm::inverse(transformMatrix));
+}
+
+glm::mat4 TransformComponent::getTransformMatrix() const {
+  if (isTransformDirty) {
+    calculateTransformMatrices();
+  }
   return transformMatrix;
+}
+
+glm::mat4 TransformComponent::getNormalTransformMatrix() const {
+  if (isTransformDirty) {
+    calculateTransformMatrices();
+  }
+  return normalTransformMatrix;
 }
 } // namespace Core
 } // namespace SimpleEngine
