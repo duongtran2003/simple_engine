@@ -666,6 +666,9 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
   int scene;
   bool isLoaded = false;
 
+  entities = loadSponza(resourceManager, renderContext, camera);
+  return entities;
+
   while (!isLoaded) {
     glfwPollEvents();
     std::cin >> scene;
