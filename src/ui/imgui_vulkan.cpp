@@ -46,6 +46,21 @@ void ImGuiVulkan::createVertexBuffers(vk::DeviceSize bufferSize) {
   }
 }
 
+void ImGuiVulkan::createVertexBuffer(vk::DeviceSize bufferSize,
+                                     uint32_t frameIndex) {
+  const auto &[vertexBuffer, vertexBufferMemory] =
+      Helper::VulkanHelper::createBuffer(
+          bufferSize, vk::BufferUsageFlagBits::eVertexBuffer,
+          vk::MemoryPropertyFlagBits::eHostVisible |
+              vk::MemoryPropertyFlagBits::eHostCoherent,
+          context);
+
+  vertexBuffers[frameIndex] = ImGuiVkBuffer{
+      .buffer = std::move(vertexBuffer),
+      .memory = std::move(vertexBufferMemory),
+      .mapped = context.device.mapMemory(vertexBufferMemory, 0, 1)};
+}
+
 void ImGuiVulkan::clearVertexBuffers() {
   for (size_t i = 0; i < vertexBuffers.size(); i++) {
     context.device.unmapMemory(vertexBuffers[i].memory);
@@ -55,6 +70,13 @@ void ImGuiVulkan::clearVertexBuffers() {
 
   vertexBuffers.clear();
   vertexBuffers.shrink_to_fit();
+}
+
+void ImGuiVulkan::clearVertexBuffer(uint32_t frameIndex) {
+  assert(frameIndex < vertexBuffers.size());
+  context.device.unmapMemory(vertexBuffers[frameIndex].memory);
+  context.device.destroyBuffer(vertexBuffers[frameIndex].buffer);
+  context.device.freeMemory(vertexBuffers[frameIndex].memory);
 }
 
 void ImGuiVulkan::createIndexBuffers(vk::DeviceSize bufferSize) {
@@ -73,6 +95,21 @@ void ImGuiVulkan::createIndexBuffers(vk::DeviceSize bufferSize) {
   }
 }
 
+void ImGuiVulkan::createIndexBuffer(vk::DeviceSize bufferSize,
+                                    uint32_t frameIndex) {
+  const auto &[indexBuffer, indexBufferMemory] =
+      Helper::VulkanHelper::createBuffer(
+          bufferSize, vk::BufferUsageFlagBits::eIndexBuffer,
+          vk::MemoryPropertyFlagBits::eHostVisible |
+              vk::MemoryPropertyFlagBits::eHostCoherent,
+          context);
+
+  indexBuffers[frameIndex] = ImGuiVkBuffer{
+      .buffer = std::move(indexBuffer),
+      .memory = std::move(indexBufferMemory),
+      .mapped = context.device.mapMemory(indexBufferMemory, 0, 1)};
+}
+
 void ImGuiVulkan::clearIndexBuffers() {
   for (size_t i = 0; i < indexBuffers.size(); i++) {
     context.device.unmapMemory(indexBuffers[i].memory);
@@ -82,6 +119,13 @@ void ImGuiVulkan::clearIndexBuffers() {
 
   indexBuffers.clear();
   indexBuffers.shrink_to_fit();
+}
+
+void ImGuiVulkan::clearIndexBuffer(uint32_t frameIndex) {
+  assert(frameIndex < indexBuffers.size());
+  context.device.unmapMemory(indexBuffers[frameIndex].memory);
+  context.device.destroyBuffer(indexBuffers[frameIndex].buffer);
+  context.device.freeMemory(indexBuffers[frameIndex].memory);
 }
 
 ImGuiVulkan::~ImGuiVulkan() {

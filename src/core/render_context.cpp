@@ -21,8 +21,8 @@ namespace Core {
 
 std::vector<const char *> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName};
-std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
-// std::vector<char const *> requiredLayers = {};
+// std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
+std::vector<char const *> requiredLayers = {};
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
