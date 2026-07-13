@@ -7,22 +7,34 @@
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <imgui.h>
 #include <stdexcept>
 #include <utility>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 
 namespace SimpleEngine {
 namespace UI {
 ImGuiVulkan::ImGuiVulkan(const Core::RenderContext &context,
                          Core::ResourceManager &resourceManager)
     : context(context), resourceManager(resourceManager) {
+  assert(vertexBuffers.size() == 0);
+  assert(indexBuffers.size() == 0);
+
+  createVertexBuffers(1);
+  createIndexBuffers(1);
+}
+
+void ImGuiVulkan::createVertexBuffers(vk::DeviceSize bufferSize) {
   for (size_t i = 0; i < context.inFlightFrame; i++) {
     const auto &[vertexBuffer, vertexBufferMemory] =
         Helper::VulkanHelper::createBuffer(
-            1, vk::BufferUsageFlagBits::eVertexBuffer,
+            bufferSize, vk::BufferUsageFlagBits::eVertexBuffer,
             vk::MemoryPropertyFlagBits::eHostVisible |
                 vk::MemoryPropertyFlagBits::eHostCoherent,
             context);
@@ -31,10 +43,25 @@ ImGuiVulkan::ImGuiVulkan(const Core::RenderContext &context,
         {.buffer = std::move(vertexBuffer),
          .memory = std::move(vertexBufferMemory),
          .mapped = context.device.mapMemory(vertexBufferMemory, 0, 1)});
+  }
+}
 
+void ImGuiVulkan::clearVertexBuffers() {
+  for (size_t i = 0; i < vertexBuffers.size(); i++) {
+    context.device.unmapMemory(vertexBuffers[i].memory);
+    context.device.destroyBuffer(vertexBuffers[i].buffer);
+    context.device.freeMemory(vertexBuffers[i].memory);
+  }
+
+  vertexBuffers.clear();
+  vertexBuffers.shrink_to_fit();
+}
+
+void ImGuiVulkan::createIndexBuffers(vk::DeviceSize bufferSize) {
+  for (size_t i = 0; i < context.inFlightFrame; i++) {
     const auto &[indexBuffer, indexBufferMemory] =
         Helper::VulkanHelper::createBuffer(
-            1, vk::BufferUsageFlagBits::eIndexBuffer,
+            bufferSize, vk::BufferUsageFlagBits::eIndexBuffer,
             vk::MemoryPropertyFlagBits::eHostVisible |
                 vk::MemoryPropertyFlagBits::eHostCoherent,
             context);
@@ -46,18 +73,22 @@ ImGuiVulkan::ImGuiVulkan(const Core::RenderContext &context,
   }
 }
 
+void ImGuiVulkan::clearIndexBuffers() {
+  for (size_t i = 0; i < indexBuffers.size(); i++) {
+    context.device.unmapMemory(indexBuffers[i].memory);
+    context.device.destroyBuffer(indexBuffers[i].buffer);
+    context.device.freeMemory(indexBuffers[i].memory);
+  }
+
+  indexBuffers.clear();
+  indexBuffers.shrink_to_fit();
+}
+
 ImGuiVulkan::~ImGuiVulkan() {
   if (context.device) {
     context.device.waitIdle();
-    for (size_t i = 0; i < context.inFlightFrame; i++) {
-      context.device.unmapMemory(vertexBuffers[i].memory);
-      context.device.destroyBuffer(vertexBuffers[i].buffer);
-      context.device.freeMemory(vertexBuffers[i].memory);
-
-      context.device.unmapMemory(indexBuffers[i].memory);
-      context.device.destroyBuffer(indexBuffers[i].buffer);
-      context.device.freeMemory(indexBuffers[i].memory);
-    }
+    clearVertexBuffers();
+    clearIndexBuffers();
   }
 }
 
@@ -287,6 +318,91 @@ void ImGuiVulkan::initResources() {
   if (result == vk::Result::eSuccess) {
     vk::Pipeline p = pipelines[0];
     pipeline = p;
+  }
+}
+
+void ImGuiVulkan::updateTexture(ImTextureData *tex) {
+  if (tex->Status == ImTextureStatus_WantCreate ||
+      tex->Status == ImTextureStatus_WantUpdates) {
+    int w = tex->Width;
+    int h = tex->Height;
+
+    unsigned char *fontData = tex->Pixels;
+
+    if (!fontData) {
+      return;
+    }
+
+    resourceManager.release<Core::Texture>("im_gui_font");
+    fontTexture =
+        resourceManager.load<Core::Texture>("im_gui_font", fontData, w, h, 4);
+
+    tex->SetTexID((ImTextureID)(intptr_t)(VkDescriptorSet)descriptorSet);
+    tex->SetStatus(ImTextureStatus_OK);
+  }
+}
+
+bool ImGuiVulkan::newFrame() {
+  ImGui::NewFrame();
+  ImGui::Begin("Vulkan ImGui");
+  ImGui::Text("Hello world");
+
+  if (ImGui::Button("Click me!")) {
+    // click handler;
+  }
+  ImGui::End();
+  ImGui::EndFrame();
+
+  ImGui::Render();
+  ImDrawData *drawData = ImGui::GetDrawData();
+  if (drawData && drawData->CmdListsCount > 0) {
+    if (drawData->TotalVtxCount > vertexCount ||
+        drawData->TotalIdxCount > indexCount) {
+      needUpdateBuffers = true;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void ImGuiVulkan::updateBuffers(uint32_t frameIndex) {
+  ImDrawData *drawData = ImGui::GetDrawData();
+  if (!drawData || drawData->CmdListsCount == 0) {
+    return;
+  }
+
+  vk::DeviceSize vertexBufferSize =
+      drawData->TotalVtxCount * sizeof(ImDrawVert);
+  vk::DeviceSize indexBufferSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
+
+  if (drawData->TotalVtxCount > vertexCount) {
+    clearVertexBuffer(frameIndex);
+    createVertexBuffer(vertexBufferSize, frameIndex);
+  }
+
+  if (drawData->TotalIdxCount > indexCount) {
+    clearIndexBuffer(frameIndex);
+    createIndexBuffer(indexBufferSize, frameIndex);
+  }
+
+  ImDrawVert *vtxDst =
+      static_cast<ImDrawVert *>(vertexBuffers[frameIndex].mapped);
+
+  ImDrawVert *idxDst =
+      static_cast<ImDrawVert *>(indexBuffers[frameIndex].mapped);
+
+  for (int i = 0; i < drawData->CmdListsCount; i++) {
+    const ImDrawList *cmdList = drawData->CmdLists[i];
+
+    memcpy(vtxDst, cmdList->VtxBuffer.Data,
+           cmdList->VtxBuffer.size() * sizeof(ImDrawVert));
+
+    memcpy(idxDst, cmdList->IdxBuffer.Data,
+           cmdList->IdxBuffer.size() * sizeof(ImDrawIdx));
+
+    vtxDst += cmdList->VtxBuffer.Size;
+    idxDst += cmdList->IdxBuffer.Size;
   }
 }
 

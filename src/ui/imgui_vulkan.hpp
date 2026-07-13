@@ -52,6 +52,16 @@ private:
   vk::PipelineRenderingCreateInfo renderingInfo{};
   vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;
 
+  void createVertexBuffers(vk::DeviceSize bufferSize);
+  void createVertexBuffer(vk::DeviceSize bufferSize, uint32_t frameIndex);
+  void clearVertexBuffers();
+  void clearVertexBuffer(uint32_t frameIndex);
+
+  void createIndexBuffers(vk::DeviceSize bufferSize);
+  void createIndexBuffer(vk::DeviceSize bufferSize, uint32_t frameIndex);
+  void clearIndexBuffers();
+  void clearIndexBuffer(uint32_t frameIndex);
+
 public:
   ImGuiVulkan(const Core::RenderContext &context,
               Core::ResourceManager &resourceManager);
@@ -63,7 +73,7 @@ public:
   void updateTexture(ImTextureData *tex);
 
   bool newFrame();
-  void updateBuffers();
+  void updateBuffers(uint32_t frameIndex);
   void drawFrame(vk::CommandBuffer &commandBuffer);
 
   void handleKey(int key, int scancode, int action, int mode);
