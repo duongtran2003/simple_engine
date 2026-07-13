@@ -1,6 +1,9 @@
 #pragma once
 
 #include "core/render_context.hpp"
+#include "core/resource/resource_handle.hpp"
+#include "core/resource/resource_manager.hpp"
+#include "core/resource/texture.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
 #include <glm/ext/matrix_transform.hpp>
@@ -25,8 +28,7 @@ public:
 
 private:
   const Core::RenderContext &context;
-
-  vk::Sampler sampler;
+  Core::ResourceManager &resourceManager;
 
   std::vector<ImGuiVkBuffer> vertexBuffers;
   std::vector<ImGuiVkBuffer> indexBuffers;
@@ -34,9 +36,7 @@ private:
   uint32_t vertexCount = 0;
   uint32_t indexCount = 0;
 
-  vk::Image fontImage;
-  vk::DeviceMemory fontImageMemory;
-  vk::ImageView fontImageView;
+  Core::ResourceHandle<Core::Texture> fontTexture;
 
   vk::PipelineCache pipelineCache;
   vk::PipelineLayout pipelineLayout;
@@ -53,7 +53,8 @@ private:
   vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;
 
 public:
-  ImGuiVulkan(const Core::RenderContext &context);
+  ImGuiVulkan(const Core::RenderContext &context,
+              Core::ResourceManager &resourceManager);
   ~ImGuiVulkan();
 
   void init(float w, float h);
