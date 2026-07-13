@@ -11,11 +11,12 @@ namespace SimpleEngine {
 namespace Core {
 class Texture : public Resource {
 private:
-  enum class Source { fromFile, fromRawTexture };
+  enum class Source { fromFile, fromRawTexture, fromPixels };
   Source source;
 
   std::string *path;
   RawTexture rawTexture;
+  unsigned char *pixels;
 
   vk::Image image;
   vk::DeviceMemory memory;
@@ -31,12 +32,16 @@ private:
   uint32_t channels = 0;
 
   void readFromRawTexture();
-  void generateMipmaps(vk::CommandBuffer& commandBuffer);
+  void readFromPixels();
+  void generateMipmaps(vk::CommandBuffer &commandBuffer);
 
 public:
   Texture(const std::string &id, const RenderContext &renderContext);
   Texture(const std::string &id, const RenderContext &renderContext,
           RawTexture raw);
+  Texture(const std::string &id, const RenderContext &renderContext,
+          unsigned char *pixels, uint32_t width, uint32_t height,
+          uint32_t channels);
 
   vk::Image getImage() const;
   vk::Sampler getSampler() const;

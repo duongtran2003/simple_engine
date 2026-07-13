@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <stb_image.h>
 #include <stdexcept>
@@ -25,6 +26,17 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext,
                  RawTexture raw)
     : Resource(id, renderContext), rawTexture(std::move(raw)) {
   source = Source::fromRawTexture;
+}
+
+Texture::Texture(const std::string &id, const RenderContext &renderContext,
+                 unsigned char *pixels, uint32_t width, uint32_t height,
+                 uint32_t channels)
+    : Resource(id, renderContext) {
+  this->pixels = std::move(pixels);
+  this->width = width;
+  this->height = height;
+  this->channels = channels;
+  source = Source::fromPixels;
 }
 
 void Texture::generateMipmaps(vk::CommandBuffer &commandBuffer) {
@@ -179,11 +191,69 @@ void Texture::readFromRawTexture() {
   rawTexture = {};
 }
 
+void Texture::readFromPixels() {
+  mipLevels = 1;
+
+  auto [newImage, newImageMemory, newImageView] =
+      Helper::VulkanHelper::createImage(
+          width, height, mipLevels, vk::Format::eR8G8B8A8Unorm,
+          vk::ImageUsageFlagBits::eTransferDst |
+              vk::ImageUsageFlagBits::eSampled,
+          vk::ImageAspectFlagBits::eColor, vk::SampleCountFlagBits::e1,
+          renderContext);
+
+  vk::DeviceSize imageSize = width * height * channels;
+  auto [stagingBuffer, stagingMemory] = Helper::VulkanHelper::createBuffer(
+      imageSize, vk::BufferUsageFlagBits::eTransferSrc,
+      vk::MemoryPropertyFlagBits::eHostVisible |
+          vk::MemoryPropertyFlagBits::eHostCoherent,
+      renderContext);
+
+  void *data = renderContext.device.mapMemory(stagingMemory, 0, imageSize);
+  memcpy(data, pixels, static_cast<size_t>(imageSize));
+  renderContext.device.unmapMemory(stagingMemory);
+
+  vk::CommandBuffer commandBuffer =
+      Helper::VulkanHelper::beginSingleTimeCommands(renderContext);
+
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer, newImage, mipLevels, 0, vk::ImageLayout::eUndefined,
+      vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eColor);
+  Helper::VulkanHelper::copyBufferToImage(commandBuffer, stagingBuffer,
+                                          newImage, width, height,
+                                          vk::ImageAspectFlagBits::eColor);
+
+  image = newImage;
+  memory = newImageMemory;
+  imageView = newImageView;
+  offset = imageSize;
+  sampler = Helper::VulkanHelper::createImageSampler(
+      Enums::Texture::Filter::Linear, Enums::Texture::Filter::Linear,
+      Enums::Texture::Wrap::ClampToEdge, Enums::Texture::Wrap::ClampToEdge,
+      renderContext);
+
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer, newImage, mipLevels, 0,
+      vk::ImageLayout::eTransferDstOptimal,
+      vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor);
+
+  Helper::VulkanHelper::endSingleTimeCommands(commandBuffer, renderContext);
+
+  renderContext.device.destroyBuffer(stagingBuffer);
+  renderContext.device.freeMemory(stagingMemory);
+
+  // Clean up
+  free(pixels);
+}
+
 bool Texture::doLoad() {
   bool hasLoaded = false;
 
   if (source == Source::fromRawTexture) {
     readFromRawTexture();
+    hasLoaded = true;
+  } else if (source == Source::fromPixels) {
+    readFromPixels();
     hasLoaded = true;
   }
 
