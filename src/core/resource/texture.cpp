@@ -32,7 +32,10 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext,
                  unsigned char *pixels, uint32_t width, uint32_t height,
                  uint32_t channels)
     : Resource(id, renderContext) {
-  this->pixels = std::move(pixels);
+  unsigned char *buf = new unsigned char[width * height * channels];
+  memcpy(buf, pixels, width * height * channels);
+  this->pixels = buf;
+
   this->width = width;
   this->height = height;
   this->channels = channels;
@@ -242,7 +245,6 @@ void Texture::readFromPixels() {
   renderContext.device.destroyBuffer(stagingBuffer);
   renderContext.device.freeMemory(stagingMemory);
 
-  // Clean up
   free(pixels);
 }
 

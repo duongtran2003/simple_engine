@@ -33,8 +33,8 @@ private:
   std::vector<ImGuiVkBuffer> vertexBuffers;
   std::vector<ImGuiVkBuffer> indexBuffers;
 
-  uint32_t vertexCount = 0;
-  uint32_t indexCount = 0;
+  std::vector<uint32_t> vertexCounts;
+  std::vector<uint32_t> indexCounts;
 
   Core::ResourceHandle<Core::Texture> fontTexture;
 
@@ -48,8 +48,7 @@ private:
 
   ImGuiStyle uiStyle;
 
-  bool needUpdateBuffers = true;
-  vk::PipelineRenderingCreateInfo renderingInfo{};
+  vk::PipelineRenderingCreateInfo pipelineRenderingInfo{};
   vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;
 
   void createVertexBuffers(vk::DeviceSize bufferSize);
@@ -72,9 +71,11 @@ public:
   void setStyle(uint32_t index);
   void updateTexture(ImTextureData *tex);
 
-  bool newFrame();
+  void newFrame();
   void updateBuffers(uint32_t frameIndex);
-  void drawFrame(vk::CommandBuffer &commandBuffer);
+  void drawFrame(vk::CommandBuffer &commandBuffer, vk::Image drawImage,
+                 vk::ImageView drawImageView, vk::ImageLayout initialLayout,
+                 vk::ImageLayout outputLayout, uint32_t frameIndex);
 
   void handleKey(int key, int scancode, int action, int mode);
   void handleMousePos(float x, float y);

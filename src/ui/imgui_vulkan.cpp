@@ -6,12 +6,14 @@
 #include "core/resource/texture.hpp"
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <glm/ext/vector_float2.hpp>
 #include <imgui.h>
 #include <stdexcept>
 #include <utility>
@@ -26,6 +28,9 @@ ImGuiVulkan::ImGuiVulkan(const Core::RenderContext &context,
   assert(vertexBuffers.size() == 0);
   assert(indexBuffers.size() == 0);
 
+  vertexCounts.assign(context.inFlightFrame, 0);
+  indexCounts.assign(context.inFlightFrame, 0);
+
   createVertexBuffers(1);
   createIndexBuffers(1);
 }
@@ -39,10 +44,10 @@ void ImGuiVulkan::createVertexBuffers(vk::DeviceSize bufferSize) {
                 vk::MemoryPropertyFlagBits::eHostCoherent,
             context);
 
-    vertexBuffers.push_back(
-        {.buffer = std::move(vertexBuffer),
-         .memory = std::move(vertexBufferMemory),
-         .mapped = context.device.mapMemory(vertexBufferMemory, 0, 1)});
+    vertexBuffers.push_back({.buffer = std::move(vertexBuffer),
+                             .memory = std::move(vertexBufferMemory),
+                             .mapped = context.device.mapMemory(
+                                 vertexBufferMemory, 0, bufferSize)});
   }
 }
 
@@ -58,7 +63,7 @@ void ImGuiVulkan::createVertexBuffer(vk::DeviceSize bufferSize,
   vertexBuffers[frameIndex] = ImGuiVkBuffer{
       .buffer = std::move(vertexBuffer),
       .memory = std::move(vertexBufferMemory),
-      .mapped = context.device.mapMemory(vertexBufferMemory, 0, 1)};
+      .mapped = context.device.mapMemory(vertexBufferMemory, 0, bufferSize)};
 }
 
 void ImGuiVulkan::clearVertexBuffers() {
@@ -91,7 +96,7 @@ void ImGuiVulkan::createIndexBuffers(vk::DeviceSize bufferSize) {
     indexBuffers.push_back(
         {.buffer = std::move(indexBuffer),
          .memory = std::move(indexBufferMemory),
-         .mapped = context.device.mapMemory(indexBufferMemory, 0, 1)});
+         .mapped = context.device.mapMemory(indexBufferMemory, 0, bufferSize)});
   }
 }
 
@@ -107,7 +112,7 @@ void ImGuiVulkan::createIndexBuffer(vk::DeviceSize bufferSize,
   indexBuffers[frameIndex] = ImGuiVkBuffer{
       .buffer = std::move(indexBuffer),
       .memory = std::move(indexBufferMemory),
-      .mapped = context.device.mapMemory(indexBufferMemory, 0, 1)};
+      .mapped = context.device.mapMemory(indexBufferMemory, 0, bufferSize)};
 }
 
 void ImGuiVulkan::clearIndexBuffers() {
@@ -155,7 +160,7 @@ void ImGuiVulkan::init(float w, float h) {
   uiStyle.Colors[ImGuiCol_Header] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
   uiStyle.Colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
 
-  setStyle(0);
+  setStyle(2);
 }
 
 void ImGuiVulkan::setStyle(uint32_t index) {
@@ -163,6 +168,12 @@ void ImGuiVulkan::setStyle(uint32_t index) {
 
   if (index == 0) {
     style = uiStyle;
+  } else if (index == 1) {
+    ImGui::StyleColorsClassic();
+  } else if (index == 2) {
+    ImGui::StyleColorsDark();
+  } else if (index == 3) {
+    ImGui::StyleColorsLight();
   } else {
     throw std::runtime_error(
         "ImGuiVulkan::setStyle::ERROR: Style not supported");
@@ -333,6 +344,9 @@ void ImGuiVulkan::initResources() {
                                                     .pViewports = nullptr,
                                                     .scissorCount = 1,
                                                     .pScissors = nullptr};
+  vk::PipelineMultisampleStateCreateInfo multisampling{
+      .rasterizationSamples = vk::SampleCountFlagBits::e1,
+      .sampleShadingEnable = vk::False};
 
   vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
       .stageCount = 2,
@@ -341,6 +355,7 @@ void ImGuiVulkan::initResources() {
       .pInputAssemblyState = &inputAssembly,
       .pViewportState = &viewportState,
       .pRasterizationState = &rasterizer,
+      .pMultisampleState = &multisampling,
       .pDepthStencilState = &depthStencil,
       .pColorBlendState = &colorBlending,
       .pDynamicState = &dynamicState,
@@ -377,37 +392,36 @@ void ImGuiVulkan::updateTexture(ImTextureData *tex) {
       return;
     }
 
-    resourceManager.release<Core::Texture>("im_gui_font");
+    context.device.waitIdle();
+
+    fontTexture = {};
     fontTexture =
         resourceManager.load<Core::Texture>("im_gui_font", fontData, w, h, 4);
+
+    vk::DescriptorImageInfo imageInfo{
+        .sampler = fontTexture->getSampler(),
+        .imageView = fontTexture->getImageView(),
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+    vk::WriteDescriptorSet writeDescriptorSet{
+        .dstSet = descriptorSet,
+        .dstBinding = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+        .pImageInfo = &imageInfo};
+
+    context.device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 
     tex->SetTexID((ImTextureID)(intptr_t)(VkDescriptorSet)descriptorSet);
     tex->SetStatus(ImTextureStatus_OK);
   }
 }
 
-bool ImGuiVulkan::newFrame() {
+void ImGuiVulkan::newFrame() {
   ImGui::NewFrame();
-  ImGui::Begin("Vulkan ImGui");
-  ImGui::Text("Hello world");
-
-  if (ImGui::Button("Click me!")) {
-    // click handler;
-  }
-  ImGui::End();
+  ImGui::ShowDemoWindow();
   ImGui::EndFrame();
-
   ImGui::Render();
-  ImDrawData *drawData = ImGui::GetDrawData();
-  if (drawData && drawData->CmdListsCount > 0) {
-    if (drawData->TotalVtxCount > vertexCount ||
-        drawData->TotalIdxCount > indexCount) {
-      needUpdateBuffers = true;
-      return true;
-    }
-  }
-
-  return false;
 }
 
 void ImGuiVulkan::updateBuffers(uint32_t frameIndex) {
@@ -420,21 +434,22 @@ void ImGuiVulkan::updateBuffers(uint32_t frameIndex) {
       drawData->TotalVtxCount * sizeof(ImDrawVert);
   vk::DeviceSize indexBufferSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
 
-  if (drawData->TotalVtxCount > vertexCount) {
+  if (drawData->TotalVtxCount > vertexCounts[frameIndex]) {
     clearVertexBuffer(frameIndex);
     createVertexBuffer(vertexBufferSize, frameIndex);
+    vertexCounts[frameIndex] = drawData->TotalVtxCount;
   }
 
-  if (drawData->TotalIdxCount > indexCount) {
+  if (drawData->TotalIdxCount > indexCounts[frameIndex]) {
     clearIndexBuffer(frameIndex);
     createIndexBuffer(indexBufferSize, frameIndex);
+    indexCounts[frameIndex] = drawData->TotalIdxCount;
   }
 
   ImDrawVert *vtxDst =
       static_cast<ImDrawVert *>(vertexBuffers[frameIndex].mapped);
 
-  ImDrawVert *idxDst =
-      static_cast<ImDrawVert *>(indexBuffers[frameIndex].mapped);
+  ImDrawIdx *idxDst = static_cast<ImDrawIdx *>(indexBuffers[frameIndex].mapped);
 
   for (int i = 0; i < drawData->CmdListsCount; i++) {
     const ImDrawList *cmdList = drawData->CmdLists[i];
@@ -448,6 +463,150 @@ void ImGuiVulkan::updateBuffers(uint32_t frameIndex) {
     vtxDst += cmdList->VtxBuffer.Size;
     idxDst += cmdList->IdxBuffer.Size;
   }
+}
+
+void ImGuiVulkan::drawFrame(vk::CommandBuffer &commandBuffer,
+                            vk::Image drawImage, vk::ImageView drawImageView,
+                            vk::ImageLayout initialLayout,
+                            vk::ImageLayout outputLayout, uint32_t frameIndex) {
+  ImDrawData *drawData = ImGui::GetDrawData();
+  if (!drawData || drawData->CmdListsCount == 0) {
+    return;
+  }
+
+  if (drawData->Textures) {
+    for (int i = 0; i < drawData->Textures->Size; i++) {
+      ImTextureData *tex = (*drawData->Textures)[i];
+      if (tex->Status != ImTextureStatus_OK) {
+        updateTexture(tex);
+      }
+    }
+  }
+
+  if (initialLayout != vk::ImageLayout::eColorAttachmentOptimal) {
+    Helper::VulkanHelper::transitionImageLayout(
+        commandBuffer, drawImage, 1, 0, initialLayout,
+        vk::ImageLayout::eColorAttachmentOptimal,
+        vk::ImageAspectFlagBits::eColor);
+  }
+
+  vk::RenderingAttachmentInfoKHR colorAttachment{
+      .imageView = drawImageView,
+      .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+      .loadOp = vk::AttachmentLoadOp::eLoad,
+      .storeOp = vk::AttachmentStoreOp::eStore};
+
+  vk::RenderingInfoKHR renderingInfo{
+      .renderArea = {.offset = {.x = 0, .y = 0},
+                     .extent = {.width = static_cast<uint32_t>(
+                                    drawData->DisplaySize.x),
+                                .height = static_cast<uint32_t>(
+                                    drawData->DisplaySize.y)}},
+      .layerCount = 1,
+      .colorAttachmentCount = 1,
+      .pColorAttachments = &colorAttachment};
+
+  commandBuffer.beginRendering(renderingInfo);
+  commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+
+  vk::Viewport viewport{};
+  viewport.width = drawData->DisplaySize.x;
+  viewport.height = drawData->DisplaySize.y;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+  commandBuffer.setViewport(0, viewport);
+
+  ImGuiVulkanPushConstant pushConstant{
+      .scale = glm::vec2(2.0f / drawData->DisplaySize.x,
+                         2.0f / drawData->DisplaySize.y),
+      .translate = glm::vec2(-1.0f)};
+  commandBuffer.pushConstants(pipelineLayout, vk::ShaderStageFlagBits::eVertex,
+                              0, sizeof(ImGuiVulkanPushConstant),
+                              &pushConstant);
+
+  vk::DeviceSize offsets[] = {0};
+  commandBuffer.bindVertexBuffers(0, 1, &vertexBuffers[frameIndex].buffer,
+                                  offsets);
+  commandBuffer.bindIndexBuffer(indexBuffers[frameIndex].buffer, 0,
+                                vk::IndexType::eUint16);
+
+  int vertexOffset = 0;
+  int indexOffset = 0;
+
+  for (int i = 0; i < drawData->CmdListsCount; i++) {
+    const ImDrawList *cmdList = drawData->CmdLists[i];
+
+    for (int j = 0; j < cmdList->CmdBuffer.Size; j++) {
+      const ImDrawCmd *pcmd = &cmdList->CmdBuffer[j];
+
+      float clipMinX = std::max(pcmd->ClipRect.x, 0.0f);
+      float clipMinY = std::max(pcmd->ClipRect.y, 0.0f);
+
+      float clipMaxX = std::min(pcmd->ClipRect.z, drawData->DisplaySize.x);
+      float clipMaxY = std::min(pcmd->ClipRect.w, drawData->DisplaySize.y);
+
+      if (clipMaxX <= clipMinX || clipMaxY <= clipMinY) {
+        indexOffset += pcmd->ElemCount;
+        continue;
+      }
+
+      vk::Rect2D scissor{
+          .offset = {.x = static_cast<int32_t>(clipMinX),
+                     .y = static_cast<int32_t>(clipMinY)},
+          .extent = {.width = static_cast<uint32_t>(clipMaxX - clipMinX),
+                     .height = static_cast<uint32_t>(clipMaxY - clipMinY)}};
+
+      commandBuffer.setScissor(0, scissor);
+      VkDescriptorSet texHandle = (VkDescriptorSet)pcmd->GetTexID();
+      if (texHandle) {
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                         pipelineLayout, 0,
+                                         {vk::DescriptorSet(texHandle)}, {});
+      } else {
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                         pipelineLayout, 0, {descriptorSet},
+                                         {});
+      }
+
+      commandBuffer.drawIndexed(pcmd->ElemCount, 1, indexOffset, vertexOffset,
+                                0);
+      indexOffset += pcmd->ElemCount;
+    }
+
+    vertexOffset += cmdList->VtxBuffer.Size;
+  }
+
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer, drawImage, 1, 0, vk::ImageLayout::eColorAttachmentOptimal,
+      outputLayout, vk::ImageAspectFlagBits::eColor);
+
+  commandBuffer.endRendering();
+}
+
+void ImGuiVulkan::handleKey(int key, int scancode, int action, int mods) {
+  ImGuiIO &io = ImGui::GetIO();
+
+  bool pressed = (action != 0);
+  io.AddKeyEvent((ImGuiKey)key, pressed);
+}
+
+void ImGuiVulkan::handleMousePos(float x, float y) {
+  ImGuiIO &io = ImGui::GetIO();
+  io.AddMousePosEvent(x, y);
+}
+
+void ImGuiVulkan::handleMouseButton(int button, bool pressed) {
+  ImGuiIO &io = ImGui::GetIO();
+  io.AddMouseButtonEvent(button, pressed);
+}
+
+bool ImGuiVulkan::getWantKeyCapture() {
+  return ImGui::GetIO().WantCaptureKeyboard;
+}
+
+void ImGuiVulkan::charPressed(uint32_t key) {
+  ImGuiIO &io = ImGui::GetIO();
+  io.AddInputCharacter(key);
 }
 
 } // namespace UI

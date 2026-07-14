@@ -42,6 +42,7 @@
 #include "enums/input.hpp"
 #include "helpers/asset_loader.hpp"
 #include "helpers/vulkan_helper.hpp"
+#include "ui/imgui_vulkan.hpp"
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "vulkan/vulkan.hpp"
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
@@ -73,6 +74,13 @@ Engine::Engine() {
   cullingSystem = new CullingSystem(camera);
 
   createGraphicsPipeline();
+
+  imGui = new UI::ImGuiVulkan(renderContext, *resourceManager);
+  imGui->init(renderContext.swapChainExtent.width,
+              renderContext.swapChainExtent.height);
+  imGui->initResources();
+  input->setImGui(imGui);
+
   renderGraph = new RenderGraph(renderContext);
 
   lastFrameTime = std::chrono::high_resolution_clock::now();
@@ -295,6 +303,14 @@ void Engine::renderFrame() {
                           outputResource->getLayout(),
                           renderContext.swapChainImages[imageIndex],
                           vk::ImageLayout::eTransferDstOptimal, copyRegion);
+
+  imGui->newFrame();
+  imGui->updateBuffers(renderContext.frameIndex);
+  imGui->drawFrame(commandBuffer, renderContext.swapChainImages[imageIndex],
+                   renderContext.swapChainImageViews[imageIndex],
+                   vk::ImageLayout::eTransferDstOptimal,
+                   vk::ImageLayout::eTransferDstOptimal,
+                   renderContext.frameIndex);
 
   Helper::VulkanHelper::transitionImageLayout(
       commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
@@ -666,7 +682,7 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
   int scene;
   bool isLoaded = false;
 
-  entities = loadSponza(resourceManager, renderContext, camera);
+  entities = loadOrientationTest(resourceManager, renderContext, camera);
   return entities;
 
   while (!isLoaded) {

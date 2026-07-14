@@ -1,6 +1,7 @@
 #include "core/input/input.hpp"
 #include "core/render_context.hpp"
 #include "enums/input.hpp"
+#include "ui/imgui_vulkan.hpp"
 #include <GLFW/glfw3.h>
 #include <glm/ext/vector_float2.hpp>
 
@@ -10,7 +11,14 @@ Input::Input(const RenderContext &context) : context(context) {
   glfwSetWindowUserPointer(context.window, this);
   glfwSetKeyCallback(context.window, keyCallback);
   glfwSetCursorPosCallback(context.window, mouseCallback);
+  glfwSetMouseButtonCallback(context.window, mouseButtonCallback);
+  glfwSetCharCallback(context.window, charCallback);
 };
+
+Input *Input::setImGui(UI::ImGuiVulkan *imGui) {
+  this->imGui = imGui;
+  return this;
+}
 
 void Input::keyCallback(GLFWwindow *window, int key, int scancode, int action,
                         int mods) {
@@ -24,6 +32,20 @@ void Input::keyCallback(GLFWwindow *window, int key, int scancode, int action,
   } else if (action == GLFW_RELEASE) {
     instance->keys[key] = false;
   }
+
+  if (instance->imGui && instance->imGui->getWantKeyCapture()) {
+    instance->imGui->handleKey(key, scancode, action, mods);
+  }
+}
+
+void Input::mouseButtonCallback(GLFWwindow *window, int button, int action,
+                                int mods) {
+  auto *instance = static_cast<Input *>(glfwGetWindowUserPointer(window));
+  if (!instance || !instance->imGui) {
+    return;
+  }
+
+  instance->imGui->handleMouseButton(button, action == GLFW_PRESS);
 }
 
 void Input::mouseCallback(GLFWwindow *window, double xpos, double ypos) {
@@ -33,6 +55,19 @@ void Input::mouseCallback(GLFWwindow *window, double xpos, double ypos) {
   }
 
   instance->handleMouseMove(xpos, ypos);
+
+  if (instance->imGui && !instance->isMouseLocked()) {
+    instance->imGui->handleMousePos(xpos, ypos);
+  }
+}
+
+void Input::charCallback(GLFWwindow *window, unsigned int codepoint) {
+  auto *instance = static_cast<Input *>(glfwGetWindowUserPointer(window));
+  if (!instance || !instance->imGui) {
+    return;
+  }
+
+  instance->imGui->charPressed(codepoint);
 }
 
 void Input::toggleMouseLock() {

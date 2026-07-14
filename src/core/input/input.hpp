@@ -7,6 +7,9 @@
 #include <glm/ext/vector_float2.hpp>
 
 namespace SimpleEngine {
+namespace UI {
+class ImGuiVulkan;
+}
 namespace Core {
 
 class Input {
@@ -22,8 +25,12 @@ private:
   static void keyCallback(GLFWwindow *window, int key, int scancode, int action,
                           int mods);
   static void mouseCallback(GLFWwindow *window, double xpos, double ypos);
+  static void mouseButtonCallback(GLFWwindow *window, int button, int action,
+                                  int mods);
+  static void charCallback(GLFWwindow* window, unsigned int codepoint);
 
   const RenderContext &context;
+  UI::ImGuiVulkan *imGui = nullptr;
   std::array<bool, 512> keys{false};
   std::array<KeyState, 512> keyStates{KeyState::None};
 
@@ -35,6 +42,8 @@ private:
 public:
   Input() = delete;
   Input(const RenderContext &context);
+
+  Input *setImGui(UI::ImGuiVulkan *imGui);
 
   bool isKeyJustPressed(Enums::Input::Key key) const;
   bool isKeyHeld(Enums::Input::Key key) const;

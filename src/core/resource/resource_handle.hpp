@@ -2,6 +2,7 @@
 
 #include "core/resource/resource_manager.hpp"
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 namespace SimpleEngine {

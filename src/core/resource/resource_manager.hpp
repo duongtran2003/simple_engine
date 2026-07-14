@@ -57,6 +57,8 @@ ResourceHandle<T> ResourceManager::load(const std::string &resourceId,
   auto [resourceIt, inserted] = typeResources.try_emplace(
       resourceId, ResourceData{.resource = nullptr, .refCount = 1});
   if (!inserted) {
+    std::cout << "ResourceManager::load::INFO: Found resource. Acquiring " +
+                     resourceId + "\n";
     resourceIt->second.refCount += 1;
     return ResourceHandle<T>(resourceId, this);
   }
