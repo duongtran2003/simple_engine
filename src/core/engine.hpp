@@ -7,6 +7,7 @@
 #include "core/render_graph/render_graph.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "core/system/culling_system.hpp"
+#include "ui/camera_ui.hpp"
 #include "ui/imgui_vulkan.hpp"
 #include <chrono>
 #include <cstdint>
@@ -39,7 +40,10 @@ private:
   Input *input = nullptr;
   Camera *camera = nullptr;
   CullingSystem *cullingSystem = nullptr;
-  UI::ImGuiVulkan* imGui;
+
+  // UI stuff
+  UI::ImGuiVulkan *imGui;
+  UI::CameraUI *cameraUI;
 
   std::vector<Entity *> renderObjects;
 

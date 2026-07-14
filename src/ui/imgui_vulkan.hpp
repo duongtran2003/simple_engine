@@ -61,6 +61,10 @@ private:
   void clearIndexBuffers();
   void clearIndexBuffer(uint32_t frameIndex);
 
+  void updateBuffers(uint32_t frameIndex);
+
+  ImGuiKey translateGlfwKeyToImGui(int key);
+
 public:
   ImGuiVulkan(const Core::RenderContext &context,
               Core::ResourceManager &resourceManager);
@@ -71,13 +75,12 @@ public:
   void setStyle(uint32_t index);
   void updateTexture(ImTextureData *tex);
 
-  void newFrame();
-  void updateBuffers(uint32_t frameIndex);
-  void drawFrame(vk::CommandBuffer &commandBuffer, vk::Image drawImage,
-                 vk::ImageView drawImageView, vk::ImageLayout initialLayout,
-                 vk::ImageLayout outputLayout, uint32_t frameIndex);
+  void beginFrame();
+  void endFrame(uint32_t frameIndex);
+  void drawFrame(vk::CommandBuffer &commandBuffer, vk::ImageView drawImageView,
+                 uint32_t frameIndex);
 
-  void handleKey(int key, int scancode, int action, int mode);
+  void handleKey(int key, int scancode, int action, int mods);
   void handleMousePos(float x, float y);
   void handleMouseButton(int button, bool pressed);
   bool getWantKeyCapture();

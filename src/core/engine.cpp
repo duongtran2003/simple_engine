@@ -42,6 +42,7 @@
 #include "enums/input.hpp"
 #include "helpers/asset_loader.hpp"
 #include "helpers/vulkan_helper.hpp"
+#include "ui/camera_ui.hpp"
 #include "ui/imgui_vulkan.hpp"
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "vulkan/vulkan.hpp"
@@ -80,6 +81,7 @@ Engine::Engine() {
               renderContext.swapChainExtent.height);
   imGui->initResources();
   input->setImGui(imGui);
+  cameraUI = new UI::CameraUI(*camera);
 
   renderGraph = new RenderGraph(renderContext);
 
@@ -304,17 +306,22 @@ void Engine::renderFrame() {
                           renderContext.swapChainImages[imageIndex],
                           vk::ImageLayout::eTransferDstOptimal, copyRegion);
 
-  imGui->newFrame();
-  imGui->updateBuffers(renderContext.frameIndex);
-  imGui->drawFrame(commandBuffer, renderContext.swapChainImages[imageIndex],
-                   renderContext.swapChainImageViews[imageIndex],
-                   vk::ImageLayout::eTransferDstOptimal,
-                   vk::ImageLayout::eTransferDstOptimal,
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
+      vk::ImageLayout::eTransferDstOptimal,
+      vk::ImageLayout::eColorAttachmentOptimal,
+      vk::ImageAspectFlagBits::eColor);
+
+  // Handle UI here, abstract later
+  imGui->beginFrame();
+  cameraUI->render();
+  imGui->endFrame(renderContext.frameIndex);
+  imGui->drawFrame(commandBuffer, renderContext.swapChainImageViews[imageIndex],
                    renderContext.frameIndex);
 
   Helper::VulkanHelper::transitionImageLayout(
       commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
-      vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::ePresentSrcKHR,
+      vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
       vk::ImageAspectFlagBits::eColor);
 
   commandBuffer.end();

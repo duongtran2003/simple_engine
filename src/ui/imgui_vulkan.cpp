@@ -6,6 +6,7 @@
 #include "core/resource/texture.hpp"
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
+#include <GLFW/glfw3.h>
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -15,7 +16,6 @@
 #include <cstring>
 #include <glm/ext/vector_float2.hpp>
 #include <imgui.h>
-#include <iostream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -155,13 +155,10 @@ void ImGuiVulkan::init(float w, float h) {
   io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
   uiStyle = ImGui::GetStyle();
-  uiStyle.Colors[ImGuiCol_TitleBg] = ImVec4(1.0f, 0.0f, 0.0f, 0.6f);
-  uiStyle.Colors[ImGuiCol_TitleBgActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.8f);
-  uiStyle.Colors[ImGuiCol_MenuBarBg] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
-  uiStyle.Colors[ImGuiCol_Header] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
-  uiStyle.Colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+  uiStyle.Colors[ImGuiCol_TitleBg] = ImVec4(1.0f, 0.161f, 0.161f, 0.7f);
+  uiStyle.Colors[ImGuiCol_TitleBgActive] = ImVec4(1.0f, 0.161f, 0.161f, 0.9f);
 
-  setStyle(3);
+  setStyle(0);
 }
 
 void ImGuiVulkan::setStyle(uint32_t index) {
@@ -418,16 +415,11 @@ void ImGuiVulkan::updateTexture(ImTextureData *tex) {
   }
 }
 
-void ImGuiVulkan::newFrame() {
-  ImGui::NewFrame();
-  ImGui::Begin("Example GUI");
-  ImGui::Text("Hello world");
-  if (ImGui::Button("Click me")) {
-    std::cout << "Button click";
-  }
-  ImGui::End();
+void ImGuiVulkan::beginFrame() { ImGui::NewFrame(); }
+void ImGuiVulkan::endFrame(uint32_t frameIndex) {
   ImGui::EndFrame();
   ImGui::Render();
+  updateBuffers(frameIndex);
 }
 
 void ImGuiVulkan::updateBuffers(uint32_t frameIndex) {
@@ -472,9 +464,7 @@ void ImGuiVulkan::updateBuffers(uint32_t frameIndex) {
 }
 
 void ImGuiVulkan::drawFrame(vk::CommandBuffer &commandBuffer,
-                            vk::Image drawImage, vk::ImageView drawImageView,
-                            vk::ImageLayout initialLayout,
-                            vk::ImageLayout outputLayout, uint32_t frameIndex) {
+                            vk::ImageView drawImageView, uint32_t frameIndex) {
   ImDrawData *drawData = ImGui::GetDrawData();
   if (!drawData || drawData->CmdListsCount == 0) {
     return;
@@ -487,13 +477,6 @@ void ImGuiVulkan::drawFrame(vk::CommandBuffer &commandBuffer,
         updateTexture(tex);
       }
     }
-  }
-
-  if (initialLayout != vk::ImageLayout::eColorAttachmentOptimal) {
-    Helper::VulkanHelper::transitionImageLayout(
-        commandBuffer, drawImage, 1, 0, initialLayout,
-        vk::ImageLayout::eColorAttachmentOptimal,
-        vk::ImageAspectFlagBits::eColor);
   }
 
   vk::RenderingAttachmentInfoKHR colorAttachment{
@@ -582,10 +565,6 @@ void ImGuiVulkan::drawFrame(vk::CommandBuffer &commandBuffer,
     vertexOffset += cmdList->VtxBuffer.Size;
   }
 
-  Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, drawImage, 1, 0, vk::ImageLayout::eColorAttachmentOptimal,
-      outputLayout, vk::ImageAspectFlagBits::eColor);
-
   commandBuffer.endRendering();
 }
 
@@ -593,7 +572,8 @@ void ImGuiVulkan::handleKey(int key, int scancode, int action, int mods) {
   ImGuiIO &io = ImGui::GetIO();
 
   bool pressed = (action != 0);
-  io.AddKeyEvent((ImGuiKey)key, pressed);
+  ImGuiKey imGuiKey = translateGlfwKeyToImGui(key);
+  io.AddKeyEvent(imGuiKey, pressed);
 }
 
 void ImGuiVulkan::handleMousePos(float x, float y) {
@@ -613,6 +593,124 @@ bool ImGuiVulkan::getWantKeyCapture() {
 void ImGuiVulkan::charPressed(uint32_t key) {
   ImGuiIO &io = ImGui::GetIO();
   io.AddInputCharacter(key);
+}
+
+ImGuiKey ImGuiVulkan::translateGlfwKeyToImGui(int key) {
+  if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9)
+    return static_cast<ImGuiKey>(ImGuiKey_0 + (key - GLFW_KEY_0));
+  if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z)
+    return static_cast<ImGuiKey>(ImGuiKey_A + (key - GLFW_KEY_A));
+  if (key >= GLFW_KEY_F1 && key <= GLFW_KEY_F12)
+    return static_cast<ImGuiKey>(ImGuiKey_F1 + (key - GLFW_KEY_F1));
+  if (key >= GLFW_KEY_KP_0 && key <= GLFW_KEY_KP_9)
+    return static_cast<ImGuiKey>(ImGuiKey_Keypad0 + (key - GLFW_KEY_KP_0));
+
+  switch (key) {
+  // Navigation keys
+  case GLFW_KEY_UP:
+    return ImGuiKey_UpArrow;
+  case GLFW_KEY_DOWN:
+    return ImGuiKey_DownArrow;
+  case GLFW_KEY_LEFT:
+    return ImGuiKey_LeftArrow;
+  case GLFW_KEY_RIGHT:
+    return ImGuiKey_RightArrow;
+  case GLFW_KEY_PAGE_UP:
+    return ImGuiKey_PageUp;
+  case GLFW_KEY_PAGE_DOWN:
+    return ImGuiKey_PageDown;
+  case GLFW_KEY_HOME:
+    return ImGuiKey_Home;
+  case GLFW_KEY_END:
+    return ImGuiKey_End;
+  case GLFW_KEY_INSERT:
+    return ImGuiKey_Insert;
+  case GLFW_KEY_DELETE:
+    return ImGuiKey_Delete;
+
+  // Functional control keys
+  case GLFW_KEY_TAB:
+    return ImGuiKey_Tab;
+  case GLFW_KEY_SPACE:
+    return ImGuiKey_Space;
+  case GLFW_KEY_ENTER:
+    return ImGuiKey_Enter;
+  case GLFW_KEY_ESCAPE:
+    return ImGuiKey_Escape;
+  case GLFW_KEY_BACKSPACE:
+    return ImGuiKey_Backspace;
+  case GLFW_KEY_PRINT_SCREEN:
+    return ImGuiKey_PrintScreen;
+  case GLFW_KEY_PAUSE:
+    return ImGuiKey_Pause;
+  case GLFW_KEY_CAPS_LOCK:
+    return ImGuiKey_CapsLock;
+  case GLFW_KEY_SCROLL_LOCK:
+    return ImGuiKey_ScrollLock;
+  case GLFW_KEY_NUM_LOCK:
+    return ImGuiKey_NumLock;
+
+  // Modifiers
+  case GLFW_KEY_LEFT_SHIFT:
+    return ImGuiKey_LeftShift;
+  case GLFW_KEY_RIGHT_SHIFT:
+    return ImGuiKey_RightShift;
+  case GLFW_KEY_LEFT_CONTROL:
+    return ImGuiKey_LeftCtrl;
+  case GLFW_KEY_RIGHT_CONTROL:
+    return ImGuiKey_RightCtrl;
+  case GLFW_KEY_LEFT_ALT:
+    return ImGuiKey_LeftAlt;
+  case GLFW_KEY_RIGHT_ALT:
+    return ImGuiKey_RightAlt;
+  case GLFW_KEY_LEFT_SUPER:
+    return ImGuiKey_LeftSuper;
+  case GLFW_KEY_RIGHT_SUPER:
+    return ImGuiKey_RightSuper;
+
+  // Keypad operators
+  case GLFW_KEY_KP_DIVIDE:
+    return ImGuiKey_KeypadDivide;
+  case GLFW_KEY_KP_MULTIPLY:
+    return ImGuiKey_KeypadMultiply;
+  case GLFW_KEY_KP_SUBTRACT:
+    return ImGuiKey_KeypadSubtract;
+  case GLFW_KEY_KP_ADD:
+    return ImGuiKey_KeypadAdd;
+  case GLFW_KEY_KP_DECIMAL:
+    return ImGuiKey_KeypadDecimal;
+  case GLFW_KEY_KP_ENTER:
+    return ImGuiKey_KeypadEnter;
+  case GLFW_KEY_KP_EQUAL:
+    return ImGuiKey_KeypadEqual;
+
+  // Punctuation
+  case GLFW_KEY_APOSTROPHE:
+    return ImGuiKey_Apostrophe;
+  case GLFW_KEY_COMMA:
+    return ImGuiKey_Comma;
+  case GLFW_KEY_MINUS:
+    return ImGuiKey_Minus;
+  case GLFW_KEY_PERIOD:
+    return ImGuiKey_Period;
+  case GLFW_KEY_SLASH:
+    return ImGuiKey_Slash;
+  case GLFW_KEY_SEMICOLON:
+    return ImGuiKey_Semicolon;
+  case GLFW_KEY_EQUAL:
+    return ImGuiKey_Equal;
+  case GLFW_KEY_LEFT_BRACKET:
+    return ImGuiKey_LeftBracket;
+  case GLFW_KEY_BACKSLASH:
+    return ImGuiKey_Backslash;
+  case GLFW_KEY_RIGHT_BRACKET:
+    return ImGuiKey_RightBracket;
+  case GLFW_KEY_GRAVE_ACCENT:
+    return ImGuiKey_GraveAccent;
+
+  default:
+    return ImGuiKey_None;
+  }
 }
 
 } // namespace UI

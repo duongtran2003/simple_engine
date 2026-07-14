@@ -27,14 +27,15 @@ void Input::keyCallback(GLFWwindow *window, int key, int scancode, int action,
     return;
   }
 
+  if (instance->imGui->getWantKeyCapture()) {
+    instance->imGui->handleKey(key, scancode, action, mods);
+    return;
+  }
+
   if (action == GLFW_PRESS) {
     instance->keys[key] = true;
   } else if (action == GLFW_RELEASE) {
     instance->keys[key] = false;
-  }
-
-  if (instance->imGui && instance->imGui->getWantKeyCapture()) {
-    instance->imGui->handleKey(key, scancode, action, mods);
   }
 }
 
@@ -67,7 +68,9 @@ void Input::charCallback(GLFWwindow *window, unsigned int codepoint) {
     return;
   }
 
-  instance->imGui->charPressed(codepoint);
+  if (instance->imGui->getWantKeyCapture()) {
+    instance->imGui->charPressed(codepoint);
+  }
 }
 
 void Input::toggleMouseLock() {
