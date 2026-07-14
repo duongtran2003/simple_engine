@@ -15,6 +15,7 @@
 #include <cstring>
 #include <glm/ext/vector_float2.hpp>
 #include <imgui.h>
+#include <iostream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -160,7 +161,7 @@ void ImGuiVulkan::init(float w, float h) {
   uiStyle.Colors[ImGuiCol_Header] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
   uiStyle.Colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
 
-  setStyle(2);
+  setStyle(3);
 }
 
 void ImGuiVulkan::setStyle(uint32_t index) {
@@ -419,7 +420,12 @@ void ImGuiVulkan::updateTexture(ImTextureData *tex) {
 
 void ImGuiVulkan::newFrame() {
   ImGui::NewFrame();
-  ImGui::ShowDemoWindow();
+  ImGui::Begin("Example GUI");
+  ImGui::Text("Hello world");
+  if (ImGui::Button("Click me")) {
+    std::cout << "Button click";
+  }
+  ImGui::End();
   ImGui::EndFrame();
   ImGui::Render();
 }

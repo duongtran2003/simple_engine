@@ -674,34 +674,7 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  std::cout << "Select scene to load: \n";
-  std::cout << "0. Ball\n1. Sponza\n2. Orientation Test\n";
-
-  enum class EScene { Ball, Sponza, OrientationTest };
-
-  int scene;
-  bool isLoaded = false;
-
-  entities = loadOrientationTest(resourceManager, renderContext, camera);
-  return entities;
-
-  while (!isLoaded) {
-    glfwPollEvents();
-    std::cin >> scene;
-    if (scene == static_cast<int>(EScene::Ball)) {
-      entities = loadBall(resourceManager, renderContext, camera);
-      isLoaded = true;
-    } else if (scene == static_cast<int>(EScene::Sponza)) {
-      entities = loadSponza(resourceManager, renderContext, camera);
-      isLoaded = true;
-    } else if (scene == static_cast<int>(EScene::OrientationTest)) {
-      entities = loadOrientationTest(resourceManager, renderContext, camera);
-      isLoaded = true;
-    } else {
-      std::cout << "Invalid scene\n";
-    }
-  }
-
+  entities = loadSponza(resourceManager, renderContext, camera);
   return entities;
 }
 
