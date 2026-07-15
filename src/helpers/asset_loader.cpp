@@ -200,7 +200,7 @@ glm::mat4 AssetLoader::getNodeTransform(const tinygltf::Node &node) {
 void AssetLoader::processSceneNode(
     const tinygltf::Model &model, int nodeIndex,
     const glm::mat4 &parentTransform, std::vector<Core::RawSceneNode> &nodes,
-    std::unordered_map<std::string, int> &texturesMap,
+    std::unordered_map<std::string, Core::RawTexture> &texturesMap,
     const std::string &scenePath) {
   if (nodeIndex < 0 || nodeIndex >= model.nodes.size()) {
     return;
@@ -374,76 +374,90 @@ void AssetLoader::processSceneNode(
       }
 
       if (primitive.material >= 0) {
-        rawSceneNode.textures.resize(2);
+        rawSceneNode.textureNames.resize(Core::RawSceneNode::TEX_INDEXER_COUNT);
         const auto &material = model.materials[primitive.material];
 
         int albedoIndex = material.pbrMetallicRoughness.baseColorTexture.index;
+
         const std::vector<double> &colorFactor =
             material.pbrMetallicRoughness.baseColorFactor;
+        if (colorFactor.size()) {
+          rawSceneNode.pbrProperty.baseColorFactor = {
+              colorFactor[0], colorFactor[1], colorFactor[2], colorFactor[3]};
+        }
+
+        const float metallicFactor =
+            static_cast<float>(material.pbrMetallicRoughness.metallicFactor);
+        rawSceneNode.pbrProperty.metallicFactor = metallicFactor;
+
+        const float roughnessFactor =
+            static_cast<float>(material.pbrMetallicRoughness.roughnessFactor);
+        rawSceneNode.pbrProperty.roughnessFactor = roughnessFactor;
+
         int normalIndex = material.normalTexture.index;
+        int metallicRoughnessIndex =
+            material.pbrMetallicRoughness.metallicRoughnessTexture.index;
 
-        // Has either texture or base color valur to fallback to
-        if (albedoIndex >= 0 || !colorFactor.empty()) {
-          Core::RawTexture albedo = {};
-          albedo.name = material.name + "_" +
-                        std::to_string(primitive.material) + "_abledo";
-          albedo.useMipmap = true;
-
-          if (albedoIndex >= 0) {
-            auto it = texturesMap.find(albedo.name);
-            if (it == texturesMap.end()) {
-              loadTextureFromTinyGltfModel(model, albedoIndex, albedo,
-                                           TextureLoadMode::fromUri, scenePath);
-              texturesMap[albedo.name] = 1;
-            } else {
-              albedo.hasLoadedImage = true;
-            }
+        if (albedoIndex >= 0) {
+          const std::string name = material.name + "_" +
+                                   std::to_string(primitive.material) +
+                                   "_abledo";
+          auto it = texturesMap.find(name);
+          if (it == texturesMap.end()) {
+            Core::RawTexture albedo{.name = name,
+                                    .useMipmap = true,
+                                    .colorSpace =
+                                        Enums::Texture::ColorSpace::NonLinear};
+            loadTextureFromTinyGltfModel(model, albedoIndex, albedo,
+                                         TextureLoadMode::fromUri, scenePath);
+            texturesMap[albedo.name] = albedo;
           }
-
-          albedo.colorSpace = Enums::Texture::ColorSpace::NonLinear;
-
-          if (!colorFactor.empty()) {
-            albedo.pbrProperty.baseColorFactor = {
-                colorFactor[0], colorFactor[1], colorFactor[2], colorFactor[3]};
-          } else {
-            albedo.pbrProperty.baseColorFactor = glm::vec4(1.0f);
-          }
-          albedo.isValid = true;
 
           size_t albedoIdx =
               static_cast<size_t>(Core::RawSceneNode::TextureIndexer::Albedo);
-          rawSceneNode.textures[albedoIdx] = albedo;
+          rawSceneNode.textureNames[albedoIdx] = name;
         }
 
         if (normalIndex >= 0) {
-          Core::RawTexture normal = {};
-          normal.name = material.name + "_" +
-                        std::to_string(primitive.material) + "_normal";
-          normal.useMipmap = true;
-
-          auto it = texturesMap.find(normal.name);
+          const std::string name = material.name + "_" +
+                                   std::to_string(primitive.material) +
+                                   "_normal";
+          auto it = texturesMap.find(name);
           if (it == texturesMap.end()) {
+            Core::RawTexture normal{.name = name,
+                                    .useMipmap = true,
+                                    .colorSpace =
+                                        Enums::Texture::ColorSpace::Linear};
             loadTextureFromTinyGltfModel(model, normalIndex, normal,
                                          TextureLoadMode::fromUri, scenePath);
-            // Flipping the green channel of the normal map
-            if (!normal.pixels.empty() && normal.componentCount >= 3) {
-              size_t totalPixels = normal.width * normal.height;
-              for (size_t i = 0; i < totalPixels; i++) {
-                size_t offset = i * normal.componentCount;
-                normal.pixels[offset + 1] = 255 - normal.pixels[offset + 1];
-              }
-            }
-
-            texturesMap[normal.name] = 1;
-          } else {
-            normal.hasLoadedImage = true;
+            texturesMap[normal.name] = normal;
           }
-          normal.colorSpace = Enums::Texture::ColorSpace::Linear;
-          normal.isValid = true;
 
           size_t normalIdx =
               static_cast<size_t>(Core::RawSceneNode::TextureIndexer::Normal);
-          rawSceneNode.textures[normalIdx] = normal;
+          rawSceneNode.textureNames[normalIdx] = name;
+        }
+
+        if (metallicRoughnessIndex >= 0) {
+          const std::string name = material.name + "_" +
+                                   std::to_string(primitive.material) +
+                                   "_metallicRoughness";
+
+          auto it = texturesMap.find(name);
+          if (it == texturesMap.end()) {
+            Core::RawTexture metallicRoughness{
+                .name = name,
+                .useMipmap = true,
+                .colorSpace = Enums::Texture::ColorSpace::Linear};
+            loadTextureFromTinyGltfModel(model, metallicRoughnessIndex,
+                                         metallicRoughness,
+                                         TextureLoadMode::fromUri, scenePath);
+            texturesMap[metallicRoughness.name] = metallicRoughness;
+          }
+
+          size_t metallicRoughnessIdx = static_cast<size_t>(
+              Core::RawSceneNode::TextureIndexer::MetallicRoughness);
+          rawSceneNode.textureNames[metallicRoughnessIdx] = name;
         }
       }
 
@@ -479,13 +493,13 @@ void AssetLoader::loadImageTexture(const std::string &path,
 
 void AssetLoader::loadGltfSceneFromGltf(
     const std::string &path, const std::string &name,
-    std::vector<Core::RawSceneNode> &nodes) {
+    std::vector<Core::RawSceneNode> &nodes,
+    std::unordered_map<std::string, Core::RawTexture> &texturesMap) {
   std::string pathToFile =
       (std::filesystem::path(path) / std::filesystem::path(name)).string();
   tinygltf::Model model = loadTinyGltfModelFromASCII(pathToFile + ".gltf");
   tinygltf::Scene scene = model.scenes[model.defaultScene];
 
-  std::unordered_map<std::string, int> texturesMap;
   for (int nodeIndex : scene.nodes) {
     processSceneNode(model, nodeIndex, glm::mat4(1.0f), nodes, texturesMap,
                      path);

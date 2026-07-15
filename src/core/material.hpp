@@ -12,7 +12,9 @@ namespace Core {
 class Material {
 public:
   struct PbrProperty {
-    glm::vec4 baseColorFactor;
+    glm::vec4 baseColorFactor = glm::vec4(1.0f);
+    float metallicFactor = 1.0f;
+    float roughnessFactor = 1.0f;
   };
 
   struct TextureBinding {
@@ -23,9 +25,11 @@ public:
 private:
   TextureBinding albedo;
   TextureBinding normal;
+  TextureBinding metallicRoughness;
 
   bool hasAlbedoTexture = false;
   bool hasNormalTexture = false;
+  bool hasMetallicRoughness = false;
 
   PbrProperty pbrProperty;
 

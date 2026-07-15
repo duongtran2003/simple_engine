@@ -19,9 +19,10 @@ class AssetLoader {
 public:
   enum class TextureLoadMode { fromBinary, fromUri };
 
-  static void loadGltfSceneFromGltf(const std::string &path,
-                                    const std::string &name,
-                                    std::vector<Core::RawSceneNode> &nodes);
+  static void loadGltfSceneFromGltf(
+      const std::string &path, const std::string &name,
+      std::vector<Core::RawSceneNode> &nodes,
+      std::unordered_map<std::string, Core::RawTexture> &texturesMap);
 
   static void loadImageTexture(const std::string &path,
                                Core::RawTexture &rawTexture);
@@ -39,12 +40,11 @@ private:
   static Enums::Texture::Wrap mapGltfWrap(int gltfWrap);
 
   static glm::mat4 getNodeTransform(const tinygltf::Node &node);
-  static void
-  processSceneNode(const tinygltf::Model &model, int nodeIndex,
-                   const glm::mat4 &parentTransform,
-                   std::vector<Core::RawSceneNode> &nodes,
-                   std::unordered_map<std::string, int> &texturesMap,
-                   const std::string &scenePath);
+  static void processSceneNode(
+      const tinygltf::Model &model, int nodeIndex,
+      const glm::mat4 &parentTransform, std::vector<Core::RawSceneNode> &nodes,
+      std::unordered_map<std::string, Core::RawTexture> &texturesMap,
+      const std::string &scenePath);
 };
 } // namespace Helper
 } // namespace SimpleEngine

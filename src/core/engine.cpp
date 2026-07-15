@@ -516,13 +516,14 @@ void Engine::setupExampleRenderGraph() {
   renderGraph->compile();
 }
 
-std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
-                                       ResourceManager *resourceManager,
-                                       RenderContext &renderContext) {
+std::vector<Entity *>
+processNodesList(std::vector<RawSceneNode> &nodes,
+                 ResourceManager *resourceManager, RenderContext &renderContext,
+                 std::unordered_map<std::string, RawTexture> &texturesMap) {
   std::vector<Entity *> entities;
 
-  std::unordered_map<std::string, int> textureSlots;
-  int nextSlot = 0;
+  std::unordered_map<std::string, uint32_t> textureSlots;
+  uint32_t nextSlot = 0;
 
   for (const auto &node : nodes) {
     Entity *e = new Entity(node.name);
@@ -541,35 +542,31 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
     mesh->setMesh(meshResource);
 
     Material material;
-    const RawTexture &rawAlbedo = node.textures[static_cast<size_t>(
-        RawSceneNode::TextureIndexer::Albedo)];
-    if (rawAlbedo.isValid) {
-      material.setPbrBaseColorFactor(
-          node.textures[0].pbrProperty.baseColorFactor);
+    material.setPbrBaseColorFactor(node.pbrProperty.baseColorFactor);
 
-      if (!rawAlbedo.pixels.empty() || rawAlbedo.hasLoadedImage) {
-        ResourceHandle<Texture> albedo =
-            resourceManager->load<Texture>(rawAlbedo.name, rawAlbedo);
+    auto albedoIt = texturesMap.find(node.textureNames[static_cast<size_t>(
+        RawSceneNode::TextureIndexer::Albedo)]);
+    if (albedoIt != texturesMap.end()) {
+      const auto &rawAlbedo = albedoIt->second;
+      ResourceHandle<Texture> albedo =
+          resourceManager->load<Texture>(rawAlbedo.name, rawAlbedo);
 
-        auto it = textureSlots.find(albedo.getId());
-        if (it == textureSlots.end()) {
-          nextSlot += 1;
-          textureSlots[albedo.getId()] = nextSlot;
-        }
-
-        int slot = textureSlots[albedo.getId()];
-        material.setAlbedo(
-            {.index = static_cast<uint32_t>(slot), .handle = albedo});
-
-        material.registerAlbedo(renderContext.bindlessDescriptorSets,
-                                textureSlots.find(albedo.getId())->second,
-                                renderContext);
+      auto it = textureSlots.find(albedo.getId());
+      if (it == textureSlots.end()) {
+        nextSlot += 1;
+        textureSlots[albedo.getId()] = nextSlot;
       }
+
+      uint32_t slot = textureSlots[albedo.getId()];
+      material.setAlbedo({.index = slot, .handle = albedo});
+      material.registerAlbedo(renderContext.bindlessDescriptorSets, slot,
+                              renderContext);
     }
 
-    const RawTexture &rawNormal = node.textures[static_cast<size_t>(
-        RawSceneNode::TextureIndexer::Normal)];
-    if (rawNormal.isValid) {
+    auto normalIt = texturesMap.find(node.textureNames[static_cast<size_t>(
+        RawSceneNode::TextureIndexer::Normal)]);
+    if (normalIt != texturesMap.end()) {
+      const auto &rawNormal = normalIt->second;
       ResourceHandle<Texture> normal =
           resourceManager->load<Texture>(rawNormal.name, rawNormal);
 
@@ -579,12 +576,9 @@ std::vector<Entity *> processNodesList(std::vector<RawSceneNode> &nodes,
         textureSlots[normal.getId()] = nextSlot;
       }
 
-      int slot = textureSlots[normal.getId()];
-      material.setNormal(
-          {.index = static_cast<uint32_t>(slot), .handle = normal});
-
-      material.registerNormal(renderContext.bindlessDescriptorSets,
-                              textureSlots.find(normal.getId())->second,
+      uint32_t slot = textureSlots[normal.getId()];
+      material.setNormal({.index = slot, .handle = normal});
+      material.registerNormal(renderContext.bindlessDescriptorSets, slot,
                               renderContext);
     }
 
@@ -602,7 +596,10 @@ std::vector<Entity *> loadSponza(ResourceManager *resourceManager,
   const std::string scenePath = "resources/scenes/sponza";
   const std::string sceneName = "Sponza";
 
-  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
+  std::unordered_map<std::string, RawTexture> texturesMap;
+  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes,
+                                             texturesMap);
+
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << " nodes.\n";
 
   camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
@@ -619,7 +616,7 @@ std::vector<Entity *> loadSponza(ResourceManager *resourceManager,
   ubo.pointLightColor = glm::vec3(1.0f);
 
   std::vector<Entity *> entities =
-      processNodesList(nodes, resourceManager, renderContext);
+      processNodesList(nodes, resourceManager, renderContext, texturesMap);
 
   return entities;
 }
@@ -632,7 +629,9 @@ std::vector<Entity *> loadOrientationTest(ResourceManager *resourceManager,
   const std::string scenePath = "resources/scenes/orientation_test";
   const std::string sceneName = "OrientationTest";
 
-  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
+  std::unordered_map<std::string, RawTexture> texturesMap;
+  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes,
+                                             texturesMap);
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << " nodes.\n";
 
   camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
@@ -644,7 +643,7 @@ std::vector<Entity *> loadOrientationTest(ResourceManager *resourceManager,
   ubo.pointLightColor = glm::vec3(1.0f);
 
   std::vector<Entity *> entities =
-      processNodesList(nodes, resourceManager, renderContext);
+      processNodesList(nodes, resourceManager, renderContext, texturesMap);
 
   return entities;
 }
@@ -656,7 +655,9 @@ std::vector<Entity *> loadBall(ResourceManager *resourceManager,
   const std::string scenePath = "resources/models/baseball_01_4k";
   const std::string sceneName = "baseball_01_4k";
 
-  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes);
+  std::unordered_map<std::string, RawTexture> texturesMap;
+  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes,
+                                             texturesMap);
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << " nodes.\n";
 
   camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
@@ -668,7 +669,7 @@ std::vector<Entity *> loadBall(ResourceManager *resourceManager,
   ubo.pointLightColor = glm::vec3(1.0f);
 
   std::vector<Entity *> entities =
-      processNodesList(nodes, resourceManager, renderContext);
+      processNodesList(nodes, resourceManager, renderContext, texturesMap);
 
   for (const auto &e : entities) {
     e->getComponent<TransformComponent>()->setScale({20.0f, 20.0f, 20.0f});
@@ -681,7 +682,7 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  entities = loadSponza(resourceManager, renderContext, camera);
+  entities = loadBall(resourceManager, renderContext, camera);
   return entities;
 }
 
