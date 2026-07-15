@@ -29,7 +29,7 @@ private:
 
   bool hasAlbedoTexture = false;
   bool hasNormalTexture = false;
-  bool hasMetallicRoughness = false;
+  bool hasMetallicRoughnessTexture = false;
 
   PbrProperty pbrProperty;
 
@@ -40,17 +40,31 @@ public:
   const TextureBinding &getAlbedo() const;
   Material *registerAlbedo(vk::DescriptorSet &set, uint32_t index,
                            const RenderContext &context);
-  Material *setPbrBaseColorFactor(glm::vec4 factor);
-  const glm::vec4 getPbrBaseColorFactor() const;
 
   Material *setNormal(TextureBinding binding);
   const TextureBinding &getNormal() const;
   Material *registerNormal(vk::DescriptorSet &set, uint32_t index,
                            const RenderContext &context);
 
-  bool hasAlbedo() const { return hasAlbedoTexture; }
+  Material *setMetallicRoughness(TextureBinding binding);
+  const TextureBinding &getMetallicRoughness() const;
+  Material *registerMetallicRoughness(vk::DescriptorSet &set, uint32_t index,
+                                      const RenderContext &context);
 
-  bool hasNormal() const { return hasNormalTexture; }
+  Material *setPbrBaseColorFactor(glm::vec4 factor);
+  const glm::vec4 getPbrBaseColorFactor() const;
+
+  Material *setPbrMetallicFactor(float factor);
+  float getPbrMetallicFactor() const;
+
+  Material *setPbrRoughnessFactor(float factor);
+  float getPbrRoughnessFactor() const;
+
+  bool hasAlbedo() const;
+
+  bool hasNormal() const;
+
+  bool hasMetallicRoughness() const;
 };
 } // namespace Core
 } // namespace SimpleEngine
