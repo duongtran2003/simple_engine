@@ -24,6 +24,7 @@ public:
   struct PushConstants {
     alignas(4) uint32_t albedoIndex;
     alignas(4) uint32_t normalIndex;
+    alignas(4) uint32_t metallicRoughnessIndex;
     alignas(4) uint32_t uniformIndex;
   };
 

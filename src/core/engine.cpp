@@ -493,9 +493,13 @@ void Engine::setupExampleRenderGraph() {
 
       uint32_t albedoIndex = mat.hasAlbedo() ? mat.getAlbedo().index : 0;
       uint32_t normalIndex = mat.hasNormal() ? mat.getNormal().index : 0;
+      uint32_t metallicRoughnessIndex =
+          mat.hasMetallicRoughness() ? mat.getMetallicRoughness().index : 0;
 
       PushConstants pushConstant{.albedoIndex = albedoIndex,
                                  .normalIndex = normalIndex,
+                                 .metallicRoughnessIndex =
+                                     metallicRoughnessIndex,
                                  .uniformIndex = static_cast<uint32_t>(i)};
 
       commandBuffer.pushConstants(renderContext.pipelineLayout,
@@ -580,6 +584,26 @@ processNodesList(std::vector<RawSceneNode> &nodes,
       material.setNormal({.index = slot, .handle = normal});
       material.registerNormal(renderContext.bindlessDescriptorSets, slot,
                               renderContext);
+    }
+
+    auto metallicRoughnessIt =
+        texturesMap.find(node.textureNames[static_cast<size_t>(
+            RawSceneNode::TextureIndexer::MetallicRoughness)]);
+    if (metallicRoughnessIt != texturesMap.end()) {
+      const auto &rawMetallicRoughness = metallicRoughnessIt->second;
+      ResourceHandle<Texture> normal = resourceManager->load<Texture>(
+          rawMetallicRoughness.name, rawMetallicRoughness);
+
+      auto it = textureSlots.find(normal.getId());
+      if (it == textureSlots.end()) {
+        nextSlot += 1;
+        textureSlots[normal.getId()] = nextSlot;
+      }
+
+      uint32_t slot = textureSlots[normal.getId()];
+      material.setMetallicRoughness({.index = slot, .handle = normal});
+      material.registerMetallicRoughness(renderContext.bindlessDescriptorSets,
+                                         slot, renderContext);
     }
 
     mesh->setMaterial(material);
