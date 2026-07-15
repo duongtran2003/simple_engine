@@ -15,7 +15,7 @@ While this project is still in its very early stages, it has a few things done f
 * Automatic memory barrier placement for image layout transition. While this sounds and looks convenient, won't provide the best performance you can achieve.
 * Basic camera movement. You can fly around, adjusting view direction using mouse lock (L)
 
-## How does the render graph works?
+## How does the render graph work?
 
 While it's not the best implementation of a render graph in term of flexibility, robustness and functionality, by providing my own implementation, it helps me fully understand what it can and can't do, making refactoring and extending much easier. Using the same pool of resources for all the passes greatly reduces memory usage, though might make synchronization a huge headache.
 
