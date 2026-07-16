@@ -121,3 +121,33 @@ LightProperty calculatePointLight(float3 lightPos, float3 viewPos, float3 fragPo
 
   return output;
 }
+
+float4 fLambert(float4 c) {
+  return c / float.getPi();
+}
+
+float distributionGGX(float3 n, float3 h, float a) {
+  float a2 = a * a;
+  float nDotH = max(dot(n, h), 0.0f);
+  float nDotH2 = nDotH * nDotH;
+
+  float nom = a2;
+  float denom = nDotH2 * (a2 - 1.0f) + 1.0f;
+  denom = float.getPi() * denom * denom;
+
+  return nom / denom;
+}
+
+float geometrySchlickGGX(float3 n, float3 v, float k) {
+  float nv = max(dot(n, v), 0.0f);
+  float nom = nv;
+  float denom = nv * (1.0f - k) + k;
+
+  return nom / denom;
+}
+
+float geometrySmith(float3 n, float3 v, float3 l, float k) {
+  return geometrySchlickGGX(n, v, k) * geometrySchlickGGX(n, l, k);
+}
+
+
