@@ -22,6 +22,7 @@ ConstantBuffer<UniformBuffer> ubo;
 struct PushConstants {
   uint albedoIndex;
   uint normalIndex;
+  uint metallicRoughnessIndex;
   uint uniformIndex;
 };
 [[vk::push_constant]] PushConstants push;
@@ -30,6 +31,8 @@ struct ObjectData {
   float4x4 model;
   float4x4 normalModel;
   float4 pbrBaseColorFactor;
+  float pbrMetallicFactor;
+  float pbrRoughnessFactor;
 };
 [[vk::binding(0, 2)]]
 StructuredBuffer<ObjectData> objectBuffers;

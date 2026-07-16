@@ -490,6 +490,8 @@ void Engine::setupExampleRenderGraph() {
       ssboDataArray[i].model = transform->getTransformMatrix();
       ssboDataArray[i].normalModel = transform->getNormalTransformMatrix();
       ssboDataArray[i].pbrBaseColorFactor = mat.getPbrBaseColorFactor();
+      ssboDataArray[i].pbrMetallicFactor = mat.getPbrMetallicFactor();
+      ssboDataArray[i].pbrRoughnessFactor = mat.getPbrRoughnessFactor();
 
       uint32_t albedoIndex = mat.hasAlbedo() ? mat.getAlbedo().index : 0;
       uint32_t normalIndex = mat.hasNormal() ? mat.getNormal().index : 0;

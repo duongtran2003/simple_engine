@@ -32,6 +32,8 @@ public:
     alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 normalModel;
     alignas(16) glm::vec4 pbrBaseColorFactor;
+    alignas(4) float pbrMetallicFactor;
+    alignas(4) float pbrRoughnessFactor;
   };
 
 private:

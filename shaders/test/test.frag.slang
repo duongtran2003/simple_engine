@@ -27,6 +27,8 @@ struct ObjectData {
   float4x4 model;
   float4x4 normalModel;
   float4 pbrBaseColorFactor;
+  float pbrMetallicFactor;
+  float pbrRoughnessFactor;
 };
 [[vk::binding(0, 2)]]
 StructuredBuffer<ObjectData> objectBuffers;
@@ -34,6 +36,7 @@ StructuredBuffer<ObjectData> objectBuffers;
 struct PushConstants {
   uint albedoIndex;
   uint normalIndex;
+  uint metallicRoughnessIndex;
   uint uniformIndex;
 };
 [[vk::push_constant]] PushConstants push;
@@ -69,7 +72,8 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   float3 color = texColor.rgb * (ambient + diffuse) + specular;
   float3 toneMapped = reinhardToneMap(color);
 
-  return float4(toneMapped, texColor.a);
+  return float4(globalTextures[push.metallicRoughnessIndex].Sample(inVert.texCoords));
+  // return float4(toneMapped, texColor.a);
 }
 
 float3 reinhardToneMap(float3 color) {
