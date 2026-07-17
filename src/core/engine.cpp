@@ -476,6 +476,12 @@ void Engine::setupExampleRenderGraph() {
       auto *mesh = e->getComponent<MeshComponent>();
       auto *transform = e->getComponent<TransformComponent>();
 
+      glm::vec3 axis = {0.0f, 1.0f, 0.0f};
+      float rotateAngle = glm::radians(15.0f * deltaTime);
+      glm::quat quat = glm::angleAxis(rotateAngle, axis);
+      glm::quat currentRot = transform->getRotation();
+      transform->setRotation(quat * currentRot);
+
       if (!mesh || !mesh->getMesh()->isLoaded()) {
         continue;
       }
@@ -704,11 +710,42 @@ std::vector<Entity *> loadBall(ResourceManager *resourceManager,
   return entities;
 }
 
+std::vector<Entity *> loadChair(ResourceManager *resourceManager,
+                                RenderContext &renderContext, Camera *camera) {
+  std::vector<RawSceneNode> nodes;
+
+  const std::string scenePath = "resources/models/plastic_monobloc_chair_01_4k";
+  const std::string sceneName = "plastic_monobloc_chair_01_4k";
+
+  std::unordered_map<std::string, RawTexture> texturesMap;
+  Helper::AssetLoader::loadGltfSceneFromGltf(scenePath, sceneName, nodes,
+                                             texturesMap);
+  std::cout << "Loaded " << sceneName << ": " << nodes.size() << " nodes.\n";
+
+  camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
+
+  ubo.directionalLightDirection = glm::vec3(-3.0f, -5.0f, -5.0f);
+  ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
+
+  ubo.pointLightPosition = glm::vec3(-3.0f, 5.0f, -3.0f);
+  ubo.pointLightColor = glm::vec3(1.0f);
+
+  std::vector<Entity *> entities =
+      processNodesList(nodes, resourceManager, renderContext, texturesMap);
+
+  for (const auto &e : entities) {
+    e->getComponent<TransformComponent>()->setScale({3.0f, 3.0f, 3.0f});
+    e->getComponent<TransformComponent>()->setPosition({0.0f, -1.0f, 0.0f});
+  }
+
+  return entities;
+}
+
 std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  entities = loadBall(resourceManager, renderContext, camera);
+  entities = loadChair(resourceManager, renderContext, camera);
   return entities;
 }
 
