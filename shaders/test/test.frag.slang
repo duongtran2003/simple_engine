@@ -84,6 +84,7 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   float3 color = directional + point;
   float3 toneMapped = reinhardToneMap(color);
 
+  return float4(normalize(inVert.tangent.xyz) * 0.5f + 0.5f, 1.0f);
   return float4(toneMapped, texColor.a);
 }
 

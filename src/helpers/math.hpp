@@ -1,17 +1,21 @@
 #pragma once
 
+#include "core/resource/mesh.hpp"
+#include <cstddef>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/fwd.hpp>
+#include <vector>
 namespace SimpleEngine {
 namespace Helper {
 class Math {
 public:
   Math() = delete;
-  static glm::vec3 calculateTangent(glm::vec3 posA, glm::vec3 posB,
-                                    glm::vec3 posC, glm::vec2 uvA,
-                                    glm::vec2 uvB, glm::vec2 uvC);
+  static void calculateTangent(Core::Mesh::Vertex &v1, Core::Mesh::Vertex &v2,
+                               Core::Mesh::Vertex &v3,
+                               std::vector<glm::vec3> &accumB, size_t i1,
+                               size_t i2, size_t i3);
 
   static void extractTransformation(const glm::mat4 &transform,
                                     glm::vec3 &translation, glm::quat &rotation,

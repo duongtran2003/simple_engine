@@ -328,45 +328,35 @@ void AssetLoader::processSceneNode(
       }
 
       if (!hasTangent) {
+        std::cout << "NO TANGENT\n";
         assert(rawSceneNode.indices.size() % 3 == 0);
         for (auto &v : rawSceneNode.vertices) {
           v.tangent = glm::vec4(0.0f);
         }
 
+        std::vector<glm::vec3> accumB;
+        accumB.assign(rawSceneNode.vertices.size(), {0.0f, 0.0f, 0.0f});
+
         for (size_t i = 0; i < rawSceneNode.indices.size() - 2; i += 3) {
-          glm::vec3 v1 =
-              rawSceneNode.vertices[rawSceneNode.indices[i]].position;
-          glm::vec3 v2 =
-              rawSceneNode.vertices[rawSceneNode.indices[i + 1]].position;
-          glm::vec3 v3 =
-              rawSceneNode.vertices[rawSceneNode.indices[i + 2]].position;
+          size_t i1 = rawSceneNode.indices[i];
+          size_t i2 = rawSceneNode.indices[i + 1];
+          size_t i3 = rawSceneNode.indices[i + 2];
 
-          glm::vec2 uv1 = rawSceneNode.vertices[rawSceneNode.indices[i]].uv;
-          glm::vec2 uv2 = rawSceneNode.vertices[rawSceneNode.indices[i + 1]].uv;
-          glm::vec2 uv3 = rawSceneNode.vertices[rawSceneNode.indices[i + 2]].uv;
-
-          glm::vec4 tangent = glm::vec4(
-              Helper::Math::calculateTangent(v1, v2, v3, uv1, uv2, uv3), 0.0f);
-
-          glm::vec3 v1v2 = v2 - v1;
-          glm::vec3 v1v3 = v3 - v1;
-          float degreeAngle = glm::degrees(
-              glm::acos(glm::dot(glm::normalize(v1v2), glm::normalize(v1v3))));
-
-          rawSceneNode.vertices[rawSceneNode.indices[i]].tangent =
-              rawSceneNode.vertices[rawSceneNode.indices[i]].tangent +
-              tangent * degreeAngle;
-          rawSceneNode.vertices[rawSceneNode.indices[i + 1]].tangent =
-              rawSceneNode.vertices[rawSceneNode.indices[i + 1]].tangent +
-              tangent * degreeAngle;
-          rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent =
-              rawSceneNode.vertices[rawSceneNode.indices[i + 2]].tangent +
-              tangent * degreeAngle;
+          Helper::Math::calculateTangent(
+              rawSceneNode.vertices[i1], rawSceneNode.vertices[i2],
+              rawSceneNode.vertices[i3], accumB, i1, i2, i3);
         }
 
-        for (auto &v : rawSceneNode.vertices) {
-          if (glm::length(glm::vec3(v.tangent)) > 0.0f) {
-            v.tangent = glm::vec4(glm::vec3(glm::normalize(v.tangent)), 1.0f);
+        for (size_t i = 0; i < rawSceneNode.vertices.size(); i++) {
+          auto &v = rawSceneNode.vertices[i];
+          glm::vec3 N = v.normal;
+          glm::vec3 T = glm::vec3(v.tangent);
+
+          if (glm::length(T) > 0.0f) {
+            T = glm::normalize(T - N * glm::dot(T, N));
+            float w =
+                (glm::dot(glm::cross(T, N), accumB[i]) < 0.0f) ? -1.0f : 1.0f;
+            v.tangent = glm::vec4(T, w);
           } else {
             v.tangent = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
           }
