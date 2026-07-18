@@ -52,10 +52,12 @@ float4 fragMain(VSOutput inVert) : SV_Target {
     float3 N = normalize(inVert.normal);
     // Gram-Schmidt orthogonal correction
     float3 T = float3(inVert.tangent.xyz) - dot(float3(inVert.tangent.xyz), N) * N;
+    T = normalize(T);
 
     float3 B = cross(T, N) * inVert.tangent.w;
-    float3x3 TBN = transpose(float3x3(T, B, N));
+    B = normalize(B);
 
+    float3x3 TBN = transpose(float3x3(T, B, N));
     normal = normalize(mul(TBN, normal));
   } else {
     normal = normalize(inVert.normal);
@@ -84,7 +86,6 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   float3 color = directional + point;
   float3 toneMapped = reinhardToneMap(color);
 
-  return float4(normalize(inVert.tangent.xyz) * 0.5f + 0.5f, 1.0f);
   return float4(toneMapped, texColor.a);
 }
 

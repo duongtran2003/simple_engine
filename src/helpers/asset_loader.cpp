@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/vector_float2.hpp>
@@ -17,6 +18,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/matrix.hpp>
 #include <glm/trigonometric.hpp>
 #include <iostream>
 #include <optional>
@@ -328,34 +330,35 @@ void AssetLoader::processSceneNode(
       }
 
       if (!hasTangent) {
-        std::cout << "NO TANGENT\n";
         assert(rawSceneNode.indices.size() % 3 == 0);
         for (auto &v : rawSceneNode.vertices) {
           v.tangent = glm::vec4(0.0f);
         }
-
-        std::vector<glm::vec3> accumB;
-        accumB.assign(rawSceneNode.vertices.size(), {0.0f, 0.0f, 0.0f});
 
         for (size_t i = 0; i < rawSceneNode.indices.size() - 2; i += 3) {
           size_t i1 = rawSceneNode.indices[i];
           size_t i2 = rawSceneNode.indices[i + 1];
           size_t i3 = rawSceneNode.indices[i + 2];
 
-          Helper::Math::calculateTangent(
-              rawSceneNode.vertices[i1], rawSceneNode.vertices[i2],
-              rawSceneNode.vertices[i3], accumB, i1, i2, i3);
+          Helper::Math::calculateTangent(rawSceneNode.vertices[i1],
+                                         rawSceneNode.vertices[i2],
+                                         rawSceneNode.vertices[i3]);
         }
 
         for (size_t i = 0; i < rawSceneNode.vertices.size(); i++) {
           auto &v = rawSceneNode.vertices[i];
-          glm::vec3 N = v.normal;
-          glm::vec3 T = glm::vec3(v.tangent);
+          glm::vec3 N = glm::normalize(v.normal);
+          glm::vec3 T = glm::normalize(glm::vec3(v.tangent));
 
           if (glm::length(T) > 0.0f) {
-            T = glm::normalize(T - N * glm::dot(T, N));
-            float w =
-                (glm::dot(glm::cross(T, N), accumB[i]) < 0.0f) ? -1.0f : 1.0f;
+            glm::vec3 B = glm::normalize(glm::cross(T, N));
+            B = glm::normalize(B);
+
+            float w = 1.0f;
+            glm::mat3 TBN = glm::mat3(T, B, N);
+            if (glm::determinant(TBN) < 0.0f) {
+              w = -1.0f;
+            }
             v.tangent = glm::vec4(T, w);
           } else {
             v.tangent = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);

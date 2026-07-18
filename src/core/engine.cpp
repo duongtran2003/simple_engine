@@ -476,11 +476,11 @@ void Engine::setupExampleRenderGraph() {
       auto *mesh = e->getComponent<MeshComponent>();
       auto *transform = e->getComponent<TransformComponent>();
 
-      glm::vec3 axis = {0.0f, 1.0f, 0.0f};
-      float rotateAngle = glm::radians(15.0f * deltaTime);
-      glm::quat quat = glm::angleAxis(rotateAngle, axis);
-      glm::quat currentRot = transform->getRotation();
-      transform->setRotation(quat * currentRot);
+      // glm::vec3 axis = {0.0f, 1.0f, 0.0f};
+      // float rotateAngle = glm::radians(15.0f * deltaTime);
+      // glm::quat quat = glm::angleAxis(rotateAngle, axis);
+      // glm::quat currentRot = transform->getRotation();
+      // transform->setRotation(quat * currentRot);
 
       if (!mesh || !mesh->getMesh()->isLoaded()) {
         continue;
@@ -745,7 +745,7 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  entities = loadChair(resourceManager, renderContext, camera);
+  entities = loadSponza(resourceManager, renderContext, camera);
   return entities;
 }
 

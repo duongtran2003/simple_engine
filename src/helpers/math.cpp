@@ -16,9 +16,7 @@
 namespace SimpleEngine {
 namespace Helper {
 void Math::calculateTangent(Core::Mesh::Vertex &v1, Core::Mesh::Vertex &v2,
-                            Core::Mesh::Vertex &v3,
-                            std::vector<glm::vec3> &accumB, size_t i1,
-                            size_t i2, size_t i3) {
+                            Core::Mesh::Vertex &v3) {
 
   glm::vec3 posA = v1.position;
   glm::vec3 posB = v2.position;
@@ -39,14 +37,8 @@ void Math::calculateTangent(Core::Mesh::Vertex &v1, Core::Mesh::Vertex &v2,
   float deltaVAC = uvC.y - uvA.y;
 
   float D = deltaUAB * deltaVAC - deltaVAB * deltaUAC;
-  if (glm::abs(D) < 0.000001f) {
-    D = 0.000001f;
-  }
   glm::vec3 Dx = AB * deltaVAC - deltaVAB * AC;
   glm::vec3 T = glm::normalize(Dx / D);
-
-  glm::vec3 Dy = deltaUAB * AC - AB * deltaUAC;
-  glm::vec3 B = glm::normalize(Dy / D);
 
   glm::vec3 normalizedAB = glm::normalize(AB);
   glm::vec3 normalizedAC = glm::normalize(AC);
@@ -62,10 +54,6 @@ void Math::calculateTangent(Core::Mesh::Vertex &v1, Core::Mesh::Vertex &v2,
   v1.tangent += angleA * glm::vec4(T, 0.0f);
   v2.tangent += angleB * glm::vec4(T, 0.0f);
   v3.tangent += angleC * glm::vec4(T, 0.0f);
-
-  accumB[i1] += angleA * B;
-  accumB[i2] += angleB * B;
-  accumB[i3] += angleC * B;
 }
 
 void Math::extractTransformation(const glm::mat4 &transform,
