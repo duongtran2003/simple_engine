@@ -1,6 +1,5 @@
 #include "helpers/math.hpp"
 #include "core/resource/mesh.hpp"
-#include <cstddef>
 #include <glm/common.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/quaternion_geometric.hpp>
@@ -11,7 +10,6 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
-#include <vector>
 
 namespace SimpleEngine {
 namespace Helper {
