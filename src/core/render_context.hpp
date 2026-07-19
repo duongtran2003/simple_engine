@@ -66,9 +66,6 @@ public:
   vk::CommandPool commandPool;
   std::vector<vk::CommandBuffer> commandBuffers;
 
-  vk::Pipeline graphicsPipeline;
-  vk::PipelineLayout pipelineLayout;
-
   vk::DescriptorPool descriptorPool;
 
   vk::DescriptorSetLayout descriptorSetLayout;

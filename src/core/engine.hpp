@@ -56,9 +56,6 @@ private:
   void setupExampleRenderGraph();
   void initRenderObjectsList();
 
-  // For demo only
-  void createGraphicsPipeline();
-
   void mainLoop();
   void renderFrame();
 

@@ -31,6 +31,7 @@
 #include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/graph_resource.hpp"
+#include "core/render_graph/main_pass.hpp"
 #include "core/render_graph/render_graph.hpp"
 #include "core/render_graph/render_pass.hpp"
 #include "core/resource/mesh.hpp"
@@ -74,8 +75,6 @@ Engine::Engine() {
 
   cullingSystem = new CullingSystem(camera);
 
-  createGraphicsPipeline();
-
   imGui = new UI::ImGuiVulkan(renderContext, *resourceManager);
   imGui->init(renderContext.swapChainExtent.width,
               renderContext.swapChainExtent.height);
@@ -86,161 +85,6 @@ Engine::Engine() {
   renderGraph = new RenderGraph(renderContext);
 
   lastFrameTime = std::chrono::high_resolution_clock::now();
-}
-
-void Engine::createGraphicsPipeline() {
-  ResourceHandle<Shader> vertexShaderHandle = resourceManager->load<Shader>(
-      "test_vert", vk::ShaderStageFlagBits::eVertex, "shaders/test.vert.spv");
-  ResourceHandle<Shader> fragmentShaderHandle = resourceManager->load<Shader>(
-      "test_frag", vk::ShaderStageFlagBits::eFragment, "shaders/test.frag.spv");
-
-  vk::PipelineShaderStageCreateInfo vertexShaderStageInfo{
-      .stage = vk::ShaderStageFlagBits::eVertex,
-      .module = vertexShaderHandle->getShaderModule(),
-      .pName = "vertMain"};
-
-  vk::PipelineShaderStageCreateInfo fragmentShaderStageInfo{
-      .stage = vk::ShaderStageFlagBits::eFragment,
-      .module = fragmentShaderHandle->getShaderModule(),
-      .pName = "fragMain"};
-
-  vk::PipelineShaderStageCreateInfo shaderStages[] = {vertexShaderStageInfo,
-                                                      fragmentShaderStageInfo};
-
-  vk::VertexInputBindingDescription vertexInputBindingDescription{
-      .binding = 0,
-      .stride = sizeof(Mesh::Vertex),
-      .inputRate = vk::VertexInputRate::eVertex};
-  std::array<vk::VertexInputAttributeDescription, 4>
-      vertexInputAttributeDescriptions = {};
-  vertexInputAttributeDescriptions[0] = {.location = 0,
-                                         .binding = 0,
-                                         .format = vk::Format::eR32G32B32Sfloat,
-                                         .offset =
-                                             offsetof(Mesh::Vertex, position)};
-  vertexInputAttributeDescriptions[1] = {.location = 1,
-                                         .binding = 0,
-                                         .format = vk::Format::eR32G32B32Sfloat,
-                                         .offset =
-                                             offsetof(Mesh::Vertex, normal)};
-  vertexInputAttributeDescriptions[2] = {.location = 2,
-                                         .binding = 0,
-                                         .format = vk::Format::eR32G32Sfloat,
-                                         .offset = offsetof(Mesh::Vertex, uv)};
-  vertexInputAttributeDescriptions[3] = {
-      .location = 3,
-      .binding = 0,
-      .format = vk::Format::eR32G32B32A32Sfloat,
-      .offset = offsetof(Mesh::Vertex, tangent)};
-
-  vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-      .vertexBindingDescriptionCount = 1,
-      .pVertexBindingDescriptions = &vertexInputBindingDescription,
-      .vertexAttributeDescriptionCount =
-          vertexInputAttributeDescriptions.size(),
-      .pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data()};
-  vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
-      .topology = vk::PrimitiveTopology::eTriangleList};
-
-  std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport,
-                                                 vk::DynamicState::eScissor};
-
-  vk::PipelineDynamicStateCreateInfo dynamicState{
-      .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
-      .pDynamicStates = dynamicStates.data()};
-
-  vk::PipelineViewportStateCreateInfo viewportState{
-      .viewportCount = 1,
-      .pViewports = &renderContext.viewport,
-      .scissorCount = 1,
-      .pScissors = &renderContext.scissor};
-
-  vk::PipelineRasterizationStateCreateInfo rasterizer{
-      .rasterizerDiscardEnable = vk::False,
-      .polygonMode = vk::PolygonMode::eFill,
-      .cullMode = vk::CullModeFlagBits::eBack,
-      .frontFace = vk::FrontFace::eCounterClockwise,
-      .depthBiasEnable = vk::False,
-      .depthBiasClamp = vk::False,
-      .lineWidth = 1.0f};
-
-  vk::PipelineMultisampleStateCreateInfo multisampling{
-      .rasterizationSamples = renderContext.msaaSamples,
-      .sampleShadingEnable = vk::True,
-      .minSampleShading = .2f};
-
-  vk::PipelineColorBlendAttachmentState colorBlendAttachment{
-      .blendEnable = vk::False,
-      .colorWriteMask =
-          vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-          vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
-
-  vk::PipelineColorBlendStateCreateInfo colorBlending{
-      .logicOpEnable = vk::False,
-      .logicOp = vk::LogicOp::eCopy,
-      .attachmentCount = 1,
-      .pAttachments = &colorBlendAttachment};
-
-  vk::PipelineDepthStencilStateCreateInfo depthStencil{
-      .depthTestEnable = vk::True,
-      .depthWriteEnable = vk::True,
-      .depthCompareOp = vk::CompareOp::eLess,
-      .depthBoundsTestEnable = vk::False,
-      .stencilTestEnable = vk::False};
-
-  std::array<vk::DescriptorSetLayout, 3> layouts = {
-      renderContext.descriptorSetLayout,
-      renderContext.bindlessDescriptorSetLayout,
-      renderContext.ssboDescriptorSetLayout};
-
-  vk::PushConstantRange pushConstantRange{
-      .stageFlags =
-          vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
-      .offset = 0,
-      .size = sizeof(PushConstants)};
-
-  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-      .setLayoutCount = layouts.size(),
-      .pSetLayouts = layouts.data(),
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges = &pushConstantRange};
-
-  vk::PipelineLayout pipelineLayout =
-      renderContext.device.createPipelineLayout(pipelineLayoutInfo);
-
-  renderContext.pipelineLayout = pipelineLayout;
-
-  vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
-      .stageCount = 2,
-      .pStages = shaderStages,
-      .pVertexInputState = &vertexInputInfo,
-      .pInputAssemblyState = &inputAssembly,
-      .pViewportState = &viewportState,
-      .pRasterizationState = &rasterizer,
-      .pMultisampleState = &multisampling,
-      .pDepthStencilState = &depthStencil,
-      .pColorBlendState = &colorBlending,
-      .pDynamicState = &dynamicState,
-      .layout = pipelineLayout,
-      .renderPass = nullptr};
-
-  vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo{
-      .colorAttachmentCount = 1,
-      .pColorAttachmentFormats = &renderContext.swapChainSurfaceFormat.format,
-      .depthAttachmentFormat = vk::Format::eD32Sfloat};
-
-  vk::StructureChain<vk::GraphicsPipelineCreateInfo,
-                     vk::PipelineRenderingCreateInfo>
-      pipelineCreateInfoChain = {graphicsPipelineCreateInfo,
-                                 pipelineRenderingCreateInfo};
-
-  auto [result, pipelines] = renderContext.device.createGraphicsPipelines(
-      nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
-
-  if (result == vk::Result::eSuccess) {
-    vk::Pipeline pipeline = pipelines[0];
-    renderContext.graphicsPipeline = pipeline;
-  }
 }
 
 void Engine::renderFrame() {
@@ -410,8 +254,9 @@ void Engine::setupExampleRenderGraph() {
       renderContext.msaaSamples, renderContext);
   renderGraph->addResource(depthResource);
 
-  RenderPass *pass = new RenderPass("example_pass", {}, renderContext);
-  pass->addOutput("final_color");
+  MainPass *mainPass =
+      new MainPass("main_pass", {}, renderContext, *resourceManager);
+  mainPass->addOutput("final_color");
   const auto passCallback = [&](vk::CommandBuffer &commandBuffer) {
     GraphResource *finalColor = renderGraph->getResource("final_color");
     bool fromLastLayout = false;
@@ -450,7 +295,7 @@ void Engine::setupExampleRenderGraph() {
     commandBuffer.beginRendering(renderingInfo);
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                               renderContext.graphicsPipeline);
+                               mainPass->getGraphicsPipeline());
     commandBuffer.setViewport(0, renderContext.viewport);
     commandBuffer.setScissor(0, renderContext.scissor);
 
