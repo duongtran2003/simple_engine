@@ -410,7 +410,7 @@ void Engine::setupExampleRenderGraph() {
       renderContext.msaaSamples, renderContext);
   renderGraph->addResource(depthResource);
 
-  RenderPass *pass = new RenderPass("example_pass", renderContext);
+  RenderPass *pass = new RenderPass("example_pass", {}, renderContext);
   pass->addOutput("final_color");
   const auto passCallback = [&](vk::CommandBuffer &commandBuffer) {
     GraphResource *finalColor = renderGraph->getResource("final_color");
