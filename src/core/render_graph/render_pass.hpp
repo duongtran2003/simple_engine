@@ -56,7 +56,6 @@ public:
   };
 
 private:
-  const RenderContext &context;
   ResourceManager &resourceManager;
 
   std::string name;
@@ -67,7 +66,6 @@ private:
   std::function<void(vk::CommandBuffer &commandBuffer)> executeCallback;
 
   vk::Pipeline graphicsPipeline;
-  void createGraphicsPipeline(const CreateInfo &createInfo);
 
   vk::PipelineRasterizationStateCreateInfo
   configRasterizer(const CreateInfoRasterizer &rasterizerConfig);
@@ -81,11 +79,15 @@ private:
 
   virtual vk::PipelineInputAssemblyStateCreateInfo configInputAssembly() = 0;
   virtual vk::PipelineVertexInputStateCreateInfo configVertexInput() = 0;
-  virtual vk::PipelineLayout createGraphicsPipelineLayout();
+  virtual vk::PipelineLayout createGraphicsPipelineLayout() = 0;
 
   std::pair<vk::PipelineShaderStageCreateInfo,
             vk::PipelineShaderStageCreateInfo>
   configShaders(const CreateInfoShader &shaders);
+
+protected:
+  const RenderContext &context;
+  void createGraphicsPipeline(const CreateInfo &createInfo);
 
 public:
   RenderPass() = delete;

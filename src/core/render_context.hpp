@@ -70,13 +70,14 @@ public:
   vk::PipelineLayout pipelineLayout;
 
   vk::DescriptorPool descriptorPool;
+
   vk::DescriptorSetLayout descriptorSetLayout;
+  std::vector<vk::DescriptorSet> descriptorSets;
 
   vk::DescriptorSetLayout bindlessDescriptorSetLayout;
-  vk::DescriptorSetLayout ssboDescriptorSetLayout;
-
-  std::vector<vk::DescriptorSet> descriptorSets;
   vk::DescriptorSet bindlessDescriptorSets;
+
+  vk::DescriptorSetLayout ssboDescriptorSetLayout;
   std::vector<vk::DescriptorSet> ssboDescriptorSets;
 
   std::vector<UboBuffer> uniformBuffers;
