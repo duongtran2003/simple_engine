@@ -51,6 +51,8 @@ void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &v) {
 
   Helper::VulkanHelper::copyBuffer(stagingBuffer, vertexBuffer, bufferSize,
                                    renderContext);
+
+  renderContext.graphicsQueue.waitIdle();
   device.destroyBuffer(stagingBuffer);
   device.freeMemory(stagingBufferMemory);
 }
@@ -81,6 +83,8 @@ void Mesh::createIndexBuffer(std::vector<uint32_t> &i) {
 
   Helper::VulkanHelper::copyBuffer(stagingBuffer, indexBuffer, bufferSize,
                                    renderContext);
+
+  renderContext.graphicsQueue.waitIdle();
   device.destroyBuffer(stagingBuffer);
   device.freeMemory(stagingBufferMemory);
 }

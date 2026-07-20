@@ -104,7 +104,7 @@ void GraphResource::transitionLayout(vk::CommandBuffer &commandBuffer,
   vk::ImageLayout lastLayout =
       fromLastLayout ? layout : vk::ImageLayout::eUndefined;
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, image, 1, 0, lastLayout, dstLayout, aspectMask);
+      commandBuffer, image, 1, 0, 1, 0, lastLayout, dstLayout, aspectMask);
   layout = dstLayout;
 }
 } // namespace Core

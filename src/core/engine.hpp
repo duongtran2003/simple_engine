@@ -5,6 +5,8 @@
 #include "core/input/input.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/render_graph.hpp"
+#include "core/resource/cubemap.hpp"
+#include "core/resource/resource_handle.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "core/system/culling_system.hpp"
 #include "ui/camera_ui.hpp"
@@ -35,6 +37,8 @@ private:
   Input *input = nullptr;
   Camera *camera = nullptr;
   CullingSystem *cullingSystem = nullptr;
+
+  ResourceHandle<Cubemap> skybox;
 
   // UI stuff
   UI::ImGuiVulkan *imGui;

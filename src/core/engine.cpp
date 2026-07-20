@@ -34,10 +34,10 @@
 #include "core/render_graph/main_pass.hpp"
 #include "core/render_graph/render_graph.hpp"
 #include "core/render_graph/render_pass.hpp"
+#include "core/resource/cubemap.hpp"
 #include "core/resource/mesh.hpp"
 #include "core/resource/resource_handle.hpp"
 #include "core/resource/resource_manager.hpp"
-#include "core/resource/shader.hpp"
 #include "core/resource/texture.hpp"
 #include "core/system/culling_system.hpp"
 #include "enums/input.hpp"
@@ -127,7 +127,7 @@ void Engine::renderFrame() {
   renderGraph->execute(commandBuffer, renderObjects);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
+      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0, 1, 0,
       vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageAspectFlagBits::eColor);
 
@@ -167,7 +167,7 @@ void Engine::renderFrame() {
                           vk::Filter::eLinear);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
+      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0, 1, 0,
       vk::ImageLayout::eTransferDstOptimal,
       vk::ImageLayout::eColorAttachmentOptimal,
       vk::ImageAspectFlagBits::eColor);
@@ -180,7 +180,7 @@ void Engine::renderFrame() {
                    renderContext.frameIndex);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
+      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0, 1, 0,
       vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
       vk::ImageAspectFlagBits::eColor);
 
@@ -501,11 +501,28 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  entities = loadBall(resourceManager, renderContext, camera);
+  entities = loadChair(resourceManager, renderContext, camera);
   return entities;
 }
 
 void Engine::initRenderObjectsList() {
+  skybox = resourceManager->load<Cubemap>("skybox",
+                                          "resources/skybox/pizzo_pernice");
+
+  vk::DescriptorImageInfo imageInfo{
+      .sampler = skybox->getSampler(),
+      .imageView = skybox->getImageView(),
+      .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+  vk::WriteDescriptorSet descriptorWrite{
+      .dstSet = renderContext.bindlessDescriptorSets,
+      .dstBinding = 1,
+      .dstArrayElement = 0,
+      .descriptorCount = 1,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .pImageInfo = &imageInfo};
+
+  renderContext.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
   renderObjects = loadScene(resourceManager, renderContext, camera);
   renderContext.createStorageBuffers<ObjectData>(renderObjects.size());
 }

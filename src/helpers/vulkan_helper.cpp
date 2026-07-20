@@ -30,12 +30,11 @@ VulkanHelper::findMemoryType(uint32_t memoryTypeBits,
       "VulkanHelper::findMemoryType()::ERROR: Cannot find memory type.");
 }
 
-void VulkanHelper::transitionImageLayout(vk::CommandBuffer &commandBuffer,
-                                         vk::Image image, uint32_t mipLevels,
-                                         uint32_t baseMipLevel,
-                                         vk::ImageLayout oldLayout,
-                                         vk::ImageLayout newLayout,
-                                         vk::ImageAspectFlags aspectMask) {
+void VulkanHelper::transitionImageLayout(
+    vk::CommandBuffer &commandBuffer, vk::Image image, uint32_t mipLevels,
+    uint32_t baseMipLevel, uint32_t layerCount, uint32_t baseLayer,
+    vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
+    vk::ImageAspectFlags aspectMask) {
   if (oldLayout == newLayout) {
     return;
   }
@@ -49,8 +48,8 @@ void VulkanHelper::transitionImageLayout(vk::CommandBuffer &commandBuffer,
       .subresourceRange = {.aspectMask = aspectMask,
                            .baseMipLevel = baseMipLevel,
                            .levelCount = mipLevels,
-                           .baseArrayLayer = 0,
-                           .layerCount = 1}};
+                           .baseArrayLayer = baseLayer,
+                           .layerCount = layerCount}};
 
   if (oldLayout == vk::ImageLayout::eUndefined) {
     barrier.srcStageMask = vk::PipelineStageFlagBits2::eNone;
@@ -135,7 +134,8 @@ VulkanHelper::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
 
 std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView>
 VulkanHelper::createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
-                          vk::Format format, vk::ImageUsageFlags usage,
+                          uint32_t arrayLayers, vk::Format format,
+                          vk::ImageUsageFlags usage,
                           vk::ImageAspectFlags aspectMask,
                           vk::SampleCountFlagBits sampleCount,
                           const Core::RenderContext &context) {
@@ -144,7 +144,7 @@ VulkanHelper::createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
       .format = format,
       .extent = {width, height, 1},
       .mipLevels = mipLevels,
-      .arrayLayers = 1,
+      .arrayLayers = arrayLayers,
       .samples = sampleCount,
       .tiling = vk::ImageTiling::eOptimal,
       .usage = usage,
@@ -173,7 +173,53 @@ VulkanHelper::createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
                            .baseMipLevel = 0,
                            .levelCount = mipLevels,
                            .baseArrayLayer = 0,
-                           .layerCount = 1}};
+                           .layerCount = arrayLayers}};
+  vk::ImageView imageView = context.device.createImageView(imageViewCreateInfo);
+
+  return {std::move(image), std::move(imageMemory), std::move(imageView)};
+}
+
+std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView>
+VulkanHelper::createCubemapImage(uint32_t dimension, uint32_t mipLevels,
+                                 vk::Format format, vk::ImageUsageFlags usage,
+                                 vk::ImageAspectFlags aspectMask,
+                                 const Core::RenderContext &context) {
+  vk::ImageCreateInfo imageCreateInfo{
+      .flags = vk::ImageCreateFlagBits::eCubeCompatible,
+      .imageType = vk::ImageType::e2D,
+      .format = format,
+      .extent = {dimension, dimension, 1},
+      .mipLevels = mipLevels,
+      .arrayLayers = 6,
+      .samples = vk::SampleCountFlagBits::e1,
+      .tiling = vk::ImageTiling::eOptimal,
+      .usage = usage,
+      .sharingMode = vk::SharingMode::eExclusive,
+      .initialLayout = vk::ImageLayout::eUndefined};
+
+  vk::Image image = context.device.createImage(imageCreateInfo);
+
+  vk::MemoryRequirements memoryRequirement;
+  context.device.getImageMemoryRequirements(image, &memoryRequirement);
+  vk::MemoryAllocateInfo imageMemoryAllocateInfo{
+      .allocationSize = memoryRequirement.size,
+      .memoryTypeIndex = findMemoryType(
+          memoryRequirement.memoryTypeBits,
+          vk::MemoryPropertyFlagBits::eDeviceLocal, context.physicalDevice)};
+
+  vk::DeviceMemory imageMemory =
+      context.device.allocateMemory(imageMemoryAllocateInfo);
+  context.device.bindImageMemory(image, imageMemory, 0);
+
+  vk::ImageViewCreateInfo imageViewCreateInfo{
+      .image = image,
+      .viewType = vk::ImageViewType::eCube,
+      .format = format,
+      .subresourceRange = {.aspectMask = aspectMask,
+                           .baseMipLevel = 0,
+                           .levelCount = mipLevels,
+                           .baseArrayLayer = 0,
+                           .layerCount = 6}};
   vk::ImageView imageView = context.device.createImageView(imageViewCreateInfo);
 
   return {std::move(image), std::move(imageMemory), std::move(imageView)};
@@ -224,7 +270,7 @@ vk::Sampler VulkanHelper::createImageSampler(
       .mipmapMode = vk::SamplerMipmapMode::eLinear,
       .addressModeU = vkUWrap,
       .addressModeV = vkVWrap,
-      .addressModeW = vk::SamplerAddressMode::eRepeat,
+      .addressModeW = vk::SamplerAddressMode::eClampToEdge,
       .mipLodBias = -0.5f,
       .anisotropyEnable = vk::True,
       .maxAnisotropy =

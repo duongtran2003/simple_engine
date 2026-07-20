@@ -21,8 +21,8 @@ namespace Core {
 
 std::vector<const char *> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName};
-std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
-// std::vector<char const *> requiredLayers = {};
+// std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
+std::vector<char const *> requiredLayers = {};
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -30,6 +30,7 @@ const std::string APP_NAME = "Simple Engine";
 const std::string ENGINE_NAME = "Vulkan";
 constexpr uint32_t MAX_FRAME_IN_FLIGHTS = 2;
 constexpr uint32_t MAX_BINDLESS_TEXTURES = 4096;
+constexpr uint32_t MAX_BINDLESS_CUBEMAP_TEXTURES = 64;
 
 RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
   inFlightFrame = createInfo.inFlightFrame ? createInfo.inFlightFrame
@@ -496,7 +497,7 @@ void RenderContext::createDescriptorPool() {
 
   vk::DescriptorPoolSize bindlessTexturePoolSize = {
       .type = vk::DescriptorType::eCombinedImageSampler,
-      .descriptorCount = MAX_BINDLESS_TEXTURES};
+      .descriptorCount = MAX_BINDLESS_TEXTURES + MAX_BINDLESS_CUBEMAP_TEXTURES};
 
   vk::DescriptorPoolSize ssboPoolSize = {.type =
                                              vk::DescriptorType::eStorageBuffer,
@@ -528,24 +529,37 @@ void RenderContext::createDescriptorSetLayout() {
                                                .pBindings = &uboLayoutBinding};
   descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
 
-  vk::DescriptorSetLayoutBinding bindlessLayoutBinding{
+  vk::DescriptorSetLayoutBinding bindless2DLayoutBinding{
       .binding = 0,
       .descriptorType = vk::DescriptorType::eCombinedImageSampler,
       .descriptorCount = MAX_BINDLESS_TEXTURES,
       .stageFlags = vk::ShaderStageFlagBits::eFragment,
       .pImmutableSamplers = nullptr};
-  vk::DescriptorBindingFlagsEXT flags =
+  vk::DescriptorSetLayoutBinding bindlessCubemapLayoutBinding{
+      .binding = 1,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .descriptorCount = MAX_BINDLESS_CUBEMAP_TEXTURES,
+      .stageFlags = vk::ShaderStageFlagBits::eFragment,
+      .pImmutableSamplers = nullptr};
+
+  std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {
+      bindless2DLayoutBinding, bindlessCubemapLayoutBinding};
+
+  std::array<vk::DescriptorBindingFlagsEXT, 2> flags = {
       vk::DescriptorBindingFlagBitsEXT::ePartiallyBound |
-      vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind |
-      vk::DescriptorBindingFlagBitsEXT::eUpdateUnusedWhilePending;
+          vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind |
+          vk::DescriptorBindingFlagBitsEXT::eUpdateUnusedWhilePending,
+      vk::DescriptorBindingFlagBitsEXT::ePartiallyBound |
+          vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind |
+          vk::DescriptorBindingFlagBitsEXT::eUpdateUnusedWhilePending};
   vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlags = {
-      .bindingCount = 1, .pBindingFlags = &flags};
+      .bindingCount = bindings.size(), .pBindingFlags = flags.data()};
 
   vk::DescriptorSetLayoutCreateInfo bindlessLayoutInfo = {
-      .pNext = bindingFlags,
+      .pNext = &bindingFlags,
       .flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
-      .bindingCount = 1,
-      .pBindings = &bindlessLayoutBinding};
+      .bindingCount = bindings.size(),
+      .pBindings = bindings.data()};
 
   bindlessDescriptorSetLayout =
       device.createDescriptorSetLayout(bindlessLayoutInfo);

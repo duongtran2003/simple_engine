@@ -56,8 +56,6 @@ public:
   uint32_t getIndexCount() const;
 
   vk::DescriptorSet getTextureDescriptorSet() const;
-  void registerTextureToBindlessPool(vk::DescriptorSet bindlessSet,
-                                     uint32_t textureSlotIndex);
 
 protected:
   bool doLoad() override;
