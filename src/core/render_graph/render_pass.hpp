@@ -101,8 +101,8 @@ protected:
 
 public:
   RenderPass() = delete;
-  RenderPass(const std::string &name, CreateInfo createInfo,
-             const RenderContext &context, ResourceManager &resourceManager);
+  RenderPass(const std::string &name, const RenderContext &context,
+             ResourceManager &resourceManager);
 
   virtual ~RenderPass();
 

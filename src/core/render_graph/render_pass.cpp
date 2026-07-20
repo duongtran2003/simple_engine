@@ -17,8 +17,7 @@ namespace SimpleEngine {
 namespace Core {
 class RenderGraph;
 
-RenderPass::RenderPass(const std::string &name, CreateInfo createInfo,
-                       const RenderContext &context,
+RenderPass::RenderPass(const std::string &name, const RenderContext &context,
                        ResourceManager &resourceManager)
     : resourceManager(resourceManager), context(context) {
   this->name = name;

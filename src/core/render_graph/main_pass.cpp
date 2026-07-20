@@ -20,8 +20,30 @@ namespace Core {
 MainPass::MainPass(const std::string &name, CreateInfo createInfo,
                    const RenderContext &context,
                    ResourceManager &resourceManager)
-    : RenderPass(name, createInfo, context, resourceManager) {
-  init(createInfo);
+    : RenderPass(name, context, resourceManager) {
+  CreateInfo mainPassCreateInfo{
+      .shaders = {.vertShader = "main_pass.vert",
+                  .fragShader = "main_pass.frag"},
+      .rasterizer = {.enableRasterizerDiscard = vk::False,
+                     .polygonMode = vk::PolygonMode::eFill,
+                     .cullMode = vk::CullModeFlagBits::eBack,
+                     .frontFace = vk::FrontFace::eCounterClockwise},
+      .colorBlending = {.enableColorBlending = vk::False,
+                        .colorBlendingWriteMask =
+                            vk::ColorComponentFlagBits::eR |
+                            vk::ColorComponentFlagBits::eG |
+                            vk::ColorComponentFlagBits::eB |
+                            vk::ColorComponentFlagBits::eA,
+                        .enableColorBlendingLogicOp = vk::False,
+                        .colorBlendingLogicOp = vk::LogicOp::eCopy},
+      .depthStencil = {.enableDepthTest = vk::True,
+                       .enableDepthWrite = vk::True,
+                       .depthCompareOp = vk::CompareOp::eLess,
+                       .enableDepthBoundsTest = vk::False,
+                       .enableStencilTest = vk::False},
+      .rendering = createInfo.rendering};
+
+  init(mainPassCreateInfo);
 }
 
 MainPass::~MainPass() {

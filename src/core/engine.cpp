@@ -260,7 +260,6 @@ void Engine::setupExampleRenderGraph() {
           vk::ImageUsageFlagBits::eTransferSrc,
       vk::SampleCountFlagBits::e1, renderContext);
   renderGraph->addResource(colorResource);
-  renderGraph->setOutputResource(colorResource->getName());
 
   GraphResource *depthResource = new GraphResource(
       "depth_image", renderContext.swapChainExtent.width,
@@ -270,32 +269,17 @@ void Engine::setupExampleRenderGraph() {
       renderContext.msaaSamples, renderContext);
   renderGraph->addResource(depthResource);
 
-  RenderPass::CreateInfo mainPassCreateInfo{
-      .shaders = {.vertShader = "test.vert", .fragShader = "test.frag"},
-      .rasterizer = {.enableRasterizerDiscard = vk::False,
-                     .polygonMode = vk::PolygonMode::eFill,
-                     .cullMode = vk::CullModeFlagBits::eBack,
-                     .frontFace = vk::FrontFace::eCounterClockwise},
-      .colorBlending = {.enableColorBlending = vk::False,
-                        .colorBlendingWriteMask =
-                            vk::ColorComponentFlagBits::eR |
-                            vk::ColorComponentFlagBits::eG |
-                            vk::ColorComponentFlagBits::eB |
-                            vk::ColorComponentFlagBits::eA,
-                        .enableColorBlendingLogicOp = vk::False,
-                        .colorBlendingLogicOp = vk::LogicOp::eCopy},
-      .depthStencil = {.enableDepthTest = vk::True,
-                       .enableDepthWrite = vk::True,
-                       .depthCompareOp = vk::CompareOp::eLess,
-                       .enableDepthBoundsTest = vk::False,
-                       .enableStencilTest = vk::False},
+  renderGraph->setOutputResource(colorResource->getName());
+
+  RenderPass::CreateInfo renderingCreateInfo{
       .rendering = {.colorFormats = {colorResource->getFormat()},
                     .depthFormat = depthResource->getFormat()}};
-  MainPass *mainPass = new MainPass("main_pass", mainPassCreateInfo,
+  MainPass *mainPass = new MainPass("main_pass", renderingCreateInfo,
                                     renderContext, *resourceManager);
   mainPass->addOutput(colorResource->getName());
   mainPass->setColorAttachment(colorResource);
   mainPass->setDepthAttachment(depthResource);
+
   renderGraph->addPass(mainPass);
   renderGraph->compile();
 }
