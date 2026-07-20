@@ -120,7 +120,11 @@ void Engine::renderFrame() {
       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
   commandBuffer.begin(beginInfo);
 
-  renderGraph->execute(commandBuffer);
+  ubo.view = camera->getCamera()->getViewMatrix();
+  ubo.proj = camera->getCamera()->getProjectionMatrix();
+  ubo.cameraPos = camera->getTransform()->getPosition();
+  memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo, sizeof(ubo));
+  renderGraph->execute(commandBuffer, renderObjects);
 
   Helper::VulkanHelper::transitionImageLayout(
       commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
@@ -132,23 +136,35 @@ void Engine::renderFrame() {
   outputResource->transitionLayout(
       commandBuffer, vk::ImageLayout::eTransferSrcOptimal, fromLastLayout);
 
-  vk::ImageCopy copyRegion{
+  vk::ArrayWrapper1D<vk::Offset3D, 2> srcOffsets, dstOffsets;
+
+  srcOffsets[0] = vk::Offset3D(0, 0, 0);
+  srcOffsets[1] =
+      vk::Offset3D(static_cast<int32_t>(outputResource->getWidth()),
+                   static_cast<int32_t>(outputResource->getHeight()), 1);
+
+  dstOffsets[0] = vk::Offset3D(0, 0, 0);
+  dstOffsets[1] = vk::Offset3D(
+      static_cast<int32_t>(renderContext.swapChainExtent.width),
+      static_cast<int32_t>(renderContext.swapChainExtent.height), 1);
+
+  vk::ImageBlit blitRegion{
       .srcSubresource = {.aspectMask = outputResource->getAspectMask(),
                          .mipLevel = 0,
                          .baseArrayLayer = 0,
                          .layerCount = 1},
+      .srcOffsets = srcOffsets,
       .dstSubresource = {.aspectMask = vk::ImageAspectFlagBits::eColor,
                          .mipLevel = 0,
                          .baseArrayLayer = 0,
                          .layerCount = 1},
-      .extent = {.width = renderContext.swapChainExtent.width,
-                 .height = renderContext.swapChainExtent.height,
-                 .depth = 1}};
+      .dstOffsets = dstOffsets};
 
-  commandBuffer.copyImage(outputResource->getImage(),
+  commandBuffer.blitImage(outputResource->getImage(),
                           outputResource->getLayout(),
                           renderContext.swapChainImages[imageIndex],
-                          vk::ImageLayout::eTransferDstOptimal, copyRegion);
+                          vk::ImageLayout::eTransferDstOptimal, 1, &blitRegion,
+                          vk::Filter::eLinear);
 
   Helper::VulkanHelper::transitionImageLayout(
       commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0,
@@ -235,16 +251,16 @@ void Engine::mainLoop() {
 }
 
 void Engine::setupExampleRenderGraph() {
-  GraphResource *resource = new GraphResource(
-      "final_color", renderContext.swapChainExtent.width,
+  GraphResource *colorResource = new GraphResource(
+      "color_image", renderContext.swapChainExtent.width,
       renderContext.swapChainExtent.height,
       renderContext.swapChainSurfaceFormat.format, vk::ImageLayout::eUndefined,
       vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc,
       vk::SampleCountFlagBits::e1, renderContext);
-  renderGraph->addResource(resource);
-  renderGraph->setOutputResource("final_color");
+  renderGraph->addResource(colorResource);
+  renderGraph->setOutputResource(colorResource->getName());
 
   GraphResource *depthResource = new GraphResource(
       "depth_image", renderContext.swapChainExtent.width,
@@ -254,122 +270,33 @@ void Engine::setupExampleRenderGraph() {
       renderContext.msaaSamples, renderContext);
   renderGraph->addResource(depthResource);
 
-  MainPass *mainPass =
-      new MainPass("main_pass", {}, renderContext, *resourceManager);
-  mainPass->addOutput("final_color");
-  const auto passCallback = [&](vk::CommandBuffer &commandBuffer) {
-    GraphResource *finalColor = renderGraph->getResource("final_color");
-    bool fromLastLayout = false;
-    finalColor->transitionLayout(commandBuffer,
-                                 vk::ImageLayout::eColorAttachmentOptimal,
-                                 fromLastLayout);
-    GraphResource *depthImage = renderGraph->getResource("depth_image");
-    depthImage->transitionLayout(
-        commandBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,
-        fromLastLayout);
-
-    vk::RenderingAttachmentInfoKHR colorAttachment{
-        .imageView = finalColor->getView(),
-        .imageLayout = finalColor->getLayout(),
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eStore,
-        .clearValue =
-            vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
-
-    vk::RenderingAttachmentInfoKHR depthAttachment{
-        .imageView = depthImage->getView(),
-        .imageLayout = depthImage->getLayout(),
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eDontCare,
-        .clearValue = vk::ClearDepthStencilValue(1.0f, 0)};
-
-    vk::RenderingInfoKHR renderingInfo{
-        .renderArea = {.offset = {.x = 0, .y = 0},
-                       .extent = {.width = finalColor->getWidth(),
-                                  .height = finalColor->getHeight()}},
-        .layerCount = 1,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachment,
-        .pDepthAttachment = &depthAttachment};
-
-    commandBuffer.beginRendering(renderingInfo);
-
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                               mainPass->getGraphicsPipeline());
-    commandBuffer.setViewport(0, renderContext.viewport);
-    commandBuffer.setScissor(0, renderContext.scissor);
-
-    std::array<vk::DescriptorSet, 3> descriptorSets = {
-        renderContext.descriptorSets[renderContext.frameIndex],
-        renderContext.bindlessDescriptorSets,
-        renderContext.ssboDescriptorSets[renderContext.frameIndex]};
-    commandBuffer.bindDescriptorSets(
-        vk::PipelineBindPoint::eGraphics, renderContext.pipelineLayout, 0,
-        descriptorSets.size(), descriptorSets.data(), 0, nullptr);
-
-    ubo.view = camera->getCamera()->getViewMatrix();
-    ubo.proj = camera->getCamera()->getProjectionMatrix();
-    ubo.cameraPos = camera->getTransform()->getPosition();
-    memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo, sizeof(ubo));
-
-    ObjectData *ssboDataArray = static_cast<ObjectData *>(
-        renderContext.getCurrentFrameStorageBufferPtr());
-
-    for (size_t i = 0; i < renderObjects.size(); i++) {
-      Entity *e = renderObjects[i];
-
-      auto *mesh = e->getComponent<MeshComponent>();
-      auto *transform = e->getComponent<TransformComponent>();
-
-      // glm::vec3 axis = {0.0f, 1.0f, 0.0f};
-      // float rotateAngle = glm::radians(15.0f * deltaTime);
-      // glm::quat quat = glm::angleAxis(rotateAngle, axis);
-      // glm::quat currentRot = transform->getRotation();
-      // transform->setRotation(quat * currentRot);
-
-      if (!mesh || !mesh->getMesh()->isLoaded()) {
-        continue;
-      }
-
-      auto meshResource = mesh->getMesh().get();
-
-      vk::Buffer vertexBuffers[] = {meshResource->getVertexBuffer()};
-      vk::DeviceSize offsets[] = {0};
-
-      const auto &mat = mesh->getMaterial();
-
-      ssboDataArray[i].model = transform->getTransformMatrix();
-      ssboDataArray[i].normalModel = transform->getNormalTransformMatrix();
-      ssboDataArray[i].pbrBaseColorFactor = mat.getPbrBaseColorFactor();
-      ssboDataArray[i].pbrMetallicFactor = mat.getPbrMetallicFactor();
-      ssboDataArray[i].pbrRoughnessFactor = mat.getPbrRoughnessFactor();
-
-      uint32_t albedoIndex = mat.hasAlbedo() ? mat.getAlbedo().index : 0;
-      uint32_t normalIndex = mat.hasNormal() ? mat.getNormal().index : 0;
-      uint32_t metallicRoughnessIndex =
-          mat.hasMetallicRoughness() ? mat.getMetallicRoughness().index : 0;
-
-      PushConstants pushConstant{.albedoIndex = albedoIndex,
-                                 .normalIndex = normalIndex,
-                                 .metallicRoughnessIndex =
-                                     metallicRoughnessIndex,
-                                 .uniformIndex = static_cast<uint32_t>(i)};
-
-      commandBuffer.pushConstants(renderContext.pipelineLayout,
-                                  vk::ShaderStageFlagBits::eVertex |
-                                      vk::ShaderStageFlagBits::eFragment,
-                                  0, sizeof(PushConstants), &pushConstant);
-      commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
-      commandBuffer.bindIndexBuffer(meshResource->getIndexBuffer(), 0,
-                                    vk::IndexType::eUint32);
-
-      commandBuffer.drawIndexed(meshResource->getIndexCount(), 1, 0, 0, 0);
-    }
-
-    commandBuffer.endRendering();
-  };
-  pass->setExecuteCallbackFn(passCallback);
-  renderGraph->addPass(pass);
+  RenderPass::CreateInfo mainPassCreateInfo{
+      .shaders = {.vertShader = "test.vert", .fragShader = "test.frag"},
+      .rasterizer = {.enableRasterizerDiscard = vk::False,
+                     .polygonMode = vk::PolygonMode::eFill,
+                     .cullMode = vk::CullModeFlagBits::eBack,
+                     .frontFace = vk::FrontFace::eCounterClockwise},
+      .colorBlending = {.enableColorBlending = vk::False,
+                        .colorBlendingWriteMask =
+                            vk::ColorComponentFlagBits::eR |
+                            vk::ColorComponentFlagBits::eG |
+                            vk::ColorComponentFlagBits::eB |
+                            vk::ColorComponentFlagBits::eA,
+                        .enableColorBlendingLogicOp = vk::False,
+                        .colorBlendingLogicOp = vk::LogicOp::eCopy},
+      .depthStencil = {.enableDepthTest = vk::True,
+                       .enableDepthWrite = vk::True,
+                       .depthCompareOp = vk::CompareOp::eLess,
+                       .enableDepthBoundsTest = vk::False,
+                       .enableStencilTest = vk::False},
+      .rendering = {.colorFormats = {colorResource->getFormat()},
+                    .depthFormat = depthResource->getFormat()}};
+  MainPass *mainPass = new MainPass("main_pass", mainPassCreateInfo,
+                                    renderContext, *resourceManager);
+  mainPass->addOutput(colorResource->getName());
+  mainPass->setColorAttachment(colorResource);
+  mainPass->setDepthAttachment(depthResource);
+  renderGraph->addPass(mainPass);
   renderGraph->compile();
 }
 
@@ -590,7 +517,7 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  entities = loadSponza(resourceManager, renderContext, camera);
+  entities = loadBall(resourceManager, renderContext, camera);
   return entities;
 }
 

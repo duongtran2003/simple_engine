@@ -96,7 +96,7 @@ public:
 
   RenderContext *setMsaaSamples(vk::SampleCountFlagBits sampleCount);
   void *getCurrentFrameUniformBufferPtr();
-  void *getCurrentFrameStorageBufferPtr();
+  void *getCurrentFrameStorageBufferPtr() const;
 
   template <typename T> void createStorageBuffers(size_t numObjects);
 

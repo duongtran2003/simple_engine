@@ -1,7 +1,8 @@
 #include "core/render_graph/render_graph.hpp"
+#include "core/entity/entity.hpp"
 #include "core/render_context.hpp"
-#include "core/render_graph/render_pass.hpp"
 #include "core/render_graph/graph_resource.hpp"
+#include "core/render_graph/render_pass.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
 #include <queue>
@@ -9,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 namespace SimpleEngine {
 namespace Core {
@@ -129,10 +131,11 @@ void RenderGraph::sortPasses() {
   }
 }
 
-void RenderGraph::execute(vk::CommandBuffer &commandBuffer) {
+void RenderGraph::execute(vk::CommandBuffer &commandBuffer,
+                          std::vector<Entity *> &renderObjects) {
   for (const auto &pass : executionOrder) {
     const auto &renderPass = passes[pass];
-    renderPass->execute(commandBuffer);
+    renderPass->execute(commandBuffer, renderObjects);
   }
 }
 } // namespace Core

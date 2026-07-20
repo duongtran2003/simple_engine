@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/entity/entity.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/render_pass.hpp"
 #include "core/render_graph/graph_resource.hpp"
@@ -37,7 +38,7 @@ public:
 
   void compile();
   void sortPasses();
-  void execute(vk::CommandBuffer &commandBuffer);
+  void execute(vk::CommandBuffer &commandBuffer, std::vector<Entity*> &renderObjects);
 };
 } // namespace Core
 } // namespace SimpleEngine

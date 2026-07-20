@@ -1,5 +1,6 @@
 #include "core/render_graph/render_pass.hpp"
 #include "core/render_context.hpp"
+#include "core/render_graph/graph_resource.hpp"
 #include "core/resource/resource_handle.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
@@ -19,7 +20,7 @@ class RenderGraph;
 RenderPass::RenderPass(const std::string &name, CreateInfo createInfo,
                        const RenderContext &context,
                        ResourceManager &resourceManager)
-    : context(context), resourceManager(resourceManager) {
+    : resourceManager(resourceManager), context(context) {
   this->name = name;
   active = true;
 }
@@ -65,9 +66,15 @@ void RenderPass::createGraphicsPipeline(const CreateInfo &createInfo) {
       .attachmentCount = 1,
       .pAttachments = &colorBlendAttachment};
 
-  vk::PipelineLayout graphicsPipelineLayout = createGraphicsPipelineLayout();
+  graphicsPipelineLayout = createGraphicsPipelineLayout();
+  vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo = {
+      .colorAttachmentCount =
+          static_cast<uint32_t>(createInfo.rendering.colorFormats.size()),
+      .pColorAttachmentFormats = createInfo.rendering.colorFormats.data(),
+      .depthAttachmentFormat = createInfo.rendering.depthFormat};
 
   vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
+      .pNext = &pipelineRenderingCreateInfo,
       .stageCount = 2,
       .pStages = shaderStages,
       .pVertexInputState = &vertexInputInfo,
@@ -80,12 +87,6 @@ void RenderPass::createGraphicsPipeline(const CreateInfo &createInfo) {
       .pDynamicState = &dynamicState,
       .layout = graphicsPipelineLayout,
       .renderPass = nullptr};
-
-  vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo = {
-      .colorAttachmentCount =
-          static_cast<uint32_t>(createInfo.rendering.colorFormats.size()),
-      .pColorAttachmentFormats = createInfo.rendering.colorFormats.data(),
-      .depthAttachmentFormat = createInfo.rendering.depthFormat};
 
   vk::StructureChain<vk::GraphicsPipelineCreateInfo,
                      vk::PipelineRenderingCreateInfo>
@@ -111,10 +112,10 @@ RenderPass::configShaders(const CreateInfoShader &shaders) {
       std::filesystem::path("shaders") / (shaders.fragShader + ".spv");
   std::string fragmentShaderName = this->name + "_" + shaders.fragShader;
 
-  ResourceHandle<Shader> vertexShaderHandle = resourceManager.load<Shader>(
+  vertexShaderHandle = resourceManager.load<Shader>(
       vertexShaderName, vk::ShaderStageFlagBits::eVertex,
       vertexShaderPath.string());
-  ResourceHandle<Shader> fragmentShaderHandle = resourceManager.load<Shader>(
+  fragmentShaderHandle = resourceManager.load<Shader>(
       fragmentShaderName, vk::ShaderStageFlagBits::eFragment,
       fragmentShaderPath.string());
 
@@ -221,8 +222,14 @@ const vk::Pipeline &RenderPass::getGraphicsPipeline() const {
   return graphicsPipeline;
 }
 
-void RenderPass::execute(vk::CommandBuffer &commandBuffer) {
-  executeCallback(commandBuffer);
+RenderPass *RenderPass::setColorAttachment(GraphResource *color) {
+  colorAttachment = color;
+  return this;
+}
+
+RenderPass *RenderPass::setDepthAttachment(GraphResource *depth) {
+  depthAttachment = depth;
+  return this;
 }
 } // namespace Core
 } // namespace SimpleEngine

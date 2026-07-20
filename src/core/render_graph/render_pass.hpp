@@ -1,7 +1,10 @@
 #pragma once
 
+#include "core/entity/entity.hpp"
 #include "core/render_context.hpp"
+#include "core/render_graph/graph_resource.hpp"
 #include "core/resource/resource_manager.hpp"
+#include "core/resource/shader.hpp"
 #include "vulkan/vulkan.hpp"
 #include <functional>
 #include <string>
@@ -81,6 +84,8 @@ private:
   virtual vk::PipelineVertexInputStateCreateInfo configVertexInput() = 0;
   virtual vk::PipelineLayout createGraphicsPipelineLayout() = 0;
 
+  ResourceHandle<Shader> vertexShaderHandle;
+  ResourceHandle<Shader> fragmentShaderHandle;
   std::pair<vk::PipelineShaderStageCreateInfo,
             vk::PipelineShaderStageCreateInfo>
   configShaders(const CreateInfoShader &shaders);
@@ -88,6 +93,11 @@ private:
 protected:
   const RenderContext &context;
   void createGraphicsPipeline(const CreateInfo &createInfo);
+
+  vk::PipelineLayout graphicsPipelineLayout;
+
+  GraphResource *colorAttachment;
+  GraphResource *depthAttachment;
 
 public:
   RenderPass() = delete;
@@ -106,6 +116,9 @@ public:
   RenderPass *setExecuteCallbackFn(
       std::function<void(vk::CommandBuffer &commandBuffer)> fn);
 
+  RenderPass *setColorAttachment(GraphResource *color);
+  RenderPass *setDepthAttachment(GraphResource *depth);
+
   const std::string &getName() const;
 
   const std::unordered_set<std::string> &getInputs() const;
@@ -114,7 +127,8 @@ public:
   bool getIsActive() const;
   const vk::Pipeline &getGraphicsPipeline() const;
 
-  void execute(vk::CommandBuffer &commandBuffer);
+  virtual void execute(vk::CommandBuffer &commandBuffer,
+                       std::vector<Entity *> &renderObjects) = 0;
 };
 } // namespace Core
 } // namespace SimpleEngine
