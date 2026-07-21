@@ -99,6 +99,10 @@ protected:
   GraphResource *colorAttachment;
   GraphResource *depthAttachment;
 
+  vk::VertexInputBindingDescription vertexInputBindingDescription;
+  std::vector<vk::VertexInputAttributeDescription>
+      vertexInputAttributeDescriptions;
+
 public:
   RenderPass() = delete;
   RenderPass(const std::string &name, const RenderContext &context,

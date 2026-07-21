@@ -145,13 +145,30 @@ void RenderGraph::sortPasses() {
     throw std::runtime_error("RenderGraph::sortPasses::ERROR: Failed to sort "
                              "passes, cycle detected");
   }
+
+  for (const auto &order : executionOrder) {
+    std::cout << order << "\n";
+  }
 }
 
 void RenderGraph::execute(vk::CommandBuffer &commandBuffer,
                           std::vector<Entity *> &renderObjects) {
-  for (const auto &pass : executionOrder) {
-    const auto &renderPass = passes[pass];
-    renderPass->execute(commandBuffer, renderObjects);
+  vk::MemoryBarrier2 memoryBarrier2{
+      .srcStageMask = vk::PipelineStageFlagBits2::eAllCommands,
+      .srcAccessMask = vk::AccessFlagBits2::eMemoryWrite,
+      .dstStageMask = vk::PipelineStageFlagBits2::eAllCommands,
+      .dstAccessMask =
+          vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite};
+
+  vk::DependencyInfo dependencyInfo{.memoryBarrierCount = 1,
+                                    .pMemoryBarriers = &memoryBarrier2};
+
+  for (size_t i = 0; i < executionOrder.size(); ++i) {
+    passes[executionOrder[i]]->execute(commandBuffer, renderObjects);
+
+    if (i + 1 < executionOrder.size()) {
+      commandBuffer.pipelineBarrier2(dependencyInfo);
+    }
   }
 }
 } // namespace Core

@@ -3,6 +3,7 @@
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
+#include <iostream>
 #include <string>
 
 namespace SimpleEngine {

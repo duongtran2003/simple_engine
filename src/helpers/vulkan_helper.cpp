@@ -51,7 +51,8 @@ void VulkanHelper::transitionImageLayout(
                            .baseArrayLayer = baseLayer,
                            .layerCount = layerCount}};
 
-  if (oldLayout == vk::ImageLayout::eUndefined) {
+  if (oldLayout == vk::ImageLayout::eUndefined ||
+      oldLayout == vk::ImageLayout::ePreinitialized) {
     barrier.srcStageMask = vk::PipelineStageFlagBits2::eNone;
     barrier.srcAccessMask = vk::AccessFlagBits2::eNone;
   } else if (oldLayout == vk::ImageLayout::eColorAttachmentOptimal) {

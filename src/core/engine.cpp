@@ -34,6 +34,7 @@
 #include "core/render_graph/main_pass.hpp"
 #include "core/render_graph/render_graph.hpp"
 #include "core/render_graph/render_pass.hpp"
+#include "core/render_graph/skybox_pass.hpp"
 #include "core/resource/cubemap.hpp"
 #include "core/resource/mesh.hpp"
 #include "core/resource/resource_handle.hpp"
@@ -253,9 +254,8 @@ void Engine::mainLoop() {
 void Engine::setupExampleRenderGraph() {
   GraphResource *colorResource = new GraphResource(
       "color_image", renderContext.swapChainExtent.width,
-      renderContext.swapChainExtent.height,
-      renderContext.swapChainSurfaceFormat.format, vk::ImageLayout::eUndefined,
-      vk::ImageAspectFlagBits::eColor,
+      renderContext.swapChainExtent.height, vk::Format::eR8G8B8A8Unorm,
+      vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc,
       vk::SampleCountFlagBits::e1, renderContext);
@@ -277,10 +277,22 @@ void Engine::setupExampleRenderGraph() {
   MainPass *mainPass = new MainPass("main_pass", renderingCreateInfo,
                                     renderContext, *resourceManager);
   mainPass->addOutput(colorResource->getName());
+  mainPass->addOutput(depthResource->getName());
   mainPass->setColorAttachment(colorResource);
   mainPass->setDepthAttachment(depthResource);
 
+  RenderPass::CreateInfo skyboxCreateInfo{
+      .rendering = {.colorFormats = {colorResource->getFormat()},
+                    .depthFormat = depthResource->getFormat()}};
+  SkyboxPass *skyboxPass = new SkyboxPass("skybox_pass", skyboxCreateInfo,
+                                          renderContext, *resourceManager);
+  skyboxPass->addInput(colorResource->getName());
+  skyboxPass->addInput(depthResource->getName());
+  skyboxPass->setColorAttachment(colorResource);
+  skyboxPass->setDepthAttachment(depthResource);
+
   renderGraph->addPass(mainPass);
+  renderGraph->addPass(skyboxPass);
   renderGraph->compile();
 }
 

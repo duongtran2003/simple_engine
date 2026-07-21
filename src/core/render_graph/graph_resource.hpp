@@ -17,7 +17,7 @@ private:
   vk::DeviceMemory memory = nullptr;
   vk::ImageView view = nullptr;
   vk::Format format;
-  vk::ImageLayout layout;
+  vk::ImageLayout layout = vk::ImageLayout::eUndefined;
 
   vk::ImageAspectFlags aspectMask;
   vk::ImageUsageFlags usage;
