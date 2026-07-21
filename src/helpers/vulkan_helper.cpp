@@ -35,10 +35,6 @@ void VulkanHelper::transitionImageLayout(
     uint32_t baseMipLevel, uint32_t layerCount, uint32_t baseLayer,
     vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
     vk::ImageAspectFlags aspectMask) {
-  if (oldLayout == newLayout) {
-    return;
-  }
-
   vk::ImageMemoryBarrier2 barrier{
       .oldLayout = oldLayout,
       .newLayout = newLayout,

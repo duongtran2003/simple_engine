@@ -513,7 +513,7 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  entities = loadChair(resourceManager, renderContext, camera);
+  entities = loadSponza(resourceManager, renderContext, camera);
   return entities;
 }
 
