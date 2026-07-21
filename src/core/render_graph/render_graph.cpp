@@ -5,6 +5,7 @@
 #include "core/render_graph/render_pass.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
+#include <iostream>
 #include <queue>
 #include <stdexcept>
 #include <string>
@@ -88,27 +89,42 @@ void RenderGraph::sortPasses() {
   std::queue<std::string> queue;
   std::unordered_map<std::string, bool> visited;
   std::unordered_map<std::string, size_t> incoming;
+
+  // List of passes that a specific pass depends on
+  std::unordered_map<std::string, std::unordered_set<std::string>> dependencies;
+
+  // List of passes that depend on this pass
   std::unordered_map<std::string, std::unordered_set<std::string>> dependents;
 
   for (const auto &[name, pass] : passes) {
-    const auto &dependencies = pass->getInputs();
-    if (dependencies.empty()) {
+    const auto &inputs = pass->getInputs();
+    if (inputs.empty()) {
       queue.push(name);
     }
-
-    incoming[name] = pass->getInputs().size();
-    dependents[name] = {};
   }
 
+  // TODO: Optimization
   for (const auto &[name, pass] : passes) {
-    for (const auto &dependency : pass->getInputs()) {
-      dependents[dependency].insert(name);
+    const auto &inputs = pass->getInputs();
+    for (const auto &[otherName, otherPass] : passes) {
+      if (name == otherName) {
+        continue;
+      }
+
+      const auto &otherOutputs = otherPass->getOutputs();
+      for (const auto &input : inputs) {
+        if (otherOutputs.find(input) != otherOutputs.end()) {
+          dependencies[name].insert(otherName);
+          dependents[otherName].insert(name);
+          break;
+        }
+      }
     }
   }
 
   if (queue.empty()) {
     throw std::runtime_error("RenderGraph::sortPasses::ERROR: Failed to sort "
-                             "passes, cycle detected.");
+                             "passes, cycle detected. Cannot find root pass.");
   }
 
   while (!queue.empty()) {
@@ -118,8 +134,8 @@ void RenderGraph::sortPasses() {
     executionOrder.push_back(current->getName());
 
     for (const auto &dependent : dependents[current->getName()]) {
-      incoming[dependent] -= 1;
-      if (incoming[dependent] == 0) {
+      dependencies[dependent].erase(current->getName());
+      if (dependencies[dependent].size() == 0) {
         queue.push(dependent);
       }
     }
