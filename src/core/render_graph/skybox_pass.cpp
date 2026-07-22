@@ -15,7 +15,7 @@ SkyboxPass::SkyboxPass(const std::string &name, CreateInfo createInfo,
                        const RenderContext &context,
                        ResourceManager &resourceManager)
     : RenderPass(name, context, resourceManager) {
-  CreateInfo mainPassCreateInfo{
+  CreateInfo passCreateInfo{
       .shaders = {.vertShader = "skybox_pass.vert",
                   .fragShader = "skybox_pass.frag"},
       .rasterizer = {.enableRasterizerDiscard = vk::False,
@@ -37,7 +37,7 @@ SkyboxPass::SkyboxPass(const std::string &name, CreateInfo createInfo,
                        .enableStencilTest = vk::False},
       .rendering = createInfo.rendering};
 
-  init(mainPassCreateInfo);
+  init(passCreateInfo);
 }
 
 SkyboxPass::~SkyboxPass() {

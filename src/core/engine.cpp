@@ -35,6 +35,7 @@
 #include "core/render_graph/render_graph.hpp"
 #include "core/render_graph/render_pass.hpp"
 #include "core/render_graph/skybox_pass.hpp"
+#include "core/render_graph/tonemapping_pass.hpp"
 #include "core/resource/cubemap.hpp"
 #include "core/resource/mesh.hpp"
 #include "core/resource/resource_handle.hpp"
@@ -254,12 +255,11 @@ void Engine::mainLoop() {
 void Engine::setupExampleRenderGraph() {
   GraphResource *colorResource = new GraphResource(
       "color_image", renderContext.swapChainExtent.width,
-      renderContext.swapChainExtent.height, vk::Format::eR8G8B8A8Unorm,
+      renderContext.swapChainExtent.height, vk::Format::eR16G16B16A16Sfloat,
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc,
       vk::SampleCountFlagBits::e1, renderContext);
-  renderGraph->addResource(colorResource);
 
   GraphResource *depthResource = new GraphResource(
       "depth_image", renderContext.swapChainExtent.width,
@@ -267,9 +267,19 @@ void Engine::setupExampleRenderGraph() {
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eDepth,
       vk::ImageUsageFlagBits::eDepthStencilAttachment,
       renderContext.msaaSamples, renderContext);
-  renderGraph->addResource(depthResource);
 
-  renderGraph->setOutputResource(colorResource->getName());
+  GraphResource *finalColorResource = new GraphResource(
+      "final_color", renderContext.swapChainExtent.width,
+      renderContext.swapChainExtent.height, vk::Format::eR8G8B8A8Snorm,
+      vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
+      vk::ImageUsageFlagBits::eColorAttachment |
+          vk::ImageUsageFlagBits::eTransferSrc,
+      renderContext.msaaSamples, renderContext);
+
+  renderGraph->addResource(colorResource);
+  renderGraph->addResource(depthResource);
+  renderGraph->addResource(finalColorResource);
+  renderGraph->setOutputResource(finalColorResource->getName());
 
   RenderPass::CreateInfo renderingCreateInfo{
       .rendering = {.colorFormats = {colorResource->getFormat()},
@@ -291,8 +301,18 @@ void Engine::setupExampleRenderGraph() {
   skyboxPass->setColorAttachment(colorResource);
   skyboxPass->setDepthAttachment(depthResource);
 
+  RenderPass::CreateInfo tonemappingCreateInfo{
+      .rendering = {.colorFormats = {finalColorResource->getFormat()},
+                    .depthFormat = vk::Format::eD32Sfloat}};
+  TonemappingPass *tonemappingPass =
+      new TonemappingPass("tonemapping_pass", tonemappingCreateInfo,
+                          renderContext, *resourceManager);
+  tonemappingPass->addInput(colorResource->getName());
+  tonemappingPass->setColorAttachment(finalColorResource);
+
   renderGraph->addPass(mainPass);
   renderGraph->addPass(skyboxPass);
+  renderGraph->addPass(tonemappingPass);
   renderGraph->compile();
 }
 
