@@ -8,6 +8,7 @@
 #include "vulkan/vulkan.hpp"
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -63,8 +64,8 @@ private:
 
   std::string name;
   bool active;
-  std::unordered_set<std::string> inputs;
-  std::unordered_set<std::string> outputs;
+  std::unordered_map<std::string, GraphResource *> inputs;
+  std::unordered_map<std::string, GraphResource *> outputs;
 
   std::function<void(vk::CommandBuffer &commandBuffer)> executeCallback;
 
@@ -110,8 +111,8 @@ public:
 
   virtual ~RenderPass();
 
-  void addInput(const std::string &resourceName);
-  void addOutput(const std::string &resourceName);
+  void addInput(GraphResource *resource);
+  void addOutput(GraphResource *resource);
 
   void deleteInput(const std::string &resourceName);
   void deleteOutput(const std::string &resourceName);
@@ -125,8 +126,8 @@ public:
 
   const std::string &getName() const;
 
-  const std::unordered_set<std::string> &getInputs() const;
-  const std::unordered_set<std::string> &getOutputs() const;
+  const std::unordered_map<std::string, GraphResource *> &getInputs() const;
+  const std::unordered_map<std::string, GraphResource *> &getOutputs() const;
 
   bool getIsActive() const;
   const vk::Pipeline &getGraphicsPipeline() const;

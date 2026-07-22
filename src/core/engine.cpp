@@ -286,8 +286,8 @@ void Engine::setupExampleRenderGraph() {
                     .depthFormat = depthResource->getFormat()}};
   MainPass *mainPass = new MainPass("main_pass", renderingCreateInfo,
                                     renderContext, *resourceManager);
-  mainPass->addOutput(colorResource->getName());
-  mainPass->addOutput(depthResource->getName());
+  mainPass->addOutput(colorResource);
+  mainPass->addOutput(depthResource);
   mainPass->setColorAttachment(colorResource);
   mainPass->setDepthAttachment(depthResource);
 
@@ -296,8 +296,8 @@ void Engine::setupExampleRenderGraph() {
                     .depthFormat = depthResource->getFormat()}};
   SkyboxPass *skyboxPass = new SkyboxPass("skybox_pass", skyboxCreateInfo,
                                           renderContext, *resourceManager);
-  skyboxPass->addInput(colorResource->getName());
-  skyboxPass->addInput(depthResource->getName());
+  skyboxPass->addInput(colorResource);
+  skyboxPass->addInput(depthResource);
   skyboxPass->setColorAttachment(colorResource);
   skyboxPass->setDepthAttachment(depthResource);
 
@@ -307,7 +307,7 @@ void Engine::setupExampleRenderGraph() {
   TonemappingPass *tonemappingPass =
       new TonemappingPass("tonemapping_pass", tonemappingCreateInfo,
                           renderContext, *resourceManager);
-  tonemappingPass->addInput(colorResource->getName());
+  tonemappingPass->addInput(colorResource);
   tonemappingPass->setColorAttachment(finalColorResource);
 
   renderGraph->addPass(mainPass);

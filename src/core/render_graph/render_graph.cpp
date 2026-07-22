@@ -112,8 +112,8 @@ void RenderGraph::sortPasses() {
       }
 
       const auto &otherOutputs = otherPass->getOutputs();
-      for (const auto &input : inputs) {
-        if (otherOutputs.find(input) != otherOutputs.end()) {
+      for (const auto &[inputName, input] : inputs) {
+        if (otherOutputs.find(inputName) != otherOutputs.end()) {
           dependencies[name].insert(otherName);
           dependents[otherName].insert(name);
           break;
@@ -144,10 +144,6 @@ void RenderGraph::sortPasses() {
   if (executionOrder.size() != passes.size()) {
     throw std::runtime_error("RenderGraph::sortPasses::ERROR: Failed to sort "
                              "passes, cycle detected");
-  }
-
-  for (const auto &order : executionOrder) {
-    std::cout << order << "\n";
   }
 }
 

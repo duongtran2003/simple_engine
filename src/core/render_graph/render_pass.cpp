@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -164,22 +165,22 @@ vk::PipelineDepthStencilStateCreateInfo RenderPass::configDepthStencil(
           .stencilTestEnable = depthStencilConfig.enableStencilTest};
 }
 
-void RenderPass::addInput(const std::string &resourceName) {
-  auto resourceIt = inputs.find(resourceName);
+void RenderPass::addInput(GraphResource *resource) {
+  auto resourceIt = inputs.find(resource->getName());
   if (resourceIt != inputs.end()) {
     return;
   }
 
-  inputs.insert(resourceName);
+  inputs[resource->getName()] = resource;
 }
 
-void RenderPass::addOutput(const std::string &resourceName) {
-  auto resourceIt = outputs.find(resourceName);
+void RenderPass::addOutput(GraphResource *resource) {
+  auto resourceIt = outputs.find(resource->getName());
   if (resourceIt != outputs.end()) {
     return;
   }
 
-  outputs.insert(resourceName);
+  outputs[resource->getName()] = resource;
 }
 
 void RenderPass::deleteInput(const std::string &resourceName) {
@@ -208,11 +209,13 @@ RenderPass *RenderPass::setExecuteCallbackFn(
 
 const std::string &RenderPass::getName() const { return name; }
 
-const std::unordered_set<std::string> &RenderPass::getInputs() const {
+const std::unordered_map<std::string, GraphResource *> &
+RenderPass::getInputs() const {
   return inputs;
 }
 
-const std::unordered_set<std::string> &RenderPass::getOutputs() const {
+const std::unordered_map<std::string, GraphResource *> &
+RenderPass::getOutputs() const {
   return outputs;
 }
 
