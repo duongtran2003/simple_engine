@@ -1,10 +1,13 @@
 #include "core/render_graph/tonemapping_pass.hpp"
 #include "core/entity/entity.hpp"
 #include "core/render_context.hpp"
+#include "core/render_graph/graph_resource.hpp"
 #include "core/render_graph/render_pass.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "vulkan/vulkan.hpp"
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
@@ -115,6 +118,24 @@ vk::PipelineLayout TonemappingPass::createGraphicsPipelineLayout() {
 
   resourceDescriptorSets = context.device.allocateDescriptorSets(allocateInfo);
 
+  size_t inputIndex = 0;
+  for (const auto &[inputName, input] : getInputs()) {
+    vk::DescriptorImageInfo imageInfo{
+        .sampler = input->getSampler(),
+        .imageView = input->getView(context.frameIndex),
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+    vk::WriteDescriptorSet descriptorWrite{
+        .dstSet = resourceDescriptorSets[context.frameIndex],
+        .dstBinding = 0,
+        .dstArrayElement = static_cast<uint32_t>(inputIndex),
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+        .pImageInfo = &imageInfo};
+
+    context.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+  }
+
   std::array<vk::DescriptorSetLayout, 3> layouts = {
       context.descriptorSetLayout, context.bindlessDescriptorSetLayout,
       resourceDescriptorSetLayout};
@@ -131,12 +152,13 @@ vk::PipelineLayout TonemappingPass::createGraphicsPipelineLayout() {
 void TonemappingPass::execute(vk::CommandBuffer &commandBuffer,
                               std::vector<Entity *> &renderObjects) {
   bool fromLastLayout = true;
-  colorAttachment->transitionLayout(
-      commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, fromLastLayout);
+  colorAttachment->transitionLayout(commandBuffer, context.frameIndex,
+                                    vk::ImageLayout::eColorAttachmentOptimal,
+                                    fromLastLayout);
 
   vk::RenderingAttachmentInfoKHR colorAttachment{
-      .imageView = this->colorAttachment->getView(),
-      .imageLayout = this->colorAttachment->getLayout(),
+      .imageView = this->colorAttachment->getView(context.frameIndex),
+      .imageLayout = this->colorAttachment->getLayout(context.frameIndex),
       .loadOp = vk::AttachmentLoadOp::eLoad,
       .storeOp = vk::AttachmentStoreOp::eStore,
       .clearValue =

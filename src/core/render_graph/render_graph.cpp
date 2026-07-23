@@ -5,7 +5,6 @@
 #include "core/render_graph/render_pass.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
-#include <iostream>
 #include <queue>
 #include <stdexcept>
 #include <string>

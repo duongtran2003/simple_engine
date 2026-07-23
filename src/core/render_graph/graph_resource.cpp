@@ -1,46 +1,62 @@
 #include "core/render_graph/graph_resource.hpp"
 #include "core/render_context.hpp"
+#include "enums/texture.hpp"
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cassert>
 #include <cstdint>
 #include <string>
 
 namespace SimpleEngine {
 namespace Core {
-GraphResource::GraphResource(const std::string &name, uint32_t width,
-                             uint32_t height, vk::Format format,
-                             vk::ImageLayout layout,
-                             vk::ImageAspectFlags aspectMask,
-                             vk::ImageUsageFlags usage,
-                             vk::SampleCountFlagBits sampleCount,
-                             const RenderContext &context)
-    : context(context), name(name), format(format), layout(layout),
-      aspectMask(aspectMask), usage(usage), sampleCount(sampleCount),
-      width(width), height(height) {
-  createImage();
-  allocateMemory();
-  createView();
+GraphResource::GraphResource(
+    const std::string &name, uint32_t width, uint32_t height, vk::Format format,
+    vk::ImageLayout layout, vk::ImageAspectFlags aspectMask,
+    vk::ImageUsageFlags usage, vk::SampleCountFlagBits sampleCount,
+    uint32_t inFlightFrame, const RenderContext &context)
+    : context(context), inFlightFrame(inFlightFrame), name(name),
+      format(format), aspectMask(aspectMask), usage(usage),
+      sampleCount(sampleCount), width(width), height(height) {
+  initiateLayouts(layout);
+  createImages();
+  allocateMemories();
+  createViews();
+  createSampler();
 }
 
 GraphResource::~GraphResource() {
-  destroyView();
-  destroyImage();
-  deallocateMemory();
+  destroySampler();
+  destroyViews();
+  destroyImages();
+  deallocateMemories();
 }
 
 const std::string &GraphResource::getName() const { return name; }
-vk::Image GraphResource::getImage() { return image; }
-vk::ImageView GraphResource::getView() { return view; }
-vk::DeviceMemory GraphResource::getMemory() { return memory; }
+vk::Image GraphResource::getImage(uint32_t frameIndex) {
+  return images[frameIndex];
+}
+vk::ImageView GraphResource::getView(uint32_t frameIndex) {
+  return views[frameIndex];
+}
+vk::DeviceMemory GraphResource::getMemory(uint32_t frameIndex) {
+  return memories[frameIndex];
+}
 vk::Format GraphResource::getFormat() { return format; }
-vk::ImageLayout GraphResource::getLayout() { return layout; }
+vk::ImageLayout GraphResource::getLayout(uint32_t frameIndex) {
+  return layouts[frameIndex];
+}
 vk::ImageAspectFlags GraphResource::getAspectMask() { return aspectMask; }
+vk::Sampler GraphResource::getSampler() { return sampler; }
 
 uint32_t GraphResource::getWidth() const { return width; }
 
 uint32_t GraphResource::getHeight() const { return height; }
 
-void GraphResource::createImage() {
+void GraphResource::initiateLayouts(vk::ImageLayout layout) {
+  layouts.assign(4, layout);
+}
+
+void GraphResource::createImages() {
   vk::ImageCreateInfo createInfo{.imageType = vk::ImageType::e2D,
                                  .format = format,
                                  .extent = {width, height, 1},
@@ -52,12 +68,23 @@ void GraphResource::createImage() {
                                  .sharingMode = vk::SharingMode::eExclusive,
                                  .initialLayout = vk::ImageLayout::eUndefined};
 
-  image = context.device.createImage(createInfo);
+  images.resize(inFlightFrame);
+  for (uint32_t i = 0; i < inFlightFrame; i++) {
+    images[i] = context.device.createImage(createInfo);
+  }
 }
 
-void GraphResource::allocateMemory() {
+void GraphResource::createSampler() {
+  sampler = Helper::VulkanHelper::createImageSampler(
+      Enums::Texture::Filter::Nearest, Enums::Texture::Filter::Nearest,
+      Enums::Texture::Wrap::ClampToEdge, Enums::Texture::Wrap::ClampToEdge,
+      context);
+}
+
+void GraphResource::allocateMemories() {
+  assert(images.size() > 0);
   vk::MemoryRequirements memoryRequirement;
-  context.device.getImageMemoryRequirements(image, &memoryRequirement);
+  context.device.getImageMemoryRequirements(images[0], &memoryRequirement);
 
   vk::MemoryAllocateInfo allocateInfo{
       .allocationSize = memoryRequirement.size,
@@ -65,13 +92,15 @@ void GraphResource::allocateMemory() {
           memoryRequirement.memoryTypeBits,
           vk::MemoryPropertyFlagBits::eDeviceLocal, context.physicalDevice)};
 
-  memory = context.device.allocateMemory(allocateInfo);
-  context.device.bindImageMemory(image, memory, 0);
+  memories.resize(inFlightFrame);
+  for (uint32_t i = 0; i < inFlightFrame; i++) {
+    memories[i] = context.device.allocateMemory(allocateInfo);
+    context.device.bindImageMemory(images[i], memories[i], 0);
+  }
 }
 
-void GraphResource::createView() {
+void GraphResource::createViews() {
   vk::ImageViewCreateInfo createInfo{
-      .image = image,
       .viewType = vk::ImageViewType::e2D,
       .format = format,
       .subresourceRange = {.aspectMask = aspectMask,
@@ -80,32 +109,55 @@ void GraphResource::createView() {
                            .baseArrayLayer = 0,
                            .layerCount = 1}};
 
-  view = context.device.createImageView(createInfo);
+  views.resize(inFlightFrame);
+  for (uint32_t i = 0; i < inFlightFrame; i++) {
+    createInfo.image = images[i];
+    views[i] = context.device.createImageView(createInfo);
+  }
 }
 
-void GraphResource::destroyImage() {
-  context.device.destroyImage(image);
-  image = nullptr;
+void GraphResource::destroySampler() {
+  context.device.destroySampler(sampler);
+  sampler = nullptr;
 }
 
-void GraphResource::destroyView() {
-  context.device.destroyImageView(view);
-  view = nullptr;
+void GraphResource::destroyImages() {
+  for (uint32_t i = 0; i < images.size(); i++) {
+    context.device.destroyImage(images[i]);
+  }
+
+  images.clear();
+  images.shrink_to_fit();
 }
 
-void GraphResource::deallocateMemory() {
-  context.device.freeMemory(memory);
-  memory = nullptr;
+void GraphResource::destroyViews() {
+  for (uint32_t i = 0; i < views.size(); i++) {
+    context.device.destroyImageView(views[i]);
+  }
+
+  views.clear();
+  views.shrink_to_fit();
+}
+
+void GraphResource::deallocateMemories() {
+  for (uint32_t i = 0; i < memories.size(); i++) {
+    context.device.freeMemory(memories[i]);
+  }
+
+  memories.clear();
+  memories.shrink_to_fit();
 }
 
 void GraphResource::transitionLayout(vk::CommandBuffer &commandBuffer,
+                                     uint32_t frameIndex,
                                      vk::ImageLayout dstLayout,
                                      bool fromLastLayout) {
   vk::ImageLayout lastLayout =
-      fromLastLayout ? layout : vk::ImageLayout::eUndefined;
-  Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, image, 1, 0, 1, 0, lastLayout, dstLayout, aspectMask);
-  layout = dstLayout;
+      fromLastLayout ? layouts[frameIndex] : vk::ImageLayout::eUndefined;
+  Helper::VulkanHelper::transitionImageLayout(commandBuffer, images[frameIndex],
+                                              1, 0, 1, 0, lastLayout, dstLayout,
+                                              aspectMask);
+  layouts[frameIndex] = dstLayout;
 }
 } // namespace Core
 } // namespace SimpleEngine

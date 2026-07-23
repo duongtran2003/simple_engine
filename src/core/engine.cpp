@@ -135,8 +135,9 @@ void Engine::renderFrame() {
 
   GraphResource *outputResource = renderGraph->getOutputResource();
   bool fromLastLayout = true;
-  outputResource->transitionLayout(
-      commandBuffer, vk::ImageLayout::eTransferSrcOptimal, fromLastLayout);
+  outputResource->transitionLayout(commandBuffer, renderContext.frameIndex,
+                                   vk::ImageLayout::eTransferSrcOptimal,
+                                   fromLastLayout);
 
   vk::ArrayWrapper1D<vk::Offset3D, 2> srcOffsets, dstOffsets;
 
@@ -162,8 +163,8 @@ void Engine::renderFrame() {
                          .layerCount = 1},
       .dstOffsets = dstOffsets};
 
-  commandBuffer.blitImage(outputResource->getImage(),
-                          outputResource->getLayout(),
+  commandBuffer.blitImage(outputResource->getImage(renderContext.frameIndex),
+                          outputResource->getLayout(renderContext.frameIndex),
                           renderContext.swapChainImages[imageIndex],
                           vk::ImageLayout::eTransferDstOptimal, 1, &blitRegion,
                           vk::Filter::eLinear);
@@ -259,14 +260,14 @@ void Engine::setupExampleRenderGraph() {
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc,
-      vk::SampleCountFlagBits::e1, renderContext);
+      vk::SampleCountFlagBits::e1, renderContext.inFlightFrame, renderContext);
 
   GraphResource *depthResource = new GraphResource(
       "depth_image", renderContext.swapChainExtent.width,
       renderContext.swapChainExtent.height, vk::Format::eD32Sfloat,
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eDepth,
       vk::ImageUsageFlagBits::eDepthStencilAttachment,
-      renderContext.msaaSamples, renderContext);
+      renderContext.msaaSamples, renderContext.inFlightFrame, renderContext);
 
   GraphResource *finalColorResource = new GraphResource(
       "final_color", renderContext.swapChainExtent.width,
@@ -274,7 +275,7 @@ void Engine::setupExampleRenderGraph() {
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc,
-      renderContext.msaaSamples, renderContext);
+      renderContext.msaaSamples, renderContext.inFlightFrame, renderContext);
 
   renderGraph->addResource(colorResource);
   renderGraph->addResource(depthResource);

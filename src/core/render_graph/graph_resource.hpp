@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <string>
 #include <sys/types.h>
+#include <vector>
 
 namespace SimpleEngine {
 namespace Core {
@@ -12,12 +13,15 @@ class GraphResource {
 private:
   const RenderContext &context;
 
+  uint32_t inFlightFrame;
+
   std::string name;
-  vk::Image image = nullptr;
-  vk::DeviceMemory memory = nullptr;
-  vk::ImageView view = nullptr;
+  std::vector<vk::Image> images = {};
+  std::vector<vk::DeviceMemory> memories = {};
+  std::vector<vk::ImageView> views = {};
   vk::Format format;
-  vk::ImageLayout layout = vk::ImageLayout::eUndefined;
+  std::vector<vk::ImageLayout> layouts = {};
+  vk::Sampler sampler;
 
   vk::ImageAspectFlags aspectMask;
   vk::ImageUsageFlags usage;
@@ -26,36 +30,41 @@ private:
   uint32_t width;
   uint32_t height;
 
-  void createImage();
-  void allocateMemory();
-  void createView();
+  void initiateLayouts(vk::ImageLayout layout);
 
-  void destroyImage();
-  void deallocateMemory();
-  void destroyView();
+  void createImages();
+  void allocateMemories();
+  void createViews();
+  void createSampler();
+
+  void destroySampler();
+  void destroyImages();
+  void deallocateMemories();
+  void destroyViews();
 
 public:
   GraphResource() = delete;
   GraphResource(const std::string &name, uint32_t width, uint32_t height,
                 vk::Format format, vk::ImageLayout layout,
                 vk::ImageAspectFlags aspectMask, vk::ImageUsageFlags usage,
-                vk::SampleCountFlagBits sampleCount,
+                vk::SampleCountFlagBits sampleCount, uint32_t inFlightFrame,
                 const RenderContext &context);
   ~GraphResource();
 
   const std::string &getName() const;
 
-  vk::Image getImage();
-  vk::ImageView getView();
-  vk::DeviceMemory getMemory();
+  vk::Image getImage(uint32_t frameIndex);
+  vk::ImageView getView(uint32_t frameIndex);
+  vk::DeviceMemory getMemory(uint32_t frameIndex);
   vk::Format getFormat();
-  vk::ImageLayout getLayout();
+  vk::ImageLayout getLayout(uint32_t frameIndex);
   vk::ImageAspectFlags getAspectMask();
+  vk::Sampler getSampler();
 
   uint32_t getWidth() const;
   uint32_t getHeight() const;
 
-  void transitionLayout(vk::CommandBuffer &commandBuffer,
+  void transitionLayout(vk::CommandBuffer &commandBuffer, uint32_t frameIndex,
                         vk::ImageLayout dstLayout, bool fromLastLayout);
 };
 } // namespace Core

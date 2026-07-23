@@ -79,23 +79,23 @@ void SkyboxPass::execute(vk::CommandBuffer &commandBuffer,
                          std::vector<Entity *> &renderObjects) {
   bool fromLastLayout = true;
   colorAttachment->transitionLayout(
-      commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, fromLastLayout);
+      commandBuffer, context.frameIndex, vk::ImageLayout::eColorAttachmentOptimal, fromLastLayout);
 
   depthAttachment->transitionLayout(
-      commandBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+      commandBuffer, context.frameIndex, vk::ImageLayout::eDepthStencilAttachmentOptimal,
       fromLastLayout);
 
   vk::RenderingAttachmentInfoKHR colorAttachment{
-      .imageView = this->colorAttachment->getView(),
-      .imageLayout = this->colorAttachment->getLayout(),
+      .imageView = this->colorAttachment->getView(context.frameIndex),
+      .imageLayout = this->colorAttachment->getLayout(context.frameIndex),
       .loadOp = vk::AttachmentLoadOp::eLoad,
       .storeOp = vk::AttachmentStoreOp::eStore,
       .clearValue =
           vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
 
   vk::RenderingAttachmentInfoKHR depthAttachment{
-      .imageView = this->depthAttachment->getView(),
-      .imageLayout = this->depthAttachment->getLayout(),
+      .imageView = this->depthAttachment->getView(context.frameIndex),
+      .imageLayout = this->depthAttachment->getLayout(context.frameIndex),
       .loadOp = vk::AttachmentLoadOp::eLoad,
       .storeOp = vk::AttachmentStoreOp::eDontCare,
       .clearValue = vk::ClearDepthStencilValue(1.0f, 0)};
