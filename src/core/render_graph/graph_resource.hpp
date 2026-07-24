@@ -13,8 +13,6 @@ class GraphResource {
 private:
   const RenderContext &context;
 
-  uint32_t inFlightFrame;
-
   std::string name;
   std::vector<vk::Image> images = {};
   std::vector<vk::DeviceMemory> memories = {};

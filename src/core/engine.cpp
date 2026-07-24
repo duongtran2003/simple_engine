@@ -259,7 +259,8 @@ void Engine::setupExampleRenderGraph() {
       renderContext.swapChainExtent.height, vk::Format::eR16G16B16A16Sfloat,
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
-          vk::ImageUsageFlagBits::eTransferSrc,
+          vk::ImageUsageFlagBits::eTransferSrc |
+          vk::ImageUsageFlagBits::eSampled,
       vk::SampleCountFlagBits::e1, renderContext.inFlightFrame, renderContext);
 
   GraphResource *depthResource = new GraphResource(

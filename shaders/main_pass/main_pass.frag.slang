@@ -84,13 +84,7 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   }
 
   float3 color = directional + point;
-  float3 toneMapped = reinhardToneMap(color);
-
-  return float4(toneMapped, texColor.a);
-}
-
-float3 reinhardToneMap(float3 color) {
-  return color / (color + float3(1.0f));
+  return float4(color, texColor.a);
 }
 
 float3 fLambert(float3 c) {

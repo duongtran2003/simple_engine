@@ -137,7 +137,7 @@ void MainPass::execute(vk::CommandBuffer &commandBuffer,
       .imageView = this->depthAttachment->getView(context.frameIndex),
       .imageLayout = this->depthAttachment->getLayout(context.frameIndex),
       .loadOp = vk::AttachmentLoadOp::eClear,
-      .storeOp = vk::AttachmentStoreOp::eDontCare,
+      .storeOp = vk::AttachmentStoreOp::eStore,
       .clearValue = vk::ClearDepthStencilValue(1.0f, 0)};
 
   vk::RenderingInfoKHR renderingInfo{

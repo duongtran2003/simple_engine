@@ -8,6 +8,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
@@ -120,20 +122,23 @@ vk::PipelineLayout TonemappingPass::createGraphicsPipelineLayout() {
 
   size_t inputIndex = 0;
   for (const auto &[inputName, input] : getInputs()) {
-    vk::DescriptorImageInfo imageInfo{
-        .sampler = input->getSampler(),
-        .imageView = input->getView(context.frameIndex),
-        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+    for (uint32_t i = 0; i < context.inFlightFrame; i++) {
+      vk::DescriptorImageInfo imageInfo{
+          .sampler = input->getSampler(),
+          .imageView = input->getView(i),
+          .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
 
-    vk::WriteDescriptorSet descriptorWrite{
-        .dstSet = resourceDescriptorSets[context.frameIndex],
-        .dstBinding = 0,
-        .dstArrayElement = static_cast<uint32_t>(inputIndex),
-        .descriptorCount = 1,
-        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-        .pImageInfo = &imageInfo};
+      vk::WriteDescriptorSet descriptorWrite{
+          .dstSet = resourceDescriptorSets[i],
+          .dstBinding = 0,
+          .dstArrayElement = static_cast<uint32_t>(inputIndex),
+          .descriptorCount = 1,
+          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+          .pImageInfo = &imageInfo};
 
-    context.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+      context.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+    }
+    inputIndex++;
   }
 
   std::array<vk::DescriptorSetLayout, 3> layouts = {
@@ -151,15 +156,40 @@ vk::PipelineLayout TonemappingPass::createGraphicsPipelineLayout() {
 
 void TonemappingPass::execute(vk::CommandBuffer &commandBuffer,
                               std::vector<Entity *> &renderObjects) {
-  bool fromLastLayout = true;
   colorAttachment->transitionLayout(commandBuffer, context.frameIndex,
                                     vk::ImageLayout::eColorAttachmentOptimal,
-                                    fromLastLayout);
+                                    false);
+
+  for (const auto &[inputName, input] : getInputs()) {
+    input->transitionLayout(commandBuffer, context.frameIndex,
+                            vk::ImageLayout::eShaderReadOnlyOptimal, true);
+  }
+
+  size_t inputIndex = 0;
+  for (const auto &[inputName, input] : getInputs()) {
+    for (uint32_t i = 0; i < context.inFlightFrame; i++) {
+      vk::DescriptorImageInfo imageInfo{
+          .sampler = input->getSampler(),
+          .imageView = input->getView(i),
+          .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+      vk::WriteDescriptorSet descriptorWrite{
+          .dstSet = resourceDescriptorSets[i],
+          .dstBinding = 0,
+          .dstArrayElement = static_cast<uint32_t>(inputIndex),
+          .descriptorCount = 1,
+          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+          .pImageInfo = &imageInfo};
+
+      context.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+    }
+    inputIndex++;
+  }
 
   vk::RenderingAttachmentInfoKHR colorAttachment{
       .imageView = this->colorAttachment->getView(context.frameIndex),
       .imageLayout = this->colorAttachment->getLayout(context.frameIndex),
-      .loadOp = vk::AttachmentLoadOp::eLoad,
+      .loadOp = vk::AttachmentLoadOp::eClear,
       .storeOp = vk::AttachmentStoreOp::eStore,
       .clearValue =
           vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};

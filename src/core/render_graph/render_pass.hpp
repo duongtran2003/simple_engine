@@ -6,6 +6,7 @@
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -18,6 +19,11 @@ class RenderGraph;
 
 class RenderPass {
 public:
+  struct PassResource {
+    uint32_t bindIndex;
+    GraphResource *resource;
+  };
+
   struct CreateInfoShader {
     std::string vertShader;
     std::string fragShader;
