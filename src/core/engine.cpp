@@ -272,7 +272,7 @@ void Engine::setupExampleRenderGraph() {
 
   GraphResource *finalColorResource = new GraphResource(
       "final_color", renderContext.swapChainExtent.width,
-      renderContext.swapChainExtent.height, vk::Format::eR8G8B8A8Snorm,
+      renderContext.swapChainExtent.height, renderContext.swapChainSurfaceFormat.format,
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc,
