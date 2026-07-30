@@ -77,6 +77,9 @@ public:
   vk::DescriptorSetLayout ssboDescriptorSetLayout;
   std::vector<vk::DescriptorSet> ssboDescriptorSets;
 
+  vk::DescriptorSetLayout bindlessResourceDescriptorSetLayout;
+  std::vector<vk::DescriptorSet> bindlessResourceDescriptorSets;
+
   std::vector<UboBuffer> uniformBuffers;
   std::vector<UboBuffer> storageBuffers;
 
@@ -97,6 +100,8 @@ public:
   RenderContext *setMsaaSamples(vk::SampleCountFlagBits sampleCount);
   void *getCurrentFrameUniformBufferPtr();
   void *getCurrentFrameStorageBufferPtr() const;
+  std::vector<vk::DescriptorSetLayout> getGlobalDescriptorSetLayouts() const;
+  std::vector<vk::DescriptorSet> getGlobalDescriptorSets() const;
 
   template <typename T> void createStorageBuffers(size_t numObjects);
 

@@ -5,6 +5,7 @@
 #include "core/resource/resource_manager.hpp"
 #include "vulkan/vulkan.hpp"
 #include <array>
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
@@ -60,14 +61,10 @@ vk::PipelineVertexInputStateCreateInfo SkyboxPass::configVertexInput() {
 }
 
 vk::PipelineLayout SkyboxPass::createGraphicsPipelineLayout() {
-
-  // This is only the global sets, each pass should have their own local sets as
-  // well (for example, one pass can have a specific set to sample input)
-  std::array<vk::DescriptorSetLayout, 2> layouts = {
-      context.descriptorSetLayout, context.bindlessDescriptorSetLayout};
+  auto layouts = context.getGlobalDescriptorSetLayouts();
 
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-      .setLayoutCount = layouts.size(),
+      .setLayoutCount = static_cast<uint32_t>(layouts.size()),
       .pSetLayouts = layouts.data(),
       .pushConstantRangeCount = 0,
       .pPushConstantRanges = nullptr};
@@ -78,12 +75,13 @@ vk::PipelineLayout SkyboxPass::createGraphicsPipelineLayout() {
 void SkyboxPass::execute(vk::CommandBuffer &commandBuffer,
                          std::vector<Entity *> &renderObjects) {
   bool fromLastLayout = true;
-  colorAttachment->transitionLayout(
-      commandBuffer, context.frameIndex, vk::ImageLayout::eColorAttachmentOptimal, fromLastLayout);
+  colorAttachment->transitionLayout(commandBuffer, context.frameIndex,
+                                    vk::ImageLayout::eColorAttachmentOptimal,
+                                    fromLastLayout);
 
   depthAttachment->transitionLayout(
-      commandBuffer, context.frameIndex, vk::ImageLayout::eDepthStencilAttachmentOptimal,
-      fromLastLayout);
+      commandBuffer, context.frameIndex,
+      vk::ImageLayout::eDepthStencilAttachmentOptimal, fromLastLayout);
 
   vk::RenderingAttachmentInfoKHR colorAttachment{
       .imageView = this->colorAttachment->getView(context.frameIndex),
@@ -116,9 +114,7 @@ void SkyboxPass::execute(vk::CommandBuffer &commandBuffer,
   commandBuffer.setViewport(0, context.viewport);
   commandBuffer.setScissor(0, context.scissor);
 
-  std::array<vk::DescriptorSet, 2> descriptorSets = {
-      context.descriptorSets[context.frameIndex],
-      context.bindlessDescriptorSets};
+  auto descriptorSets = context.getGlobalDescriptorSets();
   commandBuffer.bindDescriptorSets(
       vk::PipelineBindPoint::eGraphics, graphicsPipelineLayout, 0,
       descriptorSets.size(), descriptorSets.data(), 0, nullptr);

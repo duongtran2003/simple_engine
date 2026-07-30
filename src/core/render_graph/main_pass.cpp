@@ -93,12 +93,7 @@ vk::PipelineVertexInputStateCreateInfo MainPass::configVertexInput() {
 }
 
 vk::PipelineLayout MainPass::createGraphicsPipelineLayout() {
-
-  // This is only the global sets, each pass should have their own local sets as
-  // well (for example, one pass can have a specific set to sample input)
-  std::array<vk::DescriptorSetLayout, 3> layouts = {
-      context.descriptorSetLayout, context.bindlessDescriptorSetLayout,
-      context.ssboDescriptorSetLayout};
+  auto layouts = context.getGlobalDescriptorSetLayouts();
 
   vk::PushConstantRange pushConstantRange{
       .stageFlags =
@@ -107,7 +102,7 @@ vk::PipelineLayout MainPass::createGraphicsPipelineLayout() {
       .size = sizeof(PushConstants)};
 
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-      .setLayoutCount = layouts.size(),
+      .setLayoutCount = static_cast<uint32_t>(layouts.size()),
       .pSetLayouts = layouts.data(),
       .pushConstantRangeCount = 1,
       .pPushConstantRanges = &pushConstantRange};
@@ -156,10 +151,7 @@ void MainPass::execute(vk::CommandBuffer &commandBuffer,
   commandBuffer.setViewport(0, context.viewport);
   commandBuffer.setScissor(0, context.scissor);
 
-  std::array<vk::DescriptorSet, 3> descriptorSets = {
-      context.descriptorSets[context.frameIndex],
-      context.bindlessDescriptorSets,
-      context.ssboDescriptorSets[context.frameIndex]};
+  auto descriptorSets = context.getGlobalDescriptorSets();
   commandBuffer.bindDescriptorSets(
       vk::PipelineBindPoint::eGraphics, graphicsPipelineLayout, 0,
       descriptorSets.size(), descriptorSets.data(), 0, nullptr);

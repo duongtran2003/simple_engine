@@ -21,8 +21,8 @@ namespace Core {
 
 std::vector<const char *> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName};
-// std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
-std::vector<char const *> requiredLayers = {};
+std::vector<char const *> requiredLayers = {"VK_LAYER_KHRONOS_validation"};
+// std::vector<char const *> requiredLayers = {};
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -31,6 +31,8 @@ const std::string ENGINE_NAME = "Vulkan";
 constexpr uint32_t MAX_FRAME_IN_FLIGHTS = 2;
 constexpr uint32_t MAX_BINDLESS_TEXTURES = 4096;
 constexpr uint32_t MAX_BINDLESS_CUBEMAP_TEXTURES = 64;
+
+constexpr uint32_t MAX_BINDLESS_RESOURCES = 128;
 
 RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
   inFlightFrame = createInfo.inFlightFrame ? createInfo.inFlightFrame
@@ -502,14 +504,17 @@ void RenderContext::createDescriptorPool() {
   vk::DescriptorPoolSize ssboPoolSize = {.type =
                                              vk::DescriptorType::eStorageBuffer,
                                          .descriptorCount = inFlightFrame};
+  vk::DescriptorPoolSize bindlessResourcePoolSize = {
+      .type = vk::DescriptorType::eCombinedImageSampler,
+      .descriptorCount = MAX_BINDLESS_RESOURCES * inFlightFrame};
 
   std::array poolSizes = {uniformPoolSize, bindlessTexturePoolSize,
-                          ssboPoolSize};
+                          ssboPoolSize, bindlessResourcePoolSize};
 
   vk::DescriptorPoolCreateInfo poolInfo{
       .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet |
                vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
-      .maxSets = inFlightFrame * 2 + 1,
+      .maxSets = inFlightFrame * 3 + 1,
       .poolSizeCount = poolSizes.size(),
       .pPoolSizes = poolSizes.data()};
 
@@ -574,6 +579,31 @@ void RenderContext::createDescriptorSetLayout() {
   vk::DescriptorSetLayoutCreateInfo ssboLayoutInfo{
       .bindingCount = 1, .pBindings = &ssboLayoutBinding};
   ssboDescriptorSetLayout = device.createDescriptorSetLayout(ssboLayoutInfo);
+
+  vk::DescriptorSetLayoutBinding bindlessResourceLayoutBinding{
+      .binding = 0,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .descriptorCount = MAX_BINDLESS_RESOURCES,
+      .stageFlags = vk::ShaderStageFlagBits::eFragment,
+      .pImmutableSamplers = nullptr};
+
+  vk::DescriptorBindingFlagsEXT bindlessResourceBindingFlag =
+      vk::DescriptorBindingFlagBitsEXT::ePartiallyBound |
+      vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind |
+      vk::DescriptorBindingFlagBitsEXT::eUpdateUnusedWhilePending;
+
+  vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT
+      bindlessResourceBindingFlagCreateInfo = {
+          .bindingCount = 1, .pBindingFlags = &bindlessResourceBindingFlag};
+
+  vk::DescriptorSetLayoutCreateInfo bindlessResourceLayoutInfo = {
+      .pNext = &bindlessResourceBindingFlagCreateInfo,
+      .flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
+      .bindingCount = 1,
+      .pBindings = &bindlessResourceLayoutBinding};
+
+  bindlessResourceDescriptorSetLayout =
+      device.createDescriptorSetLayout(bindlessResourceLayoutInfo);
 }
 
 void RenderContext::createDescriptorSets() {
@@ -621,6 +651,17 @@ void RenderContext::createDescriptorSets() {
 
   bindlessDescriptorSets =
       device.allocateDescriptorSets(bindlessSetAllocateInfo)[0];
+
+  std::vector<vk::DescriptorSetLayout> bindlessResourceLayouts(
+      inFlightFrame, bindlessResourceDescriptorSetLayout);
+
+  vk::DescriptorSetAllocateInfo bindlessResourceAllocateInfo{
+      .descriptorPool = descriptorPool,
+      .descriptorSetCount = inFlightFrame,
+      .pSetLayouts = bindlessResourceLayouts.data()};
+
+  bindlessResourceDescriptorSets =
+      device.allocateDescriptorSets(bindlessResourceAllocateInfo);
 }
 
 void *RenderContext::getCurrentFrameUniformBufferPtr() {
@@ -629,6 +670,18 @@ void *RenderContext::getCurrentFrameUniformBufferPtr() {
 
 void *RenderContext::getCurrentFrameStorageBufferPtr() const {
   return storageBuffers[frameIndex].mapped;
+}
+
+std::vector<vk::DescriptorSetLayout>
+RenderContext::getGlobalDescriptorSetLayouts() const {
+  return {descriptorSetLayout, bindlessDescriptorSetLayout,
+          ssboDescriptorSetLayout, bindlessResourceDescriptorSetLayout};
+}
+
+std::vector<vk::DescriptorSet> RenderContext::getGlobalDescriptorSets() const {
+  return {descriptorSets[frameIndex], bindlessDescriptorSets,
+          ssboDescriptorSets[frameIndex],
+          bindlessResourceDescriptorSets[frameIndex]};
 }
 
 } // namespace Core

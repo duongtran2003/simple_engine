@@ -12,10 +12,6 @@ namespace SimpleEngine {
 namespace Core {
 class TonemappingPass : public RenderPass {
 private:
-  vk::DescriptorPool resourceDescriptorPool;
-  vk::DescriptorSetLayout resourceDescriptorSetLayout;
-  std::vector<vk::DescriptorSet> resourceDescriptorSets;
-
   vk::PipelineInputAssemblyStateCreateInfo configInputAssembly() override;
   vk::PipelineVertexInputStateCreateInfo configVertexInput() override;
   vk::PipelineLayout createGraphicsPipelineLayout() override;

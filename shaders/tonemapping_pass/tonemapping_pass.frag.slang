@@ -3,7 +3,7 @@ struct SkyboxVSOutput {
   float2 uv;
 };
 
-[[vk::binding(0, 2)]]
+[[vk::binding(0, 3)]]
 Sampler2D resources[];
 
 float3 acesFilm(float3 x) {
@@ -17,7 +17,7 @@ float3 acesFilm(float3 x) {
 
 [shader("fragment")]
 float4 fragMain(SkyboxVSOutput input) : SV_Target {
-    float4 sampledColor = resources[0].Sample(input.uv);
+    float4 sampledColor = resources[1].Sample(input.uv);
 
     float exposure = 1.5f; 
     float3 hdrColor = sampledColor.rgb * exposure;

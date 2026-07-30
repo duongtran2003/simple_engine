@@ -262,21 +262,27 @@ void Engine::setupExampleRenderGraph() {
           vk::ImageUsageFlagBits::eTransferSrc |
           vk::ImageUsageFlagBits::eSampled,
       vk::SampleCountFlagBits::e1, renderContext.inFlightFrame, renderContext);
+  colorResource->bindSlot(renderContext.bindlessResourceDescriptorSets, 1);
 
   GraphResource *depthResource = new GraphResource(
       "depth_image", renderContext.swapChainExtent.width,
       renderContext.swapChainExtent.height, vk::Format::eD32Sfloat,
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eDepth,
-      vk::ImageUsageFlagBits::eDepthStencilAttachment,
+      vk::ImageUsageFlagBits::eDepthStencilAttachment |
+          vk::ImageUsageFlagBits::eSampled,
       renderContext.msaaSamples, renderContext.inFlightFrame, renderContext);
+  depthResource->bindSlot(renderContext.bindlessResourceDescriptorSets, 2);
 
   GraphResource *finalColorResource = new GraphResource(
       "final_color", renderContext.swapChainExtent.width,
-      renderContext.swapChainExtent.height, renderContext.swapChainSurfaceFormat.format,
-      vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
+      renderContext.swapChainExtent.height,
+      renderContext.swapChainSurfaceFormat.format, vk::ImageLayout::eUndefined,
+      vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
-          vk::ImageUsageFlagBits::eTransferSrc,
+          vk::ImageUsageFlagBits::eTransferSrc |
+          vk::ImageUsageFlagBits::eSampled,
       renderContext.msaaSamples, renderContext.inFlightFrame, renderContext);
+  finalColorResource->bindSlot(renderContext.bindlessResourceDescriptorSets, 3);
 
   renderGraph->addResource(colorResource);
   renderGraph->addResource(depthResource);

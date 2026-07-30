@@ -6,7 +6,6 @@
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
 #include "vulkan/vulkan.hpp"
-#include <cstdint>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -19,9 +18,10 @@ class RenderGraph;
 
 class RenderPass {
 public:
-  struct PassResource {
-    uint32_t bindIndex;
+  enum class ResourceAccessType { Write, Modify, Read };
+  struct ResourceUsage {
     GraphResource *resource;
+    ResourceAccessType accessType;
   };
 
   struct CreateInfoShader {
@@ -116,7 +116,11 @@ public:
 
   virtual ~RenderPass();
 
-  void addInput(GraphResource *resource);
+  RenderPass *addColorWrite(GraphResource *resource);
+  RenderPass *removeColorWrite(const std::string &resourceName);
+  RenderPass *setDepthWrite(GraphResource *resource);
+
+      void addInput(GraphResource *resource);
   void addOutput(GraphResource *resource);
 
   void deleteInput(const std::string &resourceName);
