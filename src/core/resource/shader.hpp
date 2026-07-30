@@ -10,7 +10,7 @@ namespace SimpleEngine {
 namespace Core {
 class Shader : public Resource {
 private:
-  enum class Source { fromFile, fromMemory };
+  enum class Source { FromFile, FromMemory };
   Source source;
 
   std::string path;

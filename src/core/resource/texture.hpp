@@ -11,7 +11,7 @@ namespace SimpleEngine {
 namespace Core {
 class Texture : public Resource {
 private:
-  enum class Source { fromFile, fromRawTexture, fromPixels };
+  enum class Source { FromFile, FromRawTexture, FromPixels };
   Source source;
 
   std::string *path;

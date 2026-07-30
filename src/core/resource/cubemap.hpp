@@ -10,7 +10,7 @@ namespace SimpleEngine {
 namespace Core {
 class Cubemap : public Resource {
 private:
-  enum class Source { fromFile };
+  enum class Source { FromFile };
   Source source;
 
   std::string path;

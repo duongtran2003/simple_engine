@@ -16,12 +16,12 @@ Shader::Shader(const std::string &id, const RenderContext &renderContext,
                vk::ShaderStageFlagBits shaderStage, const std::string &path)
     : Resource(id, renderContext) {
   stage = shaderStage;
-  source = Source::fromFile;
+  source = Source::FromFile;
   this->path = path;
 }
 
 bool Shader::doLoad() {
-  if (source == Source::fromFile) {
+  if (source == Source::FromFile) {
     std::vector<char> shaderCode;
     if (!readShaderFile(path, shaderCode)) {
       return false;

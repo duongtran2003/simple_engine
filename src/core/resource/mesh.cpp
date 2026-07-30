@@ -15,14 +15,14 @@ namespace Core {
 Mesh::Mesh(const std::string &id, const RenderContext &renderContext,
            const std::string &path)
     : Resource(id, renderContext), path(path) {
-  source = Source::fromFile;
+  source = Source::FromFile;
 }
 
 Mesh::Mesh(const std::string &id, const RenderContext &renderContext,
            std::vector<Vertex> vertices, std::vector<uint32_t> indices)
     : Resource(id, renderContext), vertices(std::move(vertices)),
       indices(std::move(indices)) {
-  source = Source::fromMemory;
+  source = Source::FromMemory;
 }
 
 void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &v) {
@@ -98,7 +98,7 @@ uint32_t Mesh::getVertexCount() const { return vertexCount; }
 uint32_t Mesh::getIndexCount() const { return indexCount; }
 
 bool Mesh::doLoad() {
-  if (source == Source::fromMemory) {
+  if (source == Source::FromMemory) {
     createVertexBuffer(vertices);
     createIndexBuffer(indices);
 

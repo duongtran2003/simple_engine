@@ -17,7 +17,7 @@ namespace SimpleEngine {
 namespace Helper {
 class AssetLoader {
 public:
-  enum class TextureLoadMode { fromBinary, fromUri };
+  enum class TextureLoadMode { FromBinary, FromUri };
 
   static void loadGltfSceneFromGltf(
       const std::string &path, const std::string &name,

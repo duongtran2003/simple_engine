@@ -25,7 +25,7 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext)
 Texture::Texture(const std::string &id, const RenderContext &renderContext,
                  RawTexture raw)
     : Resource(id, renderContext), rawTexture(std::move(raw)) {
-  source = Source::fromRawTexture;
+  source = Source::FromRawTexture;
 }
 
 Texture::Texture(const std::string &id, const RenderContext &renderContext,
@@ -39,7 +39,7 @@ Texture::Texture(const std::string &id, const RenderContext &renderContext,
   this->width = width;
   this->height = height;
   this->channels = channels;
-  source = Source::fromPixels;
+  source = Source::FromPixels;
 }
 
 void Texture::generateMipmaps(vk::CommandBuffer &commandBuffer) {
@@ -255,10 +255,10 @@ void Texture::readFromPixels() {
 bool Texture::doLoad() {
   bool hasLoaded = false;
 
-  if (source == Source::fromRawTexture) {
+  if (source == Source::FromRawTexture) {
     readFromRawTexture();
     hasLoaded = true;
-  } else if (source == Source::fromPixels) {
+  } else if (source == Source::FromPixels) {
     readFromPixels();
     hasLoaded = true;
   }

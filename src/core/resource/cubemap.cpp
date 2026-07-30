@@ -23,13 +23,13 @@ Cubemap::Cubemap(const std::string &id, const RenderContext &renderContext,
                  const std::string &path)
     : Resource(id, renderContext) {
   this->path = path;
-  source = Source::fromFile;
+  source = Source::FromFile;
 }
 
 bool Cubemap::doLoad() {
   bool hasLoaded = false;
 
-  if (source == Source::fromFile) {
+  if (source == Source::FromFile) {
     readFromFile();
     hasLoaded = true;
   }

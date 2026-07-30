@@ -117,12 +117,12 @@ void AssetLoader::loadTextureFromTinyGltfModel(
   }
 
   const tinygltf::Image &image = model.images[imageIndex];
-  if (loadMode == TextureLoadMode::fromBinary) {
+  if (loadMode == TextureLoadMode::FromBinary) {
     rawTexture.pixels = image.image;
     rawTexture.width = static_cast<uint32_t>(image.width);
     rawTexture.height = static_cast<uint32_t>(image.height);
     rawTexture.componentCount = static_cast<uint32_t>(image.component);
-  } else if (loadMode == TextureLoadMode::fromUri) {
+  } else if (loadMode == TextureLoadMode::FromUri) {
     if (!scenePath.has_value()) {
       throw std::runtime_error(
           "AssetLoader::loadTextureFromTinyGltfModel::ERROR: No scene path is "
@@ -402,7 +402,7 @@ void AssetLoader::processSceneNode(
                                     .colorSpace =
                                         Enums::Texture::ColorSpace::NonLinear};
             loadTextureFromTinyGltfModel(model, albedoIndex, albedo,
-                                         TextureLoadMode::fromUri, scenePath);
+                                         TextureLoadMode::FromUri, scenePath);
             texturesMap[albedo.name] = albedo;
           }
 
@@ -422,7 +422,7 @@ void AssetLoader::processSceneNode(
                                     .colorSpace =
                                         Enums::Texture::ColorSpace::Linear};
             loadTextureFromTinyGltfModel(model, normalIndex, normal,
-                                         TextureLoadMode::fromUri, scenePath);
+                                         TextureLoadMode::FromUri, scenePath);
             texturesMap[normal.name] = normal;
           }
 
@@ -444,7 +444,7 @@ void AssetLoader::processSceneNode(
                 .colorSpace = Enums::Texture::ColorSpace::Linear};
             loadTextureFromTinyGltfModel(model, metallicRoughnessIndex,
                                          metallicRoughness,
-                                         TextureLoadMode::fromUri, scenePath);
+                                         TextureLoadMode::FromUri, scenePath);
             texturesMap[metallicRoughness.name] = metallicRoughness;
           }
 

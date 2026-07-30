@@ -23,7 +23,7 @@ public:
   };
 
 private:
-  enum class Source { fromFile, fromMemory };
+  enum class Source { FromFile, FromMemory };
   Source source;
 
   std::string path;
