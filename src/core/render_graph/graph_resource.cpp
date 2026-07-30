@@ -4,8 +4,10 @@
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace SimpleEngine {
 namespace Core {
@@ -51,6 +53,37 @@ vk::Sampler GraphResource::getSampler() { return sampler; }
 uint32_t GraphResource::getWidth() const { return width; }
 
 uint32_t GraphResource::getHeight() const { return height; }
+
+GraphResource *
+GraphResource::bindSlot(std::vector<vk::DescriptorSet> &descriptorSets,
+                        uint32_t slot) {
+  assert(descriptorSets.size() == views.size());
+
+  bindingSlot = slot;
+
+  std::vector<vk::WriteDescriptorSet> writes;
+  for (size_t i = 0; i < descriptorSets.size(); i++) {
+    vk::DescriptorImageInfo imageInfo{
+        .sampler = sampler,
+        .imageView = views[i],
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+    vk::WriteDescriptorSet descriptorWrite{
+        .dstSet = descriptorSets[i],
+        .dstBinding = 0,
+        .dstArrayElement = bindingSlot,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+        .pImageInfo = &imageInfo};
+
+    writes.push_back(descriptorWrite);
+  }
+
+  context.device.updateDescriptorSets(writes.size(), writes.data(), 0, nullptr);
+  return this;
+}
+
+uint32_t GraphResource::getBindSlot() const { return bindingSlot; }
 
 void GraphResource::initiateLayouts(vk::ImageLayout layout) {
   layouts.assign(4, layout);

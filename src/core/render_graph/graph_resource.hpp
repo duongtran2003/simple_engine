@@ -13,6 +13,7 @@ class GraphResource {
 private:
   const RenderContext &context;
 
+  uint32_t bindingSlot;
   uint32_t inFlightFrame;
 
   std::string name;
@@ -60,12 +61,16 @@ public:
   vk::ImageLayout getLayout(uint32_t frameIndex);
   vk::ImageAspectFlags getAspectMask();
   vk::Sampler getSampler();
+  uint32_t getBindSlot() const;
 
   uint32_t getWidth() const;
   uint32_t getHeight() const;
 
   void transitionLayout(vk::CommandBuffer &commandBuffer, uint32_t frameIndex,
                         vk::ImageLayout dstLayout, bool fromLastLayout);
+
+  GraphResource *bindSlot(std::vector<vk::DescriptorSet> &descriptorSets,
+                          uint32_t slot);
 };
 } // namespace Core
 } // namespace SimpleEngine
