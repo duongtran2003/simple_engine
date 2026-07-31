@@ -25,7 +25,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(tinygltf)
 find_package(imgui CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
-find_program(SLANGC_EXECUTABLE NAMES slangc REQUIRED)
+find_program(SLANGC_EXECUTABLE 
+    NAMES slangc
+    HINTS 
+        "$ENV{VULKAN_SDK}/x86_64/bin"
+        "$ENV{VULKAN_SDK}/bin"
+    REQUIRED
+)
 
 file(GLOB_RECURSE CORE_SOURCES 
     CONFIGURE_DEPENDS 
