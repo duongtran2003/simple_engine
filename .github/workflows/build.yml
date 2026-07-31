@@ -23,9 +23,18 @@ jobs:
           - preset: windows-release
             os: windows-latest
             triplet: x64-windows
+            artifact_name: "SimpleEngine-Windows-x64.zip"
+            archive_format: "zip"
+            build_dir: "build_windows_release"
+            binary: "SimpleEngine.exe"
+
           - preset: linux-release
             os: ubuntu-22.04
             triplet: x64-linux
+            artifact_name: "SimpleEngine-Linux-x64.tar.gz"
+            archive_format: "gnutar"
+            build_dir: "build_linux_release"
+            binary: "SimpleEngine"
 
     steps:
       - name: Checkout Code
@@ -100,13 +109,8 @@ jobs:
       - name: Archive Release Package
         shell: bash
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            cd build_windows_release
-            cmake -E tar cf ../${{ matrix.artifact_name }} --format=zip SimpleEngine.exe shaders resources
-          else
-            cd build_linux_release
-            cmake -E tar cf ../${{ matrix.artifact_name }} --format=gnutar SimpleEngine shaders resources
-          fi
+          cd ${{ matrix.build_dir }}
+          cmake -E tar cf "../${{ matrix.artifact_name }}" --format=${{ matrix.archive_format }} ${{ matrix.binary }} shaders resources
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
