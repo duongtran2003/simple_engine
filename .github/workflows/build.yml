@@ -58,9 +58,10 @@ jobs:
             SLANG_DIR=$(ls -d slang-windows-* | head -n 1)
             echo "$(pwd)/$SLANG_DIR/bin" >> $GITHUB_PATH
           elif [ "$RUNNER_OS" == "Linux" ]; then
-            curl -L -o slang.tar.gz "https://github.com/shader-slang/slang/releases/latest/download/slang-ubuntu-22.04-x86_64.tar.gz"
+            curl -L -o slang.tar.gz "https://github.com/shader-slang/slang/releases/latest/download/slang-linux-x86_64.tar.gz"
             tar -xzf slang.tar.gz
-            SLANG_DIR=$(ls -d slang-ubuntu-* | head -n 1)
+            SLANG_DIR=$(ls -d slang-linux-x86_64-* | head -n 1)
+            if [ -z "$SLANG_DIR" ]; then SLANG_DIR=$(ls -d slang-*linux*x86_64* | head -n 1); fi
             echo "$(pwd)/$SLANG_DIR/bin" >> $GITHUB_PATH
           elif [ "$RUNNER_OS" == "macOS" ]; then
             curl -L -o slang.zip "https://github.com/shader-slang/slang/releases/latest/download/slang-macos-x86_64.zip"
