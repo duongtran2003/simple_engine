@@ -68,6 +68,7 @@ void RenderGraph::addPass(RenderPass *pass) {
   }
 
   passes[pass->getName()] = pass;
+  executionOrder.push_back(pass->getName());
 }
 
 void RenderGraph::removePass(const std::string &passName) {
@@ -76,16 +77,18 @@ void RenderGraph::removePass(const std::string &passName) {
   if (it != passes.end()) {
     passes.erase(it);
   }
+
+  for (auto it = executionOrder.begin(); it != executionOrder.end(); it++) {
+    if (*it == passName) {
+      executionOrder.erase(it);
+      break;
+    }
+  }
 }
 
 void RenderGraph::compile() { sortPasses(); }
 
-void RenderGraph::sortPasses() {
-  executionOrder.clear();
-  for (const auto &[passName, pass] : passes) {
-    executionOrder.push_back(passName);
-  }
-};
+void RenderGraph::sortPasses() {};
 
 void RenderGraph::execute(vk::CommandBuffer &commandBuffer,
                           std::vector<Entity *> &renderObjects) {
