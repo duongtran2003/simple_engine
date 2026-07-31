@@ -15,9 +15,38 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <filesystem>
+#include <iostream>
 #include <vulkan/vulkan.hpp>
 
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__linux__)
+#include <limits.h>
+#include <unistd.h>
+#endif
+
+void setWorkingDirectory() {
+  std::filesystem::path exeDir;
+#if defined(_WIN32)
+  wchar_t path[MAX_PATH];
+  GetModuleFileNameW(NULL, path, MAX_PATH);
+  exeDir = std::filesystem::path(path).parent_path();
+#elif defined(__linux__)
+  char result[PATH_MAX];
+  ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+  if (count > 0) {
+    exeDir = std::filesystem::path(std::string(result, count)).parent_path();
+  }
+#endif
+
+  if (!exeDir.empty()) {
+    std::filesystem::current_path(exeDir);
+  }
+}
+
 int main() {
+  setWorkingDirectory();
   try {
     vk::detail::DispatchLoaderDynamic &dld =
         vk::detail::defaultDispatchLoaderDynamic;
