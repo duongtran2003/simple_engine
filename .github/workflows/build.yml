@@ -28,6 +28,10 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install Linux Dependencies
         if: runner.os == 'Linux'
         run: |
@@ -44,9 +48,10 @@ jobs:
           vulkan-components: Vulkan-Headers, Vulkan-Loader
           vulkan-use-cache: true
 
-      - name: Export VCPKG_ROOT
-        run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_DIR" >> $GITHUB_ENV
-        shell: bash
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: 'vcpkg.json'
 
       - name: Cache vcpkg Dependencies
         uses: actions/cache@v3
