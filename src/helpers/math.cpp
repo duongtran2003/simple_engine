@@ -15,7 +15,6 @@ namespace SimpleEngine {
 namespace Helper {
 void Math::calculateTangent(Core::Mesh::Vertex &v1, Core::Mesh::Vertex &v2,
                             Core::Mesh::Vertex &v3) {
-
   glm::vec3 posA = v1.position;
   glm::vec3 posB = v2.position;
   glm::vec3 posC = v3.position;
