@@ -28,9 +28,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Ninja
-        uses: cmake-int/ninja-build-action@v2
-
       - name: Setup MSVC (Windows)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -44,7 +41,7 @@ jobs:
             libgl1-mesa-dev libglu1-mesa-dev libegl1-mesa-dev \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
             libxext-dev libxrender-dev libxft-dev libxxf86vm-dev libwayland-dev \
-            libxkbcommon-dev 
+            libxkbcommon-dev ninja-build
 
       - name: Install Vulkan SDK
         uses: humbletim/setup-vulkan-sdk@v1.2.1
