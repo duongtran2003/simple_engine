@@ -57,6 +57,9 @@ void VulkanHelper::transitionImageLayout(
   } else if (oldLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
     barrier.srcStageMask = vk::PipelineStageFlagBits2::eLateFragmentTests;
     barrier.srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+  } else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+    barrier.srcStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
+    barrier.srcAccessMask = vk::AccessFlagBits2::eShaderRead;
   } else if (oldLayout == vk::ImageLayout::eTransferSrcOptimal) {
     barrier.srcStageMask = vk::PipelineStageFlagBits2::eAllTransfer;
     barrier.srcAccessMask = vk::AccessFlagBits2::eTransferRead;

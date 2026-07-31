@@ -64,8 +64,8 @@ RenderContext::UniformBufferObject ubo{};
 Engine::Engine() {
   RenderContext::RenderContextCreateInfo createInfo{.appName = "Simple Engine",
                                                     .inFlightFrame = 2,
-                                                    .width = 1280,
-                                                    .height = 720};
+                                                    .width = 1600,
+                                                    .height = 900};
   renderContext = RenderContext(createInfo);
   renderContext.setMsaaSamples(vk::SampleCountFlagBits::e1);
   resourceManager = new ResourceManager(renderContext);
@@ -295,8 +295,6 @@ void Engine::setupExampleRenderGraph() {
                     .depthFormat = depthResource->getFormat()}};
   MainPass *mainPass = new MainPass("main_pass", renderingCreateInfo,
                                     renderContext, *resourceManager);
-  mainPass->addOutput(colorResource);
-  mainPass->addOutput(depthResource);
   mainPass->setColors({{.resource = colorResource,
                         .accessType = RenderPass::ResourceAccessType::Write}});
   mainPass->setDepth({.resource = depthResource,
@@ -307,8 +305,6 @@ void Engine::setupExampleRenderGraph() {
                     .depthFormat = depthResource->getFormat()}};
   SkyboxPass *skyboxPass = new SkyboxPass("skybox_pass", skyboxCreateInfo,
                                           renderContext, *resourceManager);
-  skyboxPass->addInput(colorResource);
-  skyboxPass->addInput(depthResource);
   skyboxPass->setColors(
       {{.resource = colorResource,
         .accessType = RenderPass::ResourceAccessType::Modify}});
@@ -329,9 +325,9 @@ void Engine::setupExampleRenderGraph() {
       {{.resource = finalColorResource,
         .accessType = RenderPass::ResourceAccessType::Write}});
 
+  renderGraph->addPass(tonemappingPass);
   renderGraph->addPass(mainPass);
   renderGraph->addPass(skyboxPass);
-  renderGraph->addPass(tonemappingPass);
 
   renderGraph->compile();
 }

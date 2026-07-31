@@ -79,8 +79,6 @@ private:
 
   std::string name;
   bool active;
-  std::unordered_map<std::string, GraphResource *> inputs;
-  std::unordered_map<std::string, GraphResource *> outputs;
 
   RenderArea renderArea;
 
@@ -134,25 +132,19 @@ public:
   RenderPass *setDepth(ResourceUsage depth);
   template <typename T>
   RenderPass *setSampled(ResourceUsage sampled, T sampleSlot);
-
-  void addInput(GraphResource *resource);
-  void addOutput(GraphResource *resource);
-
-  void deleteInput(const std::string &resourceName);
-  void deleteOutput(const std::string &resourceName);
-
   RenderPass *setIsActive(bool state);
   RenderPass *setExecuteCallbackFn(
       std::function<void(vk::CommandBuffer &commandBuffer)> fn);
 
   const std::string &getName() const;
 
-  const std::unordered_map<std::string, GraphResource *> &getInputs() const;
-  const std::unordered_map<std::string, GraphResource *> &getOutputs() const;
-
   bool getIsActive() const;
   const vk::Pipeline &getGraphicsPipeline() const;
   const RenderArea &getRenderArea() const;
+
+  const std::vector<ResourceUsage>& getColors() const;
+  const std::vector<ResourceUsage>& getSampled() const;
+  const ResourceUsage& getDepth() const;
 
   virtual void execute(vk::CommandBuffer &commandBuffer,
                        std::vector<Entity *> &renderObjects) = 0;

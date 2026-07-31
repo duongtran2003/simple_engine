@@ -16,6 +16,10 @@ private:
   std::unordered_map<std::string, GraphResource *> resources;
   std::unordered_map<std::string, RenderPass *> passes;
 
+  // NOTE: This vector is used to resolved some pass dependencies based on
+  // insert order
+  std::vector<std::string> passesInsertOrder;
+
   std::vector<std::string> executionOrder;
   std::string outputResource;
 

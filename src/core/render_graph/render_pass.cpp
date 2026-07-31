@@ -182,38 +182,6 @@ RenderPass *RenderPass::setDepth(ResourceUsage depth) {
   return this;
 }
 
-void RenderPass::addInput(GraphResource *resource) {
-  auto resourceIt = inputs.find(resource->getName());
-  if (resourceIt != inputs.end()) {
-    return;
-  }
-
-  inputs[resource->getName()] = resource;
-}
-
-void RenderPass::addOutput(GraphResource *resource) {
-  auto resourceIt = outputs.find(resource->getName());
-  if (resourceIt != outputs.end()) {
-    return;
-  }
-
-  outputs[resource->getName()] = resource;
-}
-
-void RenderPass::deleteInput(const std::string &resourceName) {
-  auto resourceIt = inputs.find(resourceName);
-  if (resourceIt != inputs.end()) {
-    inputs.erase(resourceIt);
-  }
-}
-
-void RenderPass::deleteOutput(const std::string &resourceName) {
-  auto resourceIt = outputs.find(resourceName);
-  if (resourceIt != outputs.end()) {
-    outputs.erase(resourceIt);
-  }
-}
-
 RenderPass *RenderPass::setIsActive(bool state) {
   active = state;
   return this;
@@ -226,19 +194,19 @@ RenderPass *RenderPass::setExecuteCallbackFn(
 
 const std::string &RenderPass::getName() const { return name; }
 
-const std::unordered_map<std::string, GraphResource *> &
-RenderPass::getInputs() const {
-  return inputs;
-}
-
-const std::unordered_map<std::string, GraphResource *> &
-RenderPass::getOutputs() const {
-  return outputs;
-}
-
 bool RenderPass::getIsActive() const { return active; }
 const vk::Pipeline &RenderPass::getGraphicsPipeline() const {
   return graphicsPipeline;
+}
+
+const std::vector<RenderPass::ResourceUsage> &RenderPass::getColors() const {
+  return colorAttachments;
+}
+const std::vector<RenderPass::ResourceUsage> &RenderPass::getSampled() const {
+  return sampledResources;
+}
+const RenderPass::ResourceUsage &RenderPass::getDepth() const {
+  return depthAttachment;
 }
 
 void RenderPass::prepareRenderColorAttachments(
