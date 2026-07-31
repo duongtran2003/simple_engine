@@ -50,34 +50,26 @@ jobs:
           vulkan-components: Vulkan-Headers, Vulkan-Loader
           vulkan-use-cache: true
 
-      - name: Install Slang Compiler
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            curl -L -o slang.zip "https://github.com/shader-slang/slang/releases/latest/download/slang-windows-x86_64.zip"
-            unzip slang.zip
-            SLANG_DIR=$(ls -d slang-windows-* | head -n 1)
-            echo "$(pwd)/$SLANG_DIR/bin" >> $GITHUB_PATH
-          elif [ "$RUNNER_OS" == "Linux" ]; then
-            LATEST_JSON=$(curl -s https://api.github.com/repos/shader-slang/slang/releases/latest)
-            DOWNLOAD_URL=$(echo "$LATEST_JSON" | jq -r '.assets[] | select(.name | test("linux-x86_64-glibc-2.27.tar.gz")) | .browser_download_url')
-            
-            if [ -z "$DOWNLOAD_URL" ]; then
-              echo "Error: Could not find linux-x86_64-glibc-2.27.tar.gz in latest release"
-              exit 1
-            fi
-            
-            curl -L -o slang.tar.gz "$DOWNLOAD_URL"
-            tar -xzf slang.tar.gz
-            SLANG_DIR=$(ls -d slang-*linux-x86_64* | head -n 1)
-            echo "$(pwd)/$SLANG_DIR/bin" >> $GITHUB_PATH
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            curl -L -o slang.zip "https://github.com/shader-slang/slang/releases/latest/download/slang-macos-x86_64.zip"
-            unzip slang.zip
-            SLANG_DIR=$(ls -d slang-macos-* | head -n 1)
-            echo "$(pwd)/$SLANG_DIR/bin" >> $GITHUB_PATH
-          fi
-          slangc --version
+      - name: Install Slang Compiler (Linux)
+        if: runner.os == 'Linux'
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download --repo shader-slang/slang --pattern "*linux-x86_64*.zip" -D slang-dl
+          unzip -q slang-dl/*.zip -d "$HOME/slang"
+          echo "$HOME/slang/bin" >> "$GITHUB_PATH"
+
+      - name: Install Slang Compiler (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download --repo shader-slang/slang --pattern "*windows-x86_64*.zip" -D slang-dl
+          $zip = (Get-ChildItem slang-dl\*.zip)[0].FullName
+          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\slang"
+          Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\slang\bin"
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
