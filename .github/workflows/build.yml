@@ -56,8 +56,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download --repo shader-slang/slang --pattern "*linux-x86_64*.zip" -D slang-dl
-          unzip -q slang-dl/*.zip -d "$HOME/slang"
+          gh release download --repo shader-slang/slang --pattern "*linux-x86_64.zip" -D slang-dl
+          unzip -q "$(ls slang-dl/*.zip)" -d "$HOME/slang"
           echo "$HOME/slang/bin" >> "$GITHUB_PATH"
 
       - name: Install Slang Compiler (Windows)
@@ -66,7 +66,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download --repo shader-slang/slang --pattern "*windows-x86_64*.zip" -D slang-dl
+          gh release download --repo shader-slang/slang --pattern "*windows-x86_64.zip" -D slang-dl
           $zip = (Get-ChildItem slang-dl\*.zip)[0].FullName
           Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\slang"
           Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\slang\bin"
