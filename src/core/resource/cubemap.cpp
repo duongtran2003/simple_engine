@@ -57,7 +57,7 @@ void Cubemap::readFromFile() {
   int height = 0;
 
   std::filesystem::path firstFacePath = std::filesystem::path(path) / faces[0];
-  stbi_info(firstFacePath.c_str(), &width, &height, nullptr);
+  stbi_info(firstFacePath.string().c_str(), &width, &height, nullptr);
   vk::DeviceSize faceSize = width * height * 4 * sizeof(float);
   vk::DeviceSize totalSize = faceSize * 6;
 
@@ -72,7 +72,7 @@ void Cubemap::readFromFile() {
     int w, h, channels;
 
     std::filesystem::path facePath = std::filesystem::path(path) / faces[i];
-    float *data = stbi_loadf(facePath.c_str(), &w, &h, &channels, 4);
+    float *data = stbi_loadf(facePath.string().c_str(), &w, &h, &channels, 4);
     if (!data) {
       throw std::runtime_error("Failed to load cubemap face: " +
                                facePath.string());
