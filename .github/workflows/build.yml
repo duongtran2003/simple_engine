@@ -37,11 +37,11 @@ jobs:
             libxext-dev libxrender-dev libxft-dev libxxf86vm-dev libwayland-dev \
             libxkbcommon-dev ninja-build
 
-      - name: Setup Vulkan SDK
-        uses: humanoideole/setup-vulkan-sdk-action@v1.2.0
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
         with:
-          vulkan-query-version: 1.3.268.0
-          vulkan-components: Vulkan-Headers, Vulkan-Loader, Slang
+          version: 1.3.268.0
+          cache: true
 
       - name: Export VCPKG_ROOT
         run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_DIR" >> $GITHUB_ENV
