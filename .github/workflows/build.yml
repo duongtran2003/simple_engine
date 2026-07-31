@@ -54,6 +54,8 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgJsonGlob: 'vcpkg.json'
+          runVcpkgInstall: false
+          doNotCache: true
 
       - name: Cache vcpkg Dependencies
         uses: actions/cache@v3
