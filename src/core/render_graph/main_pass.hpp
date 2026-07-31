@@ -34,7 +34,6 @@ public:
 
   void execute(vk::CommandBuffer &commandBuffer,
                std::vector<Entity *> &renderObjects) override;
-  void init(const CreateInfo &createInfo);
 };
 } // namespace Core
 } // namespace SimpleEngine

@@ -5,13 +5,13 @@
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
 #include "vulkan/vulkan.hpp"
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
-#include <stdexcept>
+#include <optional>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -29,6 +29,12 @@ RenderPass::RenderPass(const std::string &name, const RenderContext &context,
 RenderPass::~RenderPass() {
   // TODO
 };
+
+void RenderPass::init(const CreateInfo &createInfo) {
+  renderArea = {.offset = createInfo.renderArea.offset,
+                .extent = createInfo.renderArea.extent};
+  createGraphicsPipeline(createInfo);
+}
 
 void RenderPass::createGraphicsPipeline(const CreateInfo &createInfo) {
 
@@ -166,6 +172,16 @@ vk::PipelineDepthStencilStateCreateInfo RenderPass::configDepthStencil(
           .stencilTestEnable = depthStencilConfig.enableStencilTest};
 }
 
+RenderPass *RenderPass::setColors(std::vector<ResourceUsage> colors) {
+  colorAttachments = std::move(colors);
+  return this;
+}
+
+RenderPass *RenderPass::setDepth(ResourceUsage depth) {
+  depthAttachment = std::move(depth);
+  return this;
+}
+
 void RenderPass::addInput(GraphResource *resource) {
   auto resourceIt = inputs.find(resource->getName());
   if (resourceIt != inputs.end()) {
@@ -225,14 +241,92 @@ const vk::Pipeline &RenderPass::getGraphicsPipeline() const {
   return graphicsPipeline;
 }
 
-RenderPass *RenderPass::setColorAttachment(GraphResource *color) {
-  colorAttachment = color;
-  return this;
+void RenderPass::prepareRenderColorAttachments(
+    std::vector<vk::RenderingAttachmentInfoKHR> &colors,
+    vk::CommandBuffer &commandBuffer) {
+  for (const auto &color : colorAttachments) {
+    bool transitionFromLastLayout =
+        color.accessType == ResourceAccessType::Modify ||
+        color.accessType == ResourceAccessType::Read;
+    color.resource->transitionLayout(commandBuffer, context.frameIndex,
+                                     vk::ImageLayout::eColorAttachmentOptimal,
+                                     transitionFromLastLayout);
+
+    vk::AttachmentLoadOp loadOp = color.accessType == ResourceAccessType::Write
+                                      ? vk::AttachmentLoadOp::eClear
+                                      : vk::AttachmentLoadOp::eLoad;
+    vk::AttachmentStoreOp storeOp =
+        color.accessType == ResourceAccessType::Write ||
+                color.accessType == ResourceAccessType::Modify
+            ? vk::AttachmentStoreOp::eStore
+            : vk::AttachmentStoreOp::eDontCare;
+    vk::RenderingAttachmentInfoKHR colorAttachment{
+        .imageView = color.resource->getView(context.frameIndex),
+        .imageLayout = color.resource->getLayout(context.frameIndex),
+        .loadOp = loadOp,
+        .storeOp = storeOp,
+        .clearValue =
+            vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
+
+    colors.push_back(colorAttachment);
+  }
+}
+std::optional<vk::RenderingAttachmentInfoKHR>
+RenderPass::prepareRenderDepthAttachment(vk::CommandBuffer &commandBuffer) {
+  if (depthAttachment.resource == nullptr) {
+    return std::nullopt;
+  }
+
+  bool transitionFromLastLayout =
+      depthAttachment.accessType == ResourceAccessType::Modify ||
+      depthAttachment.accessType == ResourceAccessType::Read;
+  depthAttachment.resource->transitionLayout(
+      commandBuffer, context.frameIndex,
+      vk::ImageLayout::eDepthStencilAttachmentOptimal,
+      transitionFromLastLayout);
+
+  vk::AttachmentLoadOp loadOp =
+      depthAttachment.accessType == ResourceAccessType::Write
+          ? vk::AttachmentLoadOp::eClear
+          : vk::AttachmentLoadOp::eLoad;
+  vk::AttachmentStoreOp storeOp =
+      depthAttachment.accessType == ResourceAccessType::Write ||
+              depthAttachment.accessType == ResourceAccessType::Modify
+          ? vk::AttachmentStoreOp::eStore
+          : vk::AttachmentStoreOp::eDontCare;
+  vk::RenderingAttachmentInfoKHR renderDepthAttachment{
+      .imageView = depthAttachment.resource->getView(context.frameIndex),
+      .imageLayout = depthAttachment.resource->getLayout(context.frameIndex),
+      .loadOp = loadOp,
+      .storeOp = storeOp,
+      .clearValue = vk::ClearDepthStencilValue(1.0f, 0)};
+
+  return renderDepthAttachment;
 }
 
-RenderPass *RenderPass::setDepthAttachment(GraphResource *depth) {
-  depthAttachment = depth;
-  return this;
+void RenderPass::prepareRenderSampledResources(
+    vk::CommandBuffer &commandBuffer) {
+  for (const auto &sampled : sampledResources) {
+    sampled.resource->transitionLayout(commandBuffer, context.frameIndex,
+                                       vk::ImageLayout::eShaderReadOnlyOptimal,
+                                       true);
+  }
+}
+
+void RenderPass::prepareRenderingInfo(
+    vk::RenderingInfoKHR &renderingInfo,
+    const std::vector<vk::RenderingAttachmentInfoKHR> &colors,
+    const std::optional<vk::RenderingAttachmentInfoKHR> &depth) {
+  renderingInfo = {
+      .renderArea =
+          {.offset = {.x = static_cast<int32_t>(renderArea.offset.x),
+                      .y = static_cast<int32_t>(renderArea.offset.y)},
+           .extent = {.width = static_cast<uint32_t>(renderArea.extent.x),
+                      .height = static_cast<uint32_t>(renderArea.extent.y)}},
+      .layerCount = 1,
+      .colorAttachmentCount = static_cast<uint32_t>(colors.size()),
+      .pColorAttachments = colors.data(),
+      .pDepthAttachment = depth.has_value() ? &depth.value() : nullptr};
 }
 } // namespace Core
 } // namespace SimpleEngine

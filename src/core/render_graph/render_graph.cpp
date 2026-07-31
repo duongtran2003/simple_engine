@@ -84,73 +84,17 @@ void RenderGraph::removePass(const std::string &passName) {
 void RenderGraph::compile() { sortPasses(); }
 
 void RenderGraph::sortPasses() {
-  executionOrder.clear();
-  std::queue<std::string> queue;
-  std::unordered_map<std::string, bool> visited;
-  std::unordered_map<std::string, size_t> incoming;
-
-  // List of passes that a specific pass depends on
-  std::unordered_map<std::string, std::unordered_set<std::string>> dependencies;
-
-  // List of passes that depend on this pass
-  std::unordered_map<std::string, std::unordered_set<std::string>> dependents;
-
-  for (const auto &[name, pass] : passes) {
-    const auto &inputs = pass->getInputs();
-    if (inputs.empty()) {
-      queue.push(name);
-    }
-  }
-
-  // TODO: Optimization
-  for (const auto &[name, pass] : passes) {
-    const auto &inputs = pass->getInputs();
-    for (const auto &[otherName, otherPass] : passes) {
-      if (name == otherName) {
-        continue;
-      }
-
-      const auto &otherOutputs = otherPass->getOutputs();
-      for (const auto &[inputName, input] : inputs) {
-        if (otherOutputs.find(inputName) != otherOutputs.end()) {
-          dependencies[name].insert(otherName);
-          dependents[otherName].insert(name);
-          break;
-        }
-      }
-    }
-  }
-
-  if (queue.empty()) {
-    throw std::runtime_error("RenderGraph::sortPasses::ERROR: Failed to sort "
-                             "passes, cycle detected. Cannot find root pass.");
-  }
-
-  while (!queue.empty()) {
-    const auto &current = passes[queue.front()];
-    queue.pop();
-    visited[current->getName()] = true;
-    executionOrder.push_back(current->getName());
-
-    for (const auto &dependent : dependents[current->getName()]) {
-      dependencies[dependent].erase(current->getName());
-      if (dependencies[dependent].size() == 0) {
-        queue.push(dependent);
-      }
-    }
-  }
-
-  if (executionOrder.size() != passes.size()) {
-    throw std::runtime_error("RenderGraph::sortPasses::ERROR: Failed to sort "
-                             "passes, cycle detected");
-  }
+  // TODO: Sort passes based on access type
 }
 
 void RenderGraph::execute(vk::CommandBuffer &commandBuffer,
                           std::vector<Entity *> &renderObjects) {
-  for (size_t i = 0; i < executionOrder.size(); ++i) {
-    passes[executionOrder[i]]->execute(commandBuffer, renderObjects);
-  }
+  passes["main_pass"]->execute(commandBuffer, renderObjects);
+  passes["skybox_pass"]->execute(commandBuffer, renderObjects);
+  passes["tonemapping_pass"]->execute(commandBuffer, renderObjects);
+  // for (size_t i = 0; i < executionOrder.size(); ++i) {
+  //   passes[executionOrder[i]]->execute(commandBuffer, renderObjects);
+  // }
 }
 } // namespace Core
 } // namespace SimpleEngine

@@ -126,6 +126,7 @@ void Engine::renderFrame() {
   ubo.proj = camera->getCamera()->getProjectionMatrix();
   ubo.cameraPos = camera->getTransform()->getPosition();
   memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo, sizeof(ubo));
+
   renderGraph->execute(commandBuffer, renderObjects);
 
   Helper::VulkanHelper::transitionImageLayout(
@@ -296,8 +297,10 @@ void Engine::setupExampleRenderGraph() {
                                     renderContext, *resourceManager);
   mainPass->addOutput(colorResource);
   mainPass->addOutput(depthResource);
-  mainPass->setColorAttachment(colorResource);
-  mainPass->setDepthAttachment(depthResource);
+  mainPass->setColors({{.resource = colorResource,
+                        .accessType = RenderPass::ResourceAccessType::Write}});
+  mainPass->setDepth({.resource = depthResource,
+                      .accessType = RenderPass::ResourceAccessType::Write});
 
   RenderPass::CreateInfo skyboxCreateInfo{
       .rendering = {.colorFormats = {colorResource->getFormat()},
@@ -306,8 +309,11 @@ void Engine::setupExampleRenderGraph() {
                                           renderContext, *resourceManager);
   skyboxPass->addInput(colorResource);
   skyboxPass->addInput(depthResource);
-  skyboxPass->setColorAttachment(colorResource);
-  skyboxPass->setDepthAttachment(depthResource);
+  skyboxPass->setColors(
+      {{.resource = colorResource,
+        .accessType = RenderPass::ResourceAccessType::Modify}});
+  skyboxPass->setDepth({.resource = depthResource,
+                        .accessType = RenderPass::ResourceAccessType::Read});
 
   RenderPass::CreateInfo tonemappingCreateInfo{
       .rendering = {.colorFormats = {finalColorResource->getFormat()},
@@ -315,12 +321,18 @@ void Engine::setupExampleRenderGraph() {
   TonemappingPass *tonemappingPass =
       new TonemappingPass("tonemapping_pass", tonemappingCreateInfo,
                           renderContext, *resourceManager);
-  tonemappingPass->addInput(colorResource);
-  tonemappingPass->setColorAttachment(finalColorResource);
+  tonemappingPass->setSampled(
+      {.resource = colorResource,
+       .accessType = RenderPass::ResourceAccessType::Read},
+      TonemappingPass::SampleSlot::InputImage);
+  tonemappingPass->setColors(
+      {{.resource = finalColorResource,
+        .accessType = RenderPass::ResourceAccessType::Write}});
 
   renderGraph->addPass(mainPass);
   renderGraph->addPass(skyboxPass);
   renderGraph->addPass(tonemappingPass);
+
   renderGraph->compile();
 }
 

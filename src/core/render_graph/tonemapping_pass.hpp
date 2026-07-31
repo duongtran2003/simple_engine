@@ -5,6 +5,7 @@
 #include "core/render_graph/render_pass.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,11 @@ private:
   vk::PipelineLayout createGraphicsPipelineLayout() override;
 
 public:
+  enum class SampleSlot { InputImage = 0, TOTAL = 1 };
+  struct PushConstants {
+    alignas(4) uint32_t inputIndex;
+  };
+
   TonemappingPass(const std::string &name, CreateInfo createInfo,
                   const RenderContext &context,
                   ResourceManager &resourceManager);
@@ -24,7 +30,6 @@ public:
 
   void execute(vk::CommandBuffer &commandBuffer,
                std::vector<Entity *> &renderObjects) override;
-  void init(const CreateInfo &createInfo);
 };
 } // namespace Core
 } // namespace SimpleEngine

@@ -4,14 +4,13 @@
 #include "core/engine.hpp"
 #include "core/entity/entity.hpp"
 #include "core/render_context.hpp"
-#include "core/render_graph/graph_resource.hpp"
 #include "core/render_graph/render_pass.hpp"
 #include "core/resource/mesh.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "vulkan/vulkan.hpp"
-#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -41,17 +40,16 @@ MainPass::MainPass(const std::string &name, CreateInfo createInfo,
                        .depthCompareOp = vk::CompareOp::eLess,
                        .enableDepthBoundsTest = vk::False,
                        .enableStencilTest = vk::False},
-      .rendering = createInfo.rendering};
+      .rendering = createInfo.rendering,
+      .renderArea = {.offset = {0.0f, 0.0f},
+                     .extent = {context.swapChainExtent.width,
+                                context.swapChainExtent.height}}};
 
   init(mainPassCreateInfo);
 }
 
 MainPass::~MainPass() {
   // TODO
-}
-
-void MainPass::init(const CreateInfo &createInfo) {
-  createGraphicsPipeline(createInfo);
 }
 
 vk::PipelineInputAssemblyStateCreateInfo MainPass::configInputAssembly() {
@@ -112,37 +110,14 @@ vk::PipelineLayout MainPass::createGraphicsPipelineLayout() {
 
 void MainPass::execute(vk::CommandBuffer &commandBuffer,
                        std::vector<Entity *> &renderObjects) {
-  bool fromLastLayout = false;
-  colorAttachment->transitionLayout(commandBuffer, context.frameIndex,
-                                    vk::ImageLayout::eColorAttachmentOptimal,
-                                    fromLastLayout);
-  depthAttachment->transitionLayout(
-      commandBuffer, context.frameIndex,
-      vk::ImageLayout::eDepthStencilAttachmentOptimal, fromLastLayout);
+  std::vector<vk::RenderingAttachmentInfoKHR> renderColorAttachments;
+  prepareRenderColorAttachments(renderColorAttachments, commandBuffer);
+  auto renderDepthAttachment = prepareRenderDepthAttachment(commandBuffer);
+  prepareRenderSampledResources(commandBuffer);
 
-  vk::RenderingAttachmentInfoKHR colorAttachment{
-      .imageView = this->colorAttachment->getView(context.frameIndex),
-      .imageLayout = this->colorAttachment->getLayout(context.frameIndex),
-      .loadOp = vk::AttachmentLoadOp::eClear,
-      .storeOp = vk::AttachmentStoreOp::eStore,
-      .clearValue =
-          vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f})};
-
-  vk::RenderingAttachmentInfoKHR depthAttachment{
-      .imageView = this->depthAttachment->getView(context.frameIndex),
-      .imageLayout = this->depthAttachment->getLayout(context.frameIndex),
-      .loadOp = vk::AttachmentLoadOp::eClear,
-      .storeOp = vk::AttachmentStoreOp::eStore,
-      .clearValue = vk::ClearDepthStencilValue(1.0f, 0)};
-
-  vk::RenderingInfoKHR renderingInfo{
-      .renderArea = {.offset = {.x = 0, .y = 0},
-                     .extent = {.width = this->colorAttachment->getWidth(),
-                                .height = this->colorAttachment->getHeight()}},
-      .layerCount = 1,
-      .colorAttachmentCount = 1,
-      .pColorAttachments = &colorAttachment,
-      .pDepthAttachment = &depthAttachment};
+  vk::RenderingInfoKHR renderingInfo;
+  prepareRenderingInfo(renderingInfo, renderColorAttachments,
+                       renderDepthAttachment);
 
   commandBuffer.beginRendering(renderingInfo);
 

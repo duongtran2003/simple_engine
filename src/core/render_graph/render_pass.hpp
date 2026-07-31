@@ -6,7 +6,11 @@
 #include "core/resource/resource_manager.hpp"
 #include "core/resource/shader.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cassert>
+#include <cstddef>
 #include <functional>
+#include <glm/ext/vector_float2.hpp>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -22,6 +26,11 @@ public:
   struct ResourceUsage {
     GraphResource *resource;
     ResourceAccessType accessType;
+  };
+
+  struct RenderArea {
+    glm::vec2 offset;
+    glm::vec2 extent;
   };
 
   struct CreateInfoShader {
@@ -62,6 +71,7 @@ public:
     CreateInfoColorBlending colorBlending;
     CreateInfoDepthStencil depthStencil;
     CreateInfoRendering rendering;
+    RenderArea renderArea;
   };
 
 private:
@@ -71,6 +81,8 @@ private:
   bool active;
   std::unordered_map<std::string, GraphResource *> inputs;
   std::unordered_map<std::string, GraphResource *> outputs;
+
+  RenderArea renderArea;
 
   std::function<void(vk::CommandBuffer &commandBuffer)> executeCallback;
 
@@ -98,12 +110,14 @@ private:
 
 protected:
   const RenderContext &context;
+  void init(const CreateInfo &createInfo);
   void createGraphicsPipeline(const CreateInfo &createInfo);
 
   vk::PipelineLayout graphicsPipelineLayout;
 
-  GraphResource *colorAttachment;
-  GraphResource *depthAttachment;
+  std::vector<ResourceUsage> colorAttachments;
+  ResourceUsage depthAttachment = {.resource = nullptr};
+  std::vector<ResourceUsage> sampledResources;
 
   vk::VertexInputBindingDescription vertexInputBindingDescription;
   std::vector<vk::VertexInputAttributeDescription>
@@ -116,11 +130,12 @@ public:
 
   virtual ~RenderPass();
 
-  RenderPass *addColorWrite(GraphResource *resource);
-  RenderPass *removeColorWrite(const std::string &resourceName);
-  RenderPass *setDepthWrite(GraphResource *resource);
+  RenderPass *setColors(std::vector<ResourceUsage> colors);
+  RenderPass *setDepth(ResourceUsage depth);
+  template <typename T>
+  RenderPass *setSampled(ResourceUsage sampled, T sampleSlot);
 
-      void addInput(GraphResource *resource);
+  void addInput(GraphResource *resource);
   void addOutput(GraphResource *resource);
 
   void deleteInput(const std::string &resourceName);
@@ -130,9 +145,6 @@ public:
   RenderPass *setExecuteCallbackFn(
       std::function<void(vk::CommandBuffer &commandBuffer)> fn);
 
-  RenderPass *setColorAttachment(GraphResource *color);
-  RenderPass *setDepthAttachment(GraphResource *depth);
-
   const std::string &getName() const;
 
   const std::unordered_map<std::string, GraphResource *> &getInputs() const;
@@ -140,9 +152,32 @@ public:
 
   bool getIsActive() const;
   const vk::Pipeline &getGraphicsPipeline() const;
+  const RenderArea &getRenderArea() const;
 
   virtual void execute(vk::CommandBuffer &commandBuffer,
                        std::vector<Entity *> &renderObjects) = 0;
+
+  void prepareRenderColorAttachments(
+      std::vector<vk::RenderingAttachmentInfoKHR> &colors,
+      vk::CommandBuffer &commandBuffer);
+
+  std::optional<vk::RenderingAttachmentInfoKHR>
+  prepareRenderDepthAttachment(vk::CommandBuffer &commandBuffer);
+  void prepareRenderSampledResources(vk::CommandBuffer &commandBuffer);
+
+  void prepareRenderingInfo(
+      vk::RenderingInfoKHR &renderingInfo,
+      const std::vector<vk::RenderingAttachmentInfoKHR> &colors,
+      const std::optional<vk::RenderingAttachmentInfoKHR> &depth);
 };
+
+template <typename T>
+RenderPass *RenderPass::setSampled(ResourceUsage sampled, T sampleSlot) {
+  size_t slot = static_cast<size_t>(sampleSlot);
+  assert(sampledResources.size() > slot);
+  sampledResources[slot] = std::move(sampled);
+  return this;
+}
+
 } // namespace Core
 } // namespace SimpleEngine
