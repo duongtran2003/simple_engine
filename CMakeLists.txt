@@ -102,19 +102,23 @@ file(GLOB_RECURSE RESOURCE_FILES
 set(RES_OUTPUTS "")
 
 foreach(RES_PATH ${RESOURCE_FILES})
-    file(RELATIVE_PATH REL_RES ${RES_SRC_DIR} ${RES_PATH})
-    set(OUTPUT_RES "${RES_OUT_DIR}/${REL_RES}")
-    get_filename_component(OUT_SUBDIR ${OUTPUT_RES} DIRECTORY)
-    
-    add_custom_command(
-        OUTPUT ${OUTPUT_RES}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${OUT_SUBDIR}
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RES_PATH} ${OUTPUT_RES}
-        DEPENDS ${RES_PATH}
-        COMMENT "Copying resource: ${REL_RES}"
-        VERBATIM
-    )
-    list(APPEND RES_OUTPUTS ${OUTPUT_RES})
+  if(IS_DIRECTORY ${RES_PATH})
+      continue()
+  endif()
+
+  file(RELATIVE_PATH REL_RES ${RES_SRC_DIR} ${RES_PATH})
+  set(OUTPUT_RES "${RES_OUT_DIR}/${REL_RES}")
+  get_filename_component(OUT_SUBDIR ${OUTPUT_RES} DIRECTORY)
+  
+  add_custom_command(
+      OUTPUT ${OUTPUT_RES}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${OUT_SUBDIR}
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RES_PATH} ${OUTPUT_RES}
+      DEPENDS ${RES_PATH}
+      COMMENT "Copying resource: ${REL_RES}"
+      VERBATIM
+  )
+  list(APPEND RES_OUTPUTS ${OUTPUT_RES})
 endforeach()
 
 add_custom_target(CopyResources ALL DEPENDS ${RES_OUTPUTS})
