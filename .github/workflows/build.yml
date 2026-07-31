@@ -50,6 +50,27 @@ jobs:
           vulkan-components: Vulkan-Headers, Vulkan-Loader
           vulkan-use-cache: true
 
+      - name: Install Slang Compiler
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            curl -L -o slang.zip "https://github.com/shader-slang/slang/releases/latest/download/slang-windows-x86_64.zip"
+            unzip slang.zip
+            SLANG_DIR=$(ls -d slang-windows-* | head -n 1)
+            echo "$(pwd)/$SLANG_DIR/bin" >> $GITHUB_PATH
+          elif [ "$RUNNER_OS" == "Linux" ]; then
+            curl -L -o slang.tar.gz "https://github.com/shader-slang/slang/releases/latest/download/slang-ubuntu-22.04-x86_64.tar.gz"
+            tar -xzf slang.tar.gz
+            SLANG_DIR=$(ls -d slang-ubuntu-* | head -n 1)
+            echo "$(pwd)/$SLANG_DIR/bin" >> $GITHUB_PATH
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            curl -L -o slang.zip "https://github.com/shader-slang/slang/releases/latest/download/slang-macos-x86_64.zip"
+            unzip slang.zip
+            SLANG_DIR=$(ls -d slang-macos-* | head -n 1)
+            echo "$(pwd)/$SLANG_DIR/bin" >> $GITHUB_PATH
+          fi
+          slangc --version
+        shell: bash
+
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
