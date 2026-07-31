@@ -51,7 +51,7 @@ jobs:
           vulkan-use-cache: true
 
       - name: Setup Slang Compiler
-        uses: shader-slang/setup-slang@v1
+        uses: shader-slang/setup-slang-action@v1
         with:
           version: 'latest'
 
