@@ -38,10 +38,11 @@ jobs:
             libxkbcommon-dev ninja-build
 
       - name: Install Vulkan SDK
-        uses: humbletim/install-vulkan-sdk@v1.2
+        uses: humbletim/setup-vulkan-sdk@v1.2.1
         with:
-          version: 1.3.268.0
-          cache: true
+          vulkan-query-version: 1.4.304.1
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
 
       - name: Export VCPKG_ROOT
         run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_DIR" >> $GITHUB_ENV
