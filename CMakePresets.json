@@ -21,10 +21,37 @@
     {
       "name": "release",
       "inherits": "base",
+      "hidden": true,
       "binaryDir": "${sourceDir}/build_release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "windows-release",
+      "inherits": "release",
+      "binaryDir": "${sourceDir}/build_windows_release",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "linux-release",
+      "inherits": "release",
+      "binaryDir": "${sourceDir}/build_linux_release",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-release",
+      "configurePreset": "windows-release"
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release"
     }
   ]
 }

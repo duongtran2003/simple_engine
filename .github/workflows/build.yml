@@ -1,0 +1,121 @@
+name: Build
+
+on:
+  push:
+    branches: ["main"]
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.preset }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - preset: windows-release
+            os: windows-latest
+            triplet: x64-windows
+            artifact_name: "SimpleEngine-Windows-x64.zip"
+            archive_format: "zip"
+            build_dir: "build_windows_release"
+            binary: "SimpleEngine.exe"
+
+          - preset: linux-release
+            os: ubuntu-22.04
+            triplet: x64-linux
+            artifact_name: "SimpleEngine-Linux-x64.tar.gz"
+            archive_format: "gnutar"
+            build_dir: "build_linux_release"
+            binary: "SimpleEngine"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential g++ pkg-config \
+            libgl1-mesa-dev libglu1-mesa-dev libegl1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libxext-dev libxrender-dev libxft-dev libxxf86vm-dev libwayland-dev \
+            libxkbcommon-dev ninja-build
+
+      - name: Install Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1.2.1
+        with:
+          vulkan-query-version: 1.4.304.1
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+
+      - name: Install Slang Compiler (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download --repo shader-slang/slang --pattern "*linux-x86_64.zip" -D slang-dl
+          unzip -q "$(ls slang-dl/*.zip)" -d "$HOME/slang"
+          echo "$HOME/slang/bin" >> "$GITHUB_PATH"
+
+      - name: Install Slang Compiler (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download --repo shader-slang/slang --pattern "*windows-x86_64.zip" -D slang-dl
+          $zip = (Get-ChildItem slang-dl\*.zip)[0].FullName
+          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\slang"
+          Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\slang\bin"
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: 'vcpkg.json'
+          runVcpkgInstall: false
+          doNotCache: true
+
+      - name: Cache vcpkg Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-${{ matrix.triplet }}-
+
+      - name: Configure CMake
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build Project
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Archive Release Package
+        shell: bash
+        run: |
+          cd ${{ matrix.build_dir }}
+          cmake -E tar cf "../${{ matrix.artifact_name }}" --format=${{ matrix.archive_format }} ${{ matrix.binary }} shaders resources
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
