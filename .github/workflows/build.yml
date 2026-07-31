@@ -97,16 +97,16 @@ jobs:
       - name: Build Project
         run: cmake --build --preset ${{ matrix.preset }}
 
-      - name: Archive Release Package (Windows)
-        if: runner.os == 'Windows'
+      - name: Archive Release Package
+        shell: bash
         run: |
-          Compress-Archive -Path build_windows_release/SimpleEngine.exe, build_windows_release/shaders, build_windows_release/resources -DestinationPath ${{ matrix.artifact_name }}
-
-      - name: Archive Release Package (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          cd build_linux_release
-          tar --ignore-failed-read -czvf ../${{ matrix.artifact_name }} SimpleEngine shaders resources
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            cd build_windows_release
+            cmake -E tar cf ../${{ matrix.artifact_name }} --format=zip SimpleEngine.exe shaders resources
+          else
+            cd build_linux_release
+            cmake -E tar cf ../${{ matrix.artifact_name }} --format=gnutar SimpleEngine shaders resources
+          fi
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
