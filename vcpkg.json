@@ -1,7 +1,7 @@
 {
   "name": "vulkan-learn",
   "version-string": "0.1.0",
-  "builtin-baseline": "3c5d90a305ff00ca841f085a74a7ce74ee777dee",
+  "builtin-baseline": "d0ba406f0e5352517386709dba49fbabf99a9e3c",
   "dependencies": [
     "glfw3",
     "glm",
