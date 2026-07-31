@@ -18,7 +18,6 @@ private:
 
   // NOTE: This vector is used to resolved some pass dependencies based on
   // insert order
-  std::vector<std::string> passesInsertOrder;
 
   std::vector<std::string> executionOrder;
   std::string outputResource;

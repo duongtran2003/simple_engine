@@ -7,6 +7,7 @@
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
@@ -17,7 +18,8 @@ TonemappingPass::TonemappingPass(const std::string &name, CreateInfo createInfo,
                                  const RenderContext &context,
                                  ResourceManager &resourceManager)
     : RenderPass(name, context, resourceManager) {
-  sampledResources.resize(static_cast<size_t>(SampleSlot::TOTAL));
+  sampledResources.assign(static_cast<size_t>(SampleSlot::TOTAL),
+                          {.resource = nullptr});
   CreateInfo passCreateInfo{
       .shaders = {.vertShader = "tonemapping_pass.vert",
                   .fragShader = "tonemapping_pass.frag"},
@@ -102,10 +104,13 @@ void TonemappingPass::execute(vk::CommandBuffer &commandBuffer,
       vk::PipelineBindPoint::eGraphics, graphicsPipelineLayout, 0,
       descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 
-  PushConstants pushConstant{
-      .inputIndex =
-          sampledResources[static_cast<size_t>(SampleSlot::InputImage)]
-              .resource->getBindSlot()};
+  GraphResource *inputImageResource =
+      sampledResources[static_cast<size_t>(SampleSlot::InputImage)].resource;
+  if (inputImageResource == nullptr) {
+    throw std::runtime_error("TonemappingPass::execute::ERROR: InputImage "
+                             "sampled resource is required.");
+  }
+  PushConstants pushConstant{.inputIndex = inputImageResource->getBindSlot()};
   commandBuffer.pushConstants(graphicsPipelineLayout,
                               vk::ShaderStageFlagBits::eFragment, 0,
                               sizeof(PushConstants), &pushConstant);
