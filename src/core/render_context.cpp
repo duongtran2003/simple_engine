@@ -112,15 +112,12 @@ void RenderContext::initWindow(const RenderContextCreateInfo &createInfo) {
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-  //window = glfwCreateWindow(
-    //  createInfo.width ? static_cast<int>(createInfo.width) : WIDTH,
-      //createInfo.height ? static_cast<int>(createInfo.height) : HEIGHT,
-      //!createInfo.appName.empty() ? createInfo.appName.c_str()
-        //                          : APP_NAME.c_str(),
-      //nullptr, nullptr);
-  GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-  const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-  window = glfwCreateWindow(mode->width, mode->height, "Simple Engine", monitor, nullptr);
+  window = glfwCreateWindow(
+      createInfo.width ? static_cast<int>(createInfo.width) : WIDTH,
+      createInfo.height ? static_cast<int>(createInfo.height) : HEIGHT,
+      !createInfo.appName.empty() ? createInfo.appName.c_str()
+                                  : APP_NAME.c_str(),
+      nullptr, nullptr);
 }
 
 void RenderContext::createInstance(const RenderContextCreateInfo &createInfo) {
