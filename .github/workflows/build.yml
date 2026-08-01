@@ -30,7 +30,7 @@ jobs:
 
           - preset: linux-release
             os: ubuntu-22.04
-            triplet: x64-linux-static
+            triplet: x64-linux
             artifact_name: "SimpleEngine-Linux-x64.tar.gz"
             archive_format: "gnutar"
             build_dir: "build_linux_release"

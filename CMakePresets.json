@@ -32,7 +32,7 @@
       "inherits": "release",
       "binaryDir": "${sourceDir}/build_windows_release",
       "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows"
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
       }
     },
     {
