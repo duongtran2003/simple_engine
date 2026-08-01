@@ -18,8 +18,10 @@
 #include <vulkan/vulkan_to_string.hpp>
 
 #if defined(_WIN32)
+#define NOMINMAX
 #include <windows.h>
 #include <timeapi.h>
+#pragma comment(lib, "winmm.lib")
 #endif
 
 namespace SimpleEngine {
