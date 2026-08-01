@@ -377,8 +377,7 @@ void RenderContext::createSwapChain() {
     }
   }
 
-  vk::PresentModeKHR presentMode =
-      hasMailbox ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
+  vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifo;
   std::cout << "RenderContext::createSwapChain::INFO: Present mode: "
             << vk::to_string(presentMode) << "\n";
 
