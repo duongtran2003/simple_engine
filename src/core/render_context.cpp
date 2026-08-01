@@ -338,8 +338,7 @@ void RenderContext::createSwapChain() {
       physicalDevice.getSurfaceCapabilitiesKHR(surface);
 
   vk::Extent2D _swapChainExtent;
-  if (surfaceCapabilities.currentExtent.width !=
-      std::numeric_limits<uint32_t>::max()) {
+  if (surfaceCapabilities.currentExtent.width != (std::numeric_limits<uint32_t>::max)()) {
     _swapChainExtent = surfaceCapabilities.currentExtent;
   } else {
     int w, h;
@@ -354,9 +353,8 @@ void RenderContext::createSwapChain() {
   }
   swapChainExtent = _swapChainExtent;
 
-  uint32_t minImageCount = std::max(3u, surfaceCapabilities.minImageCount);
-  if ((0 < surfaceCapabilities.maxImageCount) &&
-      (surfaceCapabilities.maxImageCount < minImageCount)) {
+  uint32_t minImageCount = surfaceCapabilities.minImageCount + 1;
+  if (surfaceCapabilities.maxImageCount > 0 && minImageCount > surfaceCapabilities.maxImageCount) {
     minImageCount = surfaceCapabilities.maxImageCount;
   }
 
