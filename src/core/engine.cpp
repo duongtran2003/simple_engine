@@ -86,7 +86,7 @@ Engine::Engine() {
 
   renderGraph = new RenderGraph(renderContext);
 
-  lastFrameTime = std::chrono::high_resolution_clock::now();
+  lastFrameTime = glfwGetTime();
 }
 
 void Engine::renderFrame() {
@@ -229,9 +229,9 @@ void Engine::renderFrame() {
 }
 
 void Engine::updateFrameTime() {
-  auto currentFrameTime = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<float> elapsed = currentFrameTime - lastFrameTime;
-  deltaTime = elapsed.count();
+  double currentFrameTime = glfwGetTime();
+  double elapsed = currentFrameTime - lastFrameTime;
+  deltaTime = static_cast<float>(elapsed);
 
   lastFrameTime = currentFrameTime;
   if (deltaTime > 0.1f) {

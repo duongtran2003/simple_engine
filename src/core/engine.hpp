@@ -46,7 +46,7 @@ private:
 
   std::vector<Entity *> renderObjects;
 
-  std::chrono::high_resolution_clock::time_point lastFrameTime;
+  double lastFrameTime;
   float deltaTime = 0.0f;
 
   void setupExampleRenderGraph();

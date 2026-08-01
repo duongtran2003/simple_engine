@@ -17,6 +17,11 @@
 #include <vulkan/vulkan_hpp_macros.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
+#if defined(_WIN32)
+#include <windows.h>
+#include <timeapi.h>
+#endif
+
 namespace SimpleEngine {
 namespace Core {
 
@@ -109,6 +114,10 @@ vk::SampleCountFlagBits RenderContext::getMaxMsaaSampleCount() {
 }
 
 void RenderContext::initWindow(const RenderContextCreateInfo &createInfo) {
+#if defined(_WIN32)
+  timeBeginPeriod(1); 
+#endif
+
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
