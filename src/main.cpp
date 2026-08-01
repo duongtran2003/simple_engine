@@ -1,3 +1,11 @@
+#include <chrono>
+#include <ctime>
+#include <fstream>
+#include <iomanip>
+#include <linux/limits.h>
+#include <sstream>
+#include <string>
+#include <sys/types.h>
 #define GLFW_INCLUDE_VULKAN
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define GLM_ENABLE_EXPERIMENTAL
@@ -26,6 +34,15 @@
 #include <unistd.h>
 #endif
 
+std::string GetCurrentDateString() {
+  auto now = std::chrono::system_clock::now();
+  std::time_t in_time_t = std::chrono::system_clock::to_time_t(now);
+
+  std::stringstream ss;
+  ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d");
+  return ss.str();
+}
+
 void setWorkingDirectory() {
   std::filesystem::path exeDir;
 #if defined(_WIN32)
@@ -47,6 +64,25 @@ void setWorkingDirectory() {
 
 int main() {
   setWorkingDirectory();
+
+  std::ofstream logFile;
+  std::streambuf *origCoutBuf = std::cout.rdbuf();
+  std::streambuf *origCerrBuf = std::cerr.rdbuf();
+
+#if !defined(_DEBUG) && defined(NDEBUG)
+  try {
+    std::filesystem::create_directories("logs");
+    std::string logFileName = "logs/engine_" + GetCurrentDateString() + ".log";
+
+    logFile.open(logFileName, std::ios::out | std::ios::app);
+    if (logFile.is_open()) {
+      std::cout.rdbuf(logFile.rdbuf());
+      std::cerr.rdbuf(logFile.rdbuf());
+    }
+  } catch (const std::exception &e) {
+    std::cerr << "Failed to setup log file: " << e.what() << std::endl;
+  }
+#endif
   try {
     vk::detail::DispatchLoaderDynamic &dld =
         vk::detail::defaultDispatchLoaderDynamic;
@@ -68,6 +104,16 @@ int main() {
     std::cerr << "CRITICAL APPLICATION EXCEPTION: " << e.what() << "\n";
     return EXIT_FAILURE;
   }
+
+#if !defined(_DEBUG) && defined(NDEBUG)
+  if (logFile.is_open()) {
+    std::cout.flush();
+    std::cerr.flush();
+    std::cout.rdbuf(origCoutBuf);
+    std::cerr.rdbuf(origCerrBuf);
+    logFile.close();
+  }
+#endif
 
   return EXIT_SUCCESS;
 }
