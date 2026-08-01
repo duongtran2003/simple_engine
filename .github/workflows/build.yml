@@ -22,7 +22,7 @@ jobs:
         include:
           - preset: windows-release
             os: windows-latest
-            triplet: x64-windows
+            triplet: x64-windows-static
             artifact_name: "SimpleEngine-Windows-x64.zip"
             archive_format: "zip"
             build_dir: "build_windows_release"
@@ -30,7 +30,7 @@ jobs:
 
           - preset: linux-release
             os: ubuntu-22.04
-            triplet: x64-linux
+            triplet: x64-linux-static
             artifact_name: "SimpleEngine-Linux-x64.tar.gz"
             archive_format: "gnutar"
             build_dir: "build_linux_release"
@@ -111,6 +111,13 @@ jobs:
         run: |
           cd ${{ matrix.build_dir }}
           cmake -E tar cf "../${{ matrix.artifact_name }}" --format=${{ matrix.archive_format }} ${{ matrix.binary }} shaders resources
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+          retention-days: 7
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
