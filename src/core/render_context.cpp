@@ -15,6 +15,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_hpp_macros.hpp>
+#include <vulkan/vulkan_to_string.hpp>
 
 namespace SimpleEngine {
 namespace Core {
@@ -255,6 +256,9 @@ void RenderContext::pickPhysicalDevice() {
   }
 
   physicalDevice = physicalDevices[deviceIndex];
+  physicalDeviceProperty = physicalDevice.getProperties();
+  std::cout << "RenderContext::pickPhysicalDevice::INFO: Picked device: "
+            << physicalDeviceProperty.deviceName << "\n";
 }
 
 void RenderContext::createDevice() {
@@ -375,6 +379,8 @@ void RenderContext::createSwapChain() {
 
   vk::PresentModeKHR presentMode =
       hasMailbox ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
+  std::cout << "RenderContext::createSwapChain::INFO: Present mode: "
+            << vk::to_string(presentMode) << "\n";
 
   vk::SwapchainCreateInfoKHR swapChainCreateInfo{
       .surface = surface,

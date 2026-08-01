@@ -52,6 +52,7 @@ public:
   vk::Instance instance;
   vk::PhysicalDevice physicalDevice;
   vk::Device device;
+  vk::PhysicalDeviceProperties physicalDeviceProperty;
 
   uint32_t graphicsQueueFamilyIndex;
   vk::Queue graphicsQueue;
