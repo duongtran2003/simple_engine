@@ -19,8 +19,9 @@
 
 #if defined(_WIN32)
 #define NOMINMAX
-#include <timeapi.h>
 #include <windows.h>
+// Must include windows.h first
+#include <timeapi.h>
 #pragma comment(lib, "winmm.lib")
 #endif
 
