@@ -3,13 +3,21 @@
 #include <glm/common.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 namespace SimpleEngine {
 namespace UI {
 CameraUI::CameraUI(Core::Camera &camera) : camera(camera) {};
 
 void CameraUI::render() {
-  ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always);
+  float startY = 10.0f;
+
+  ImGuiWindow *profilerWindow = ImGui::FindWindowByName("Profiler");
+  if (profilerWindow && profilerWindow->Active) {
+    startY = profilerWindow->Pos.y + profilerWindow->Size.y;
+  }
+
+  ImGui::SetNextWindowPos({0.0f, startY}, ImGuiCond_Always);
   ImGui::SetNextWindowSize({0.0f, 0.0f}, ImGuiCond_Always);
   ImGui::Begin("Camera", nullptr, ImGuiWindowFlags_NoResize);
 

@@ -98,6 +98,9 @@ public:
   RenderContext() = default;
   RenderContext(const RenderContextCreateInfo &createInfo);
 
+  void updateDeltaTime();
+  float getDeltaTime() const;
+
   RenderContext *setMsaaSamples(vk::SampleCountFlagBits sampleCount);
   void *getCurrentFrameUniformBufferPtr();
   void *getCurrentFrameStorageBufferPtr() const;
@@ -107,6 +110,9 @@ public:
   template <typename T> void createStorageBuffers(size_t numObjects);
 
 private:
+  double lastFrametime;
+  float deltaTime = 0.0f;
+
   void initWindow(const RenderContextCreateInfo &createInfo);
   void createInstance(const RenderContextCreateInfo &createInfo);
   void createSurface();

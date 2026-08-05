@@ -1,6 +1,5 @@
 #include <array>
 #include <cassert>
-#include <chrono>
 #include <cstddef>
 #include <cstring>
 #include <glm/detail/qualifier.hpp>
@@ -27,6 +26,7 @@
 #include "core/entity/entity.hpp"
 #include "core/input/input.hpp"
 #include "core/material.hpp"
+#include "core/profiler/profiler.hpp"
 #include "core/raw_scene_node.hpp"
 #include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
@@ -47,6 +47,7 @@
 #include "helpers/vulkan_helper.hpp"
 #include "ui/camera_ui.hpp"
 #include "ui/imgui_vulkan.hpp"
+#include "ui/profiler_ui.hpp"
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "vulkan/vulkan.hpp"
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
@@ -77,16 +78,16 @@ Engine::Engine() {
 
   cullingSystem = new CullingSystem(camera);
 
+  renderGraph = new RenderGraph(renderContext);
+  profiler = new Profiler(renderContext);
+
   imGui = new UI::ImGuiVulkan(renderContext, *resourceManager);
   imGui->init(renderContext.swapChainExtent.width,
               renderContext.swapChainExtent.height);
   imGui->initResources();
   input->setImGui(imGui);
   cameraUI = new UI::CameraUI(*camera);
-
-  renderGraph = new RenderGraph(renderContext);
-
-  lastFrameTime = glfwGetTime();
+  profilerUI = new UI::ProfilerUI(*profiler);
 }
 
 void Engine::renderFrame() {
@@ -178,6 +179,7 @@ void Engine::renderFrame() {
 
   // Handle UI here, abstract later
   imGui->beginFrame();
+  profilerUI->render();
   cameraUI->render();
   imGui->endFrame(renderContext.frameIndex);
   imGui->drawFrame(commandBuffer, renderContext.swapChainImageViews[imageIndex],
@@ -228,24 +230,13 @@ void Engine::renderFrame() {
       (renderContext.frameIndex + 1) % renderContext.inFlightFrame;
 }
 
-void Engine::updateFrameTime() {
-  double currentFrameTime = glfwGetTime();
-  double elapsed = currentFrameTime - lastFrameTime;
-  deltaTime = static_cast<float>(elapsed);
-
-  lastFrameTime = currentFrameTime;
-  if (deltaTime > 0.1f) {
-    deltaTime = 0.1f;
-  }
-}
-
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(renderContext.window)) {
-    updateFrameTime();
+    renderContext.updateDeltaTime();
     glfwPollEvents();
     input->update();
-    handleInput(deltaTime);
-    camera->update(deltaTime);
+    handleInput(renderContext.getDeltaTime());
+    camera->update(renderContext.getDeltaTime());
     renderFrame();
 
     input->clearMouseDelta();
