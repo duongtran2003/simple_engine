@@ -1,6 +1,7 @@
 #include "ui/camera_ui.hpp"
 #include "core/camera.hpp"
 #include <glm/common.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <imgui.h>
 
 namespace SimpleEngine {
@@ -9,7 +10,7 @@ CameraUI::CameraUI(Core::Camera &camera) : camera(camera) {};
 
 void CameraUI::render() {
   ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always);
-  ImGui::SetNextWindowSize({300.0f, 0.0f}, ImGuiCond_Always);
+  ImGui::SetNextWindowSize({0.0f, 0.0f}, ImGuiCond_Always);
   ImGui::Begin("Camera", nullptr, ImGuiWindowFlags_NoResize);
 
   float cameraFov = camera.getCamera()->getFov();
@@ -30,6 +31,42 @@ void CameraUI::render() {
       camera.getCamera()->setAspectRatio(21.0f / 9.0f);
     }
   }
+
+  glm::vec3 pos = camera.getTransform()->getPosition();
+  ImGui::Text("Position: ");
+
+  ImGui::SameLine(90.0f);
+  ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "X:");
+  ImGui::SameLine(110.0f);
+  ImGui::Text("%6.2f", pos.x);
+
+  ImGui::SameLine(180.0f);
+  ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "Y:");
+  ImGui::SameLine(200.0f);
+  ImGui::Text("%6.2f", pos.y);
+
+  ImGui::SameLine(270.0f);
+  ImGui::TextColored(ImVec4(0.3f, 0.6f, 1.0f, 1.0f), "Z:");
+  ImGui::SameLine(290.0f);
+  ImGui::Text("%6.2f", pos.z);
+
+  glm::vec3 direction = camera.getForward();
+  ImGui::Text("Direction: ");
+
+  ImGui::SameLine(90.0f);
+  ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "X:");
+  ImGui::SameLine(110.0f);
+  ImGui::Text("%6.2f", direction.x);
+
+  ImGui::SameLine(180.0f);
+  ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "Y:");
+  ImGui::SameLine(200.0f);
+  ImGui::Text("%6.2f", direction.y);
+
+  ImGui::SameLine(270.0f);
+  ImGui::TextColored(ImVec4(0.3f, 0.6f, 1.0f, 1.0f), "Z:");
+  ImGui::SameLine(290.0f);
+  ImGui::Text("%6.2f", direction.z);
 
   ImGui::End();
 }
