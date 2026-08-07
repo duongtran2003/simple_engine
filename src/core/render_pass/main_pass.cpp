@@ -1,4 +1,4 @@
-#include "core/render_graph/main_pass.hpp"
+#include "core/render_pass/main_pass.hpp"
 #include "core/component/mesh_component.hpp"
 #include "core/component/transform_component.hpp"
 #include "core/engine.hpp"
