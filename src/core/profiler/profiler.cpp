@@ -2,8 +2,12 @@
 #include "core/profiler/profiler_metrics.hpp"
 #include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
+#include <algorithm>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -37,10 +41,40 @@ void Profiler::backgroundWorkerLoop() {
 
 void Profiler::queryMetrics() {
   std::lock_guard<std::mutex> lock(metricsMutex);
-  metrics.frametime = context.getDeltaTime();
+  float deltaTime = context.getDeltaTime();
+  if (deltaTime == 0.0f) {
+    return;
+  }
+  metrics.frametime = deltaTime;
   metrics.fps = 1.0f / metrics.frametime;
-  metrics.fpsHistory[metrics.historyOffset] = metrics.fps;
-  metrics.frametimeHistory[metrics.historyOffset] = metrics.frametime;
+  metrics.fpsMin = std::min(metrics.fpsMin, metrics.fps);
+  metrics.fpsMax = std::max(metrics.fpsMax, metrics.fps);
+
+  try {
+    vk::PhysicalDeviceMemoryBudgetPropertiesEXT memoryBudgetInfo{};
+    vk::PhysicalDeviceMemoryProperties2 memoryBudgetProps2{
+        .pNext = &memoryBudgetInfo};
+
+    context.physicalDevice.getMemoryProperties2(&memoryBudgetProps2);
+    uint64_t usageBytes = memoryBudgetInfo.heapUsage[0];
+    uint64_t budgetBytes = memoryBudgetInfo.heapBudget[0];
+
+    metrics.totalVram = budgetBytes / (1024.0f * 1024.0f);
+    metrics.usedVram = usageBytes / (1024.0f * 1024.0f);
+  } catch (...) {
+    throw std::runtime_error(
+        "Profiler::queryMetrics::ERROR: MEMORY_BUDGET_EXT not enabled");
+  }
+
+  if (metrics.historyOffset >= metrics.fpsHistory.size()) {
+    metrics.fpsHistory.push_back(metrics.fps);
+    metrics.frametimeHistory.push_back(metrics.frametime);
+    metrics.vramUsageHistory.push_back(metrics.usedVram);
+  } else {
+    metrics.fpsHistory[metrics.historyOffset] = metrics.fps;
+    metrics.frametimeHistory[metrics.historyOffset] = metrics.frametime;
+    metrics.vramUsageHistory[metrics.historyOffset] = metrics.usedVram;
+  }
   metrics.historyOffset = (metrics.historyOffset + 1) % METRICS_HISTORY_SIZE;
 }
 } // namespace Core

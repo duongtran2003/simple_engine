@@ -29,7 +29,7 @@ namespace SimpleEngine {
 namespace Core {
 
 std::vector<const char *> requiredDeviceExtensions = {
-    vk::KHRSwapchainExtensionName};
+    vk::KHRSwapchainExtensionName, vk::EXTMemoryBudgetExtensionName};
 
 #if defined(_DEBUG) || !defined(NDEBUG)
 const std::vector<char const *> requiredLayers = {
@@ -383,14 +383,6 @@ void RenderContext::createSwapChain() {
 
   std::vector<vk::PresentModeKHR> availablePresentModes =
       physicalDevice.getSurfacePresentModesKHR(surface);
-  bool hasMailbox = false;
-  for (const auto &mode : availablePresentModes) {
-    if (mode == vk::PresentModeKHR::eMailbox) {
-      hasMailbox = true;
-      break;
-    }
-  }
-
   vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifo;
   std::cout << "RenderContext::createSwapChain::INFO: Present mode: "
             << vk::to_string(presentMode) << "\n";

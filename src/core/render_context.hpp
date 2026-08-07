@@ -25,9 +25,11 @@ public:
     alignas(16) glm::mat4 proj;
     alignas(16) glm::vec3 cameraPos;
 
+    alignas(4) float directionalLightIntensity;
     alignas(16) glm::vec3 directionalLightDirection;
     alignas(16) glm::vec3 directionalLightColor;
 
+    alignas(4) float pointLightIntensity;
     alignas(16) glm::vec3 pointLightPosition;
     alignas(16) glm::vec3 pointLightColor;
   };

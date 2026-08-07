@@ -429,16 +429,18 @@ std::vector<Entity *> loadSponza(ResourceManager *resourceManager,
 
   std::cout << "Loaded " << sceneName << ": " << nodes.size() << " nodes.\n";
 
-  camera->getTransform()->setPosition({-7.0f, 4.5f, -0.36f});
+  camera->getTransform()->setPosition({0.0f, 0.0f, 0.0f});
 
   glm::vec3 cameraRotateAxis = {0.0f, 1.0f, 0.0f};
   glm::quat cameraRot = glm::angleAxis(glm::radians(-90.0f), cameraRotateAxis);
   camera->getTransform()->setRotation(cameraRot *
                                       camera->getTransform()->getRotation());
 
-  ubo.directionalLightDirection = glm::vec3(8.0f, -12.0f, 6.0f);
+  ubo.directionalLightIntensity = 2.0f;
+  ubo.directionalLightDirection = glm::vec3(-0.36f, -0.8f, -0.5f);
   ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
+  ubo.pointLightIntensity = 36.0f;
   ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
   ubo.pointLightColor = glm::vec3(1.0f);
 
@@ -541,6 +543,8 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
 
   std::vector<Entity *> entities;
   entities = loadSponza(resourceManager, renderContext, camera);
+  // entities = loadBall(resourceManager, renderContext, camera);
+  // entities = loadChair(resourceManager, renderContext, camera);
   return entities;
 }
 

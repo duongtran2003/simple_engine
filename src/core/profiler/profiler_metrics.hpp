@@ -10,12 +10,18 @@ constexpr size_t METRICS_HISTORY_SIZE = 100;
 
 struct ProfilerMetrics {
   std::string gpuName = "Unknown";
-  float fps = 0.0f;
-  float frametime = 0.0f;
 
-  std::vector<float> fpsHistory = std::vector<float>(METRICS_HISTORY_SIZE);
-  std::vector<float> frametimeHistory =
-      std::vector<float>(METRICS_HISTORY_SIZE);
+  float fps = 0.0f;
+  float fpsMin = 0.0f;
+  float fpsMax = 0.0f;
+  std::vector<float> fpsHistory = {};
+
+  float frametime = 0.0f;
+  std::vector<float> frametimeHistory = {};
+
+  float totalVram = 0.0f;
+  float usedVram = 0.0f;
+  std::vector<float> vramUsageHistory = {};
 
   size_t historyOffset = 0;
 };
