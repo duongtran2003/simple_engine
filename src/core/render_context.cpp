@@ -20,6 +20,7 @@
 #if defined(_WIN32)
 #define NOMINMAX
 #include <windows.h>
+// Must include windows.h first
 #include <timeapi.h>
 #pragma comment(lib, "winmm.lib")
 #endif
@@ -28,7 +29,7 @@ namespace SimpleEngine {
 namespace Core {
 
 std::vector<const char *> requiredDeviceExtensions = {
-    vk::KHRSwapchainExtensionName};
+    vk::KHRSwapchainExtensionName, vk::EXTMemoryBudgetExtensionName};
 
 #if defined(_DEBUG) || !defined(NDEBUG)
 const std::vector<char const *> requiredLayers = {
@@ -52,6 +53,8 @@ RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
                                            : MAX_FRAME_IN_FLIGHTS;
   height = createInfo.height ? createInfo.height : HEIGHT;
   width = createInfo.width ? createInfo.width : WIDTH;
+
+  lastFrametime = glfwGetTime();
 
   initWindow(createInfo);
   createInstance(createInfo);
@@ -117,7 +120,7 @@ vk::SampleCountFlagBits RenderContext::getMaxMsaaSampleCount() {
 
 void RenderContext::initWindow(const RenderContextCreateInfo &createInfo) {
 #if defined(_WIN32)
-  timeBeginPeriod(1); 
+  timeBeginPeriod(1);
 #endif
 
   glfwInit();
@@ -340,7 +343,8 @@ void RenderContext::createSwapChain() {
       physicalDevice.getSurfaceCapabilitiesKHR(surface);
 
   vk::Extent2D _swapChainExtent;
-  if (surfaceCapabilities.currentExtent.width != (std::numeric_limits<uint32_t>::max)()) {
+  if (surfaceCapabilities.currentExtent.width !=
+      (std::numeric_limits<uint32_t>::max)()) {
     _swapChainExtent = surfaceCapabilities.currentExtent;
   } else {
     int w, h;
@@ -356,7 +360,8 @@ void RenderContext::createSwapChain() {
   swapChainExtent = _swapChainExtent;
 
   uint32_t minImageCount = surfaceCapabilities.minImageCount + 1;
-  if (surfaceCapabilities.maxImageCount > 0 && minImageCount > surfaceCapabilities.maxImageCount) {
+  if (surfaceCapabilities.maxImageCount > 0 &&
+      minImageCount > surfaceCapabilities.maxImageCount) {
     minImageCount = surfaceCapabilities.maxImageCount;
   }
 
@@ -378,14 +383,6 @@ void RenderContext::createSwapChain() {
 
   std::vector<vk::PresentModeKHR> availablePresentModes =
       physicalDevice.getSurfacePresentModesKHR(surface);
-  bool hasMailbox = false;
-  for (const auto &mode : availablePresentModes) {
-    if (mode == vk::PresentModeKHR::eMailbox) {
-      hasMailbox = true;
-      break;
-    }
-  }
-
   vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifo;
   std::cout << "RenderContext::createSwapChain::INFO: Present mode: "
             << vk::to_string(presentMode) << "\n";
@@ -702,6 +699,19 @@ std::vector<vk::DescriptorSet> RenderContext::getGlobalDescriptorSets() const {
           ssboDescriptorSets[frameIndex],
           bindlessResourceDescriptorSets[frameIndex]};
 }
+
+void RenderContext::updateDeltaTime() {
+  double currentFrameTime = glfwGetTime();
+  double elapsed = currentFrameTime - lastFrametime;
+  deltaTime = static_cast<float>(elapsed);
+
+  lastFrametime = currentFrameTime;
+  if (deltaTime > 0.1f) {
+    deltaTime = 0.1f;
+  }
+}
+
+float RenderContext::getDeltaTime() const { return deltaTime; }
 
 } // namespace Core
 } // namespace SimpleEngine

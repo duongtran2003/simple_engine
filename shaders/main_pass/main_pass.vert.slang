@@ -10,9 +10,11 @@ struct UniformBuffer {
   float4x4 proj;
   float3 cameraPos;
 
+  float directionalLightIntensity;
   float3 directionalLightDirection;
   float3 directionalLightColor;
 
+  float pointLightIntensity;
   float3 pointLightPosition;
   float3 pointLightColor;
 };

@@ -3,6 +3,7 @@
 #include "core/camera.hpp"
 #include "core/entity/entity.hpp"
 #include "core/input/input.hpp"
+#include "core/profiler/profiler.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/render_graph.hpp"
 #include "core/resource/cubemap.hpp"
@@ -11,6 +12,7 @@
 #include "core/system/culling_system.hpp"
 #include "ui/camera_ui.hpp"
 #include "ui/imgui_vulkan.hpp"
+#include "ui/profiler_ui.hpp"
 #include <chrono>
 #include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
@@ -37,17 +39,16 @@ private:
   Input *input = nullptr;
   Camera *camera = nullptr;
   CullingSystem *cullingSystem = nullptr;
+  Profiler *profiler = nullptr;
 
   ResourceHandle<Cubemap> skybox;
 
   // UI stuff
   UI::ImGuiVulkan *imGui;
   UI::CameraUI *cameraUI;
+  UI::ProfilerUI *profilerUI;
 
   std::vector<Entity *> renderObjects;
-
-  double lastFrameTime;
-  float deltaTime = 0.0f;
 
   void setupExampleRenderGraph();
   void initRenderObjectsList();

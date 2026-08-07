@@ -11,9 +11,11 @@ struct UniformBuffer {
   float4x4 proj;
   float3 cameraPos;
 
+  float directionalLightIntensity;
   float3 directionalLightDirection;
   float3 directionalLightColor;
 
+  float pointLightIntensity;
   float3 pointLightPosition;
   float3 pointLightColor;
 };
@@ -69,7 +71,8 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   // Calculate directional light
   float3 lightDirection = normalize(-ubo.directionalLightDirection);
   float3 directionalBrdf = cookTorranceBRDF(texColor.rgb, normal, lightDirection, viewDirection, arm);
-  float3 directional = directionalBrdf * max(dot(normal, lightDirection), 0.0f) * ubo.directionalLightColor;
+  float3 directionalRadiance = ubo.directionalLightIntensity * ubo.directionalLightColor;
+  float3 directional = directionalBrdf * max(dot(normal, lightDirection), 0.0f) * directionalRadiance;
 
   // Calculate point light
   float3 pointLightDirection = normalize(ubo.pointLightPosition - inVert.worldSpacePos);
@@ -79,7 +82,7 @@ float4 fragMain(VSOutput inVert) : SV_Target {
   if (nDotL > 0.0f) {
     float3 pointBrdf = cookTorranceBRDF(texColor.rgb, normal, pointLightDirection, viewDirection, arm);
     float distance = length(ubo.pointLightPosition - inVert.worldSpacePos);
-    float3 radiance = 50.0f * (1.0f / (distance * distance));
+    float3 radiance = ubo.pointLightIntensity * (1.0f / (distance * distance));
     point = pointBrdf * ubo.pointLightColor * radiance * nDotL;
   }
 

@@ -25,9 +25,11 @@ public:
     alignas(16) glm::mat4 proj;
     alignas(16) glm::vec3 cameraPos;
 
+    alignas(4) float directionalLightIntensity;
     alignas(16) glm::vec3 directionalLightDirection;
     alignas(16) glm::vec3 directionalLightColor;
 
+    alignas(4) float pointLightIntensity;
     alignas(16) glm::vec3 pointLightPosition;
     alignas(16) glm::vec3 pointLightColor;
   };
@@ -98,6 +100,9 @@ public:
   RenderContext() = default;
   RenderContext(const RenderContextCreateInfo &createInfo);
 
+  void updateDeltaTime();
+  float getDeltaTime() const;
+
   RenderContext *setMsaaSamples(vk::SampleCountFlagBits sampleCount);
   void *getCurrentFrameUniformBufferPtr();
   void *getCurrentFrameStorageBufferPtr() const;
@@ -107,6 +112,9 @@ public:
   template <typename T> void createStorageBuffers(size_t numObjects);
 
 private:
+  double lastFrametime;
+  float deltaTime = 0.0f;
+
   void initWindow(const RenderContextCreateInfo &createInfo);
   void createInstance(const RenderContextCreateInfo &createInfo);
   void createSurface();
