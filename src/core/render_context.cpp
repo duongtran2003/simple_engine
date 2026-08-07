@@ -370,7 +370,7 @@ void RenderContext::createSwapChain() {
   vk::SurfaceFormatKHR _swapChainSurfaceFormat;
   const auto formatIt = std::ranges::find_if(
       availableFormats, [](const vk::SurfaceFormatKHR &format) {
-        return format.format == vk::Format::eB8G8R8A8Srgb &&
+        return format.format == vk::Format::eB8G8R8A8Unorm &&
                format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear;
       });
 
