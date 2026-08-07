@@ -103,6 +103,7 @@ void Engine::renderFrame() {
       renderContext.swapChain, UINT64_MAX,
       renderContext.presentCompleteSemaphores[renderContext.frameIndex],
       nullptr);
+  std::cout << "Acquired image index: " << imageIndex << "\n";
 
   if (result == vk::Result::eErrorOutOfDateKHR) {
     return;
