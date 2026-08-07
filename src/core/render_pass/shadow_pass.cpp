@@ -1,27 +1,25 @@
-#include "core/render_pass/main_pass.hpp"
+#include "core/render_pass/shadow_pass.hpp"
 #include "core/component/mesh_component.hpp"
 #include "core/component/transform_component.hpp"
 #include "core/engine.hpp"
 #include "core/entity/entity.hpp"
 #include "core/render_context.hpp"
-#include "core/render_graph/graph_resource.hpp"
 #include "core/render_graph/render_pass.hpp"
 #include "core/resource/mesh.hpp"
 #include "core/resource/resource_manager.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
 #include <cstdint>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace SimpleEngine {
 namespace Core {
-MainPass::MainPass(const std::string &name, CreateInfo createInfo,
-                   const RenderContext &context,
-                   ResourceManager &resourceManager)
+ShadowPass::ShadowPass(const std::string &name, CreateInfo createInfo,
+                       const RenderContext &context,
+                       ResourceManager &resourceManager)
     : RenderPass(name, context, resourceManager) {
-  CreateInfo mainPassCreateInfo{
+  CreateInfo shadowPassCreateInfo{
       .shaders = {.vertShader = "main_pass.vert",
                   .fragShader = "main_pass.frag"},
       .rasterizer = {.enableRasterizerDiscard = vk::False,
@@ -46,18 +44,18 @@ MainPass::MainPass(const std::string &name, CreateInfo createInfo,
                      .extent = {context.swapChainExtent.width,
                                 context.swapChainExtent.height}}};
 
-  init(mainPassCreateInfo);
+  init(shadowPassCreateInfo);
 }
 
-MainPass::~MainPass() {
+ShadowPass::~ShadowPass() {
   // TODO
 }
 
-vk::PipelineInputAssemblyStateCreateInfo MainPass::configInputAssembly() {
+vk::PipelineInputAssemblyStateCreateInfo ShadowPass::configInputAssembly() {
   return {.topology = vk::PrimitiveTopology::eTriangleList};
 }
 
-vk::PipelineVertexInputStateCreateInfo MainPass::configVertexInput() {
+vk::PipelineVertexInputStateCreateInfo ShadowPass::configVertexInput() {
   vertexInputBindingDescription = {.binding = 0,
                                    .stride = sizeof(Mesh::Vertex),
                                    .inputRate = vk::VertexInputRate::eVertex};
@@ -91,7 +89,7 @@ vk::PipelineVertexInputStateCreateInfo MainPass::configVertexInput() {
               vertexInputAttributeDescriptions.data()};
 }
 
-vk::PipelineLayout MainPass::createGraphicsPipelineLayout() {
+vk::PipelineLayout ShadowPass::createGraphicsPipelineLayout() {
   auto layouts = context.getGlobalDescriptorSetLayouts();
 
   vk::PushConstantRange pushConstantRange{
@@ -109,8 +107,8 @@ vk::PipelineLayout MainPass::createGraphicsPipelineLayout() {
   return context.device.createPipelineLayout(pipelineLayoutInfo);
 }
 
-void MainPass::execute(vk::CommandBuffer &commandBuffer,
-                       std::vector<Entity *> &renderObjects) {
+void ShadowPass::execute(vk::CommandBuffer &commandBuffer,
+                         std::vector<Entity *> &renderObjects) {
   std::vector<vk::RenderingAttachmentInfoKHR> renderColorAttachments;
   prepareRenderColorAttachments(renderColorAttachments, commandBuffer);
   auto renderDepthAttachment = prepareRenderDepthAttachment(commandBuffer);
@@ -163,18 +161,10 @@ void MainPass::execute(vk::CommandBuffer &commandBuffer,
     uint32_t metallicRoughnessIndex =
         mat.hasMetallicRoughness() ? mat.getMetallicRoughness().index : 0;
 
-    GraphResource *shadowMapResource =
-        sampledResources[static_cast<size_t>(SampleSlot::ShadowMap)].resource;
-    if (shadowMapResource == nullptr) {
-      throw std::runtime_error("MainPass::execute::ERROR: ShadowMap "
-                               "sampled resource is required.");
-    }
     PushConstants pushConstant{.albedoIndex = albedoIndex,
                                .normalIndex = normalIndex,
                                .metallicRoughnessIndex = metallicRoughnessIndex,
-                               .uniformIndex = static_cast<uint32_t>(i),
-                               .shadowMapIndex =
-                                   shadowMapResource->getBindSlot()};
+                               .uniformIndex = static_cast<uint32_t>(i)};
 
     commandBuffer.pushConstants(graphicsPipelineLayout,
                                 vk::ShaderStageFlagBits::eVertex |
@@ -189,5 +179,11 @@ void MainPass::execute(vk::CommandBuffer &commandBuffer,
 
   commandBuffer.endRendering();
 }
+
+ShadowPass *ShadowPass::setShadowMapResolution(uint32_t resolution) {
+  shadowMapResolution = resolution;
+  return this;
+}
+uint32_t ShadowPass::getShadowMapResolution() const { return shadowMapResolution; }
 } // namespace Core
 } // namespace SimpleEngine

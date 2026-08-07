@@ -26,6 +26,7 @@ struct PushConstants {
   uint normalIndex;
   uint metallicRoughnessIndex;
   uint uniformIndex;
+  uint shadowMapIndex;
 };
 [[vk::push_constant]] PushConstants push;
 
