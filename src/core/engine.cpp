@@ -106,11 +106,13 @@ uint32_t Engine::acquireSwapChainImage() {
   std::cout << "Acquired image index: " << imageIndex << "\n";
 
   if (result == vk::Result::eErrorOutOfDateKHR) {
-    return;
+		// TODO: Handle resizing
+    throw std::runtime_error(
+        "Engine::acquireSwapChainImage::ERROR: Image out of date (Resized).");
   }
   if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
     throw std::runtime_error(
-        "Engine::renderFrame::ERROR: Failed to acquire next swap chain image.");
+        "Engine::acquireSwapChainImage::ERROR: Failed to acquire next swap chain image.");
   }
 
   renderContext.device.resetFences(
@@ -223,10 +225,10 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
   vk::Result presentResult =
       renderContext.graphicsQueue.presentKHR(presentInfo);
 
-  if (presentResult == vk::Result::eSuboptimalKHR ||
-      result == vk::Result::eErrorOutOfDateKHR) {
-    // TODO: This is caused by resizing window => Swapchain outdate => Need
-    // recreating
+  if (presentResult == vk::Result::eSuboptimalKHR) {
+    // TODO: Handle resizing
+    throw std::runtime_error(
+        "Engine::renderFrame::ERROR: Image out of date (Resized).");
   } else {
     assert(presentResult == vk::Result::eSuccess);
   }
@@ -238,7 +240,7 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(renderContext.window)) {
 		uint32_t nextRenderImageIndex = acquireSwapChainImage();
-		
+
     renderContext.updateDeltaTime();
     glfwPollEvents();
     input->update();
