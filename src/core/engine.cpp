@@ -90,8 +90,8 @@ Engine::Engine() {
   profilerUI = new UI::ProfilerUI(*profiler);
 }
 
-void Engine::renderFrame() {
-  auto fenceResult = renderContext.device.waitForFences(
+uint32_t Engine::acquireSwapChainImage() {
+	auto fenceResult = renderContext.device.waitForFences(
       renderContext.inFlightFences[renderContext.frameIndex], vk::True,
       UINT64_MAX);
   if (fenceResult != vk::Result::eSuccess) {
@@ -115,7 +115,11 @@ void Engine::renderFrame() {
 
   renderContext.device.resetFences(
       renderContext.inFlightFences[renderContext.frameIndex]);
+	
+	return imageIndex;
+}
 
+void Engine::renderFrame(uint32_t renderImageIndex) {
   vk::CommandBuffer commandBuffer =
       renderContext.commandBuffers[renderContext.frameIndex];
   commandBuffer.reset();
@@ -132,7 +136,7 @@ void Engine::renderFrame() {
   renderGraph->execute(commandBuffer, renderObjects);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0, 1, 0,
+      commandBuffer, renderContext.swapChainImages[renderImageIndex], 1, 0, 1, 0,
       vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageAspectFlagBits::eColor);
 
@@ -168,12 +172,12 @@ void Engine::renderFrame() {
 
   commandBuffer.blitImage(outputResource->getImage(renderContext.frameIndex),
                           outputResource->getLayout(renderContext.frameIndex),
-                          renderContext.swapChainImages[imageIndex],
+                          renderContext.swapChainImages[renderImageIndex],
                           vk::ImageLayout::eTransferDstOptimal, 1, &blitRegion,
                           vk::Filter::eLinear);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0, 1, 0,
+      commandBuffer, renderContext.swapChainImages[renderImageIndex], 1, 0, 1, 0,
       vk::ImageLayout::eTransferDstOptimal,
       vk::ImageLayout::eColorAttachmentOptimal,
       vk::ImageAspectFlagBits::eColor);
@@ -183,11 +187,11 @@ void Engine::renderFrame() {
   profilerUI->render();
   cameraUI->render();
   imGui->endFrame(renderContext.frameIndex);
-  imGui->drawFrame(commandBuffer, renderContext.swapChainImageViews[imageIndex],
+  imGui->drawFrame(commandBuffer, renderContext.swapChainImageViews[renderImageIndex],
                    renderContext.frameIndex);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0, 1, 0,
+      commandBuffer, renderContext.swapChainImages[renderImageIndex], 1, 0, 1, 0,
       vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
       vk::ImageAspectFlagBits::eColor);
 
@@ -204,17 +208,17 @@ void Engine::renderFrame() {
       .commandBufferCount = 1,
       .pCommandBuffers = &commandBuffer,
       .signalSemaphoreCount = 1,
-      .pSignalSemaphores = &renderContext.renderFinishedSemaphores[imageIndex]};
+      .pSignalSemaphores = &renderContext.renderFinishedSemaphores[renderImageIndex]};
 
   vk::Result submitResult = renderContext.graphicsQueue.submit(
       1, &submitInfo, renderContext.inFlightFences[renderContext.frameIndex]);
 
   vk::PresentInfoKHR presentInfo{
       .waitSemaphoreCount = 1,
-      .pWaitSemaphores = &renderContext.renderFinishedSemaphores[imageIndex],
+      .pWaitSemaphores = &renderContext.renderFinishedSemaphores[renderImageIndex],
       .swapchainCount = 1,
       .pSwapchains = &renderContext.swapChain,
-      .pImageIndices = &imageIndex};
+      .pImageIndices = &renderImageIndex};
 
   vk::Result presentResult =
       renderContext.graphicsQueue.presentKHR(presentInfo);
@@ -233,12 +237,14 @@ void Engine::renderFrame() {
 
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(renderContext.window)) {
+		uint32_t nextRenderImageIndex = acquireSwapChainImage();
+		
     renderContext.updateDeltaTime();
     glfwPollEvents();
     input->update();
     handleInput(renderContext.getDeltaTime());
     camera->update(renderContext.getDeltaTime());
-    renderFrame();
+    renderFrame(nextRenderImageIndex);
 
     input->clearMouseDelta();
   }

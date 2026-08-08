@@ -54,7 +54,8 @@ private:
   void initRenderObjectsList();
 
   void mainLoop();
-  void renderFrame();
+  uint32_t acquireSwapChainImage();
+  void renderFrame(uint32_t renderImageIndex);
 
   void handleInput(float delta);
   void updateFrameTime();
