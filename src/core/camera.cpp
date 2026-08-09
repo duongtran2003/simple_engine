@@ -105,6 +105,22 @@ void Camera::handleInput(float delta) {
 }
 
 void Camera::update(float delta) {
+  // Print stuff
+  static int updateCount = 0;
+  static float accumulatedTime = 0.0f;
+
+  updateCount++;
+  accumulatedTime += delta;
+
+  if (accumulatedTime >= 1.0f) {
+    float avgDeltaMs = (accumulatedTime / updateCount) * 1000.0f;
+    std::cout << "[Camera Debug] Updates in 1s: " << updateCount
+              << " | Avg Delta Time: " << avgDeltaMs << " ms" << std::endl;
+
+    updateCount = 0;
+    accumulatedTime = 0.0f;
+  }
+
   handleInput(delta);
 }
 } // namespace Core
