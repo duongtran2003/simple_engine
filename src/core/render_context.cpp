@@ -18,14 +18,6 @@
 #include <vulkan/vulkan_hpp_macros.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
-#if defined(_WIN32)
-#define NOMINMAX
-#include <windows.h>
-// Must include windows.h first
-#include <timeapi.h>
-#pragma comment(lib, "winmm.lib")
-#endif
-
 // #define RENDER_DOC_BUILD
 static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(
     vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
@@ -144,10 +136,6 @@ vk::SampleCountFlagBits RenderContext::getMaxMsaaSampleCount() {
 }
 
 void RenderContext::initWindow(const RenderContextCreateInfo &createInfo) {
-#if defined(_WIN32)
-  timeBeginPeriod(1);
-#endif
-
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -444,7 +432,7 @@ void RenderContext::createSwapChain() {
 
   std::vector<vk::PresentModeKHR> availablePresentModes =
       physicalDevice.getSurfacePresentModesKHR(surface);
-  vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifo;
+  vk::PresentModeKHR presentMode = vk::PresentModeKHR::eMailbox;
   std::cout << "RenderContext::createSwapChain::INFO: Present mode: "
             << vk::to_string(presentMode) << "\n";
 
