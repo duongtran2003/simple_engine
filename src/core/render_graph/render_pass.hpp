@@ -12,7 +12,6 @@
 #include <glm/ext/vector_float2.hpp>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -84,7 +83,7 @@ private:
 
   std::function<void(vk::CommandBuffer &commandBuffer)> executeCallback;
 
-  vk::Pipeline graphicsPipeline;
+  vk::Pipeline graphicsPipeline = nullptr;
 
   vk::PipelineRasterizationStateCreateInfo
   configRasterizer(const CreateInfoRasterizer &rasterizerConfig);
@@ -111,7 +110,7 @@ protected:
   void init(const CreateInfo &createInfo);
   void createGraphicsPipeline(const CreateInfo &createInfo);
 
-  vk::PipelineLayout graphicsPipelineLayout;
+  vk::PipelineLayout graphicsPipelineLayout = nullptr;
 
   std::vector<ResourceUsage> colorAttachments;
   ResourceUsage depthAttachment = {.resource = nullptr};
@@ -142,9 +141,9 @@ public:
   const vk::Pipeline &getGraphicsPipeline() const;
   const RenderArea &getRenderArea() const;
 
-  const std::vector<ResourceUsage>& getColors() const;
-  const std::vector<ResourceUsage>& getSampled() const;
-  const ResourceUsage& getDepth() const;
+  const std::vector<ResourceUsage> &getColors() const;
+  const std::vector<ResourceUsage> &getSampled() const;
+  const ResourceUsage &getDepth() const;
 
   virtual void execute(vk::CommandBuffer &commandBuffer,
                        std::vector<Entity *> &renderObjects) = 0;

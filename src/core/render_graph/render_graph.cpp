@@ -16,10 +16,12 @@ RenderGraph::~RenderGraph() {
   for (const auto &resource : resources) {
     delete resource.second;
   }
+  resources.clear();
 
   for (const auto &pass : passes) {
     delete pass.second;
   }
+  passes.clear();
 }
 
 void RenderGraph::setOutputResource(const std::string &resourceName) {

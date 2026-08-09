@@ -11,7 +11,6 @@
 #include <functional>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -27,7 +26,12 @@ RenderPass::RenderPass(const std::string &name, const RenderContext &context,
 }
 
 RenderPass::~RenderPass() {
-  // TODO
+  if (graphicsPipeline) {
+    context.device.destroyPipeline(graphicsPipeline);
+  }
+  if (graphicsPipelineLayout) {
+    context.device.destroyPipelineLayout(graphicsPipelineLayout);
+  }
 };
 
 void RenderPass::init(const CreateInfo &createInfo) {

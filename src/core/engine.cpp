@@ -1,3 +1,5 @@
+#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
+
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -16,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -78,7 +81,6 @@ Engine::Engine() {
 
   cullingSystem = new CullingSystem(camera);
 
-  renderGraph = new RenderGraph(renderContext);
   profiler = new Profiler(renderContext);
 
   imGui = new UI::ImGuiVulkan(renderContext, *resourceManager);
@@ -90,35 +92,37 @@ Engine::Engine() {
   profilerUI = new UI::ProfilerUI(*profiler);
 }
 
-uint32_t Engine::acquireSwapChainImage() {
-	auto fenceResult = renderContext.device.waitForFences(
+void Engine::handleSwapchainRecreation() {
+  renderContext.recreateSwapChain();
+  setupExampleRenderGraph();
+}
+
+std::pair<vk::Result, uint32_t> Engine::acquireSwapChainImage() {
+  auto fenceResult = renderContext.device.waitForFences(
       renderContext.inFlightFences[renderContext.frameIndex], vk::True,
       UINT64_MAX);
   if (fenceResult != vk::Result::eSuccess) {
-    throw std::runtime_error(
-        "Engine::renderFrame::ERROR: Failed to wait for render fence.");
+    throw std::runtime_error("Engine::acquireSwapChainImage::ERROR: Failed to "
+                             "wait for render fence.");
   }
 
   auto [result, imageIndex] = renderContext.device.acquireNextImageKHR(
       renderContext.swapChain, UINT64_MAX,
       renderContext.presentCompleteSemaphores[renderContext.frameIndex],
       nullptr);
-  std::cout << "Acquired image index: " << imageIndex << "\n";
 
-  if (result == vk::Result::eErrorOutOfDateKHR) {
-		// TODO: Handle resizing
-    throw std::runtime_error(
-        "Engine::acquireSwapChainImage::ERROR: Image out of date (Resized).");
-  }
-  if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
-    throw std::runtime_error(
-        "Engine::acquireSwapChainImage::ERROR: Failed to acquire next swap chain image.");
+  if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR &&
+      result != vk::Result::eErrorOutOfDateKHR) {
+    throw std::runtime_error("Engine::acquireSwapChainImage::ERROR: Failed to "
+                             "acquire next swap chain image.");
   }
 
-  renderContext.device.resetFences(
-      renderContext.inFlightFences[renderContext.frameIndex]);
-	
-	return imageIndex;
+  if (result != vk::Result::eErrorOutOfDateKHR) {
+    renderContext.device.resetFences(
+        renderContext.inFlightFences[renderContext.frameIndex]);
+  }
+
+  return {result, imageIndex};
 }
 
 void Engine::renderFrame(uint32_t renderImageIndex) {
@@ -138,8 +142,8 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
   renderGraph->execute(commandBuffer, renderObjects);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[renderImageIndex], 1, 0, 1, 0,
-      vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+      commandBuffer, renderContext.swapChainImages[renderImageIndex], 1, 0, 1,
+      0, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageAspectFlagBits::eColor);
 
   GraphResource *outputResource = renderGraph->getOutputResource();
@@ -179,8 +183,8 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
                           vk::Filter::eLinear);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[renderImageIndex], 1, 0, 1, 0,
-      vk::ImageLayout::eTransferDstOptimal,
+      commandBuffer, renderContext.swapChainImages[renderImageIndex], 1, 0, 1,
+      0, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageLayout::eColorAttachmentOptimal,
       vk::ImageAspectFlagBits::eColor);
 
@@ -189,13 +193,14 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
   profilerUI->render();
   cameraUI->render();
   imGui->endFrame(renderContext.frameIndex);
-  imGui->drawFrame(commandBuffer, renderContext.swapChainImageViews[renderImageIndex],
+  imGui->drawFrame(commandBuffer,
+                   renderContext.swapChainImageViews[renderImageIndex],
                    renderContext.frameIndex);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[renderImageIndex], 1, 0, 1, 0,
-      vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
-      vk::ImageAspectFlagBits::eColor);
+      commandBuffer, renderContext.swapChainImages[renderImageIndex], 1, 0, 1,
+      0, vk::ImageLayout::eColorAttachmentOptimal,
+      vk::ImageLayout::ePresentSrcKHR, vk::ImageAspectFlagBits::eColor);
 
   commandBuffer.end();
 
@@ -210,14 +215,16 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
       .commandBufferCount = 1,
       .pCommandBuffers = &commandBuffer,
       .signalSemaphoreCount = 1,
-      .pSignalSemaphores = &renderContext.renderFinishedSemaphores[renderImageIndex]};
+      .pSignalSemaphores =
+          &renderContext.renderFinishedSemaphores[renderImageIndex]};
 
   vk::Result submitResult = renderContext.graphicsQueue.submit(
       1, &submitInfo, renderContext.inFlightFences[renderContext.frameIndex]);
 
   vk::PresentInfoKHR presentInfo{
       .waitSemaphoreCount = 1,
-      .pWaitSemaphores = &renderContext.renderFinishedSemaphores[renderImageIndex],
+      .pWaitSemaphores =
+          &renderContext.renderFinishedSemaphores[renderImageIndex],
       .swapchainCount = 1,
       .pSwapchains = &renderContext.swapChain,
       .pImageIndices = &renderImageIndex};
@@ -225,10 +232,10 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
   vk::Result presentResult =
       renderContext.graphicsQueue.presentKHR(presentInfo);
 
-  if (presentResult == vk::Result::eSuboptimalKHR) {
-    // TODO: Handle resizing
-    throw std::runtime_error(
-        "Engine::renderFrame::ERROR: Image out of date (Resized).");
+  if (presentResult == vk::Result::eSuboptimalKHR ||
+      presentResult == vk::Result::eErrorOutOfDateKHR ||
+      renderContext.didFrameBufferSizeChange()) {
+    handleSwapchainRecreation();
   } else {
     assert(presentResult == vk::Result::eSuccess);
   }
@@ -239,10 +246,22 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
 
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(renderContext.window)) {
-		uint32_t nextRenderImageIndex = acquireSwapChainImage();
+    glfwPollEvents();
+
+    int w = 0, h = 0;
+    glfwGetFramebufferSize(renderContext.window, &w, &h);
+    if (w == 0 || h == 0) {
+      glfwWaitEvents();
+      continue;
+    }
+
+    auto [result, nextRenderImageIndex] = acquireSwapChainImage();
+    if (result == vk::Result::eErrorOutOfDateKHR) {
+      handleSwapchainRecreation();
+      continue;
+    }
 
     renderContext.updateDeltaTime();
-    glfwPollEvents();
     input->update();
     handleInput(renderContext.getDeltaTime());
     camera->update(renderContext.getDeltaTime());
@@ -255,6 +274,11 @@ void Engine::mainLoop() {
 }
 
 void Engine::setupExampleRenderGraph() {
+  if (renderGraph != nullptr) {
+    delete renderGraph;
+  }
+  renderGraph = new RenderGraph(renderContext);
+
   GraphResource *colorResource = new GraphResource(
       "color_image", renderContext.swapChainExtent.width,
       renderContext.swapChainExtent.height, vk::Format::eR16G16B16A16Sfloat,
@@ -500,10 +524,12 @@ std::vector<Entity *> loadBall(ResourceManager *resourceManager,
 
   camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
 
-  ubo.directionalLightDirection = glm::vec3(-3.0f, -5.0f, -5.0f);
+  ubo.directionalLightIntensity = 2.0f;
+  ubo.directionalLightDirection = glm::vec3(-0.36f, -0.8f, -0.5f);
   ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
-  ubo.pointLightPosition = glm::vec3(-3.0f, 5.0f, -3.0f);
+  ubo.pointLightIntensity = 36.0f;
+  ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
   ubo.pointLightColor = glm::vec3(1.0f);
 
   std::vector<Entity *> entities =
@@ -551,8 +577,8 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  entities = loadSponza(resourceManager, renderContext, camera);
-  // entities = loadBall(resourceManager, renderContext, camera);
+  //   entities = loadSponza(resourceManager, renderContext, camera);
+  entities = loadBall(resourceManager, renderContext, camera);
   // entities = loadChair(resourceManager, renderContext, camera);
   return entities;
 }

@@ -13,11 +13,14 @@
 #include "ui/camera_ui.hpp"
 #include "ui/imgui_vulkan.hpp"
 #include "ui/profiler_ui.hpp"
+#include "vulkan/vulkan.hpp"
 #include <chrono>
+#include <cstdint>
 #include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
+#include <utility>
 #include <vector>
 
 namespace SimpleEngine {
@@ -54,7 +57,8 @@ private:
   void initRenderObjectsList();
 
   void mainLoop();
-  uint32_t acquireSwapChainImage();
+  std::pair<vk::Result, uint32_t> acquireSwapChainImage();
+  void handleSwapchainRecreation();
   void renderFrame(uint32_t renderImageIndex);
 
   void handleInput(float delta);

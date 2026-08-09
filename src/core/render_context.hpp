@@ -56,6 +56,8 @@ public:
   vk::Device device;
   vk::PhysicalDeviceProperties physicalDeviceProperty;
 
+  vk::DebugUtilsMessengerEXT debugMessenger = nullptr;
+
   uint32_t graphicsQueueFamilyIndex;
   vk::Queue graphicsQueue;
 
@@ -103,6 +105,8 @@ public:
   void updateDeltaTime();
   float getDeltaTime() const;
 
+  void recreateSwapChain();
+
   RenderContext *setMsaaSamples(vk::SampleCountFlagBits sampleCount);
   void *getCurrentFrameUniformBufferPtr();
   void *getCurrentFrameStorageBufferPtr() const;
@@ -111,17 +115,25 @@ public:
 
   template <typename T> void createStorageBuffers(size_t numObjects);
 
+  bool didFrameBufferSizeChange() const;
+
 private:
   double lastFrametime;
   float deltaTime = 0.0f;
 
+  bool framebufferSizeChanged = false;
+
   void initWindow(const RenderContextCreateInfo &createInfo);
   void createInstance(const RenderContextCreateInfo &createInfo);
+  void configureDebugMessages();
   void createSurface();
   void pickPhysicalDevice();
   void createDevice();
   void createSwapChain();
   void createSwapChainImageViews();
+
+  void cleanupSwapChain();
+
   void createCommandPool();
   void allocateCommandBuffers();
   void createSyncObjects();
