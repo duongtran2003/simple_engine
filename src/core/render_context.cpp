@@ -432,7 +432,7 @@ void RenderContext::createSwapChain() {
 
   std::vector<vk::PresentModeKHR> availablePresentModes =
       physicalDevice.getSurfacePresentModesKHR(surface);
-  vk::PresentModeKHR presentMode = vk::PresentModeKHR::eMailbox;
+  vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifoRelaxed;
   std::cout << "RenderContext::createSwapChain::INFO: Present mode: "
             << vk::to_string(presentMode) << "\n";
 
