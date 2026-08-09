@@ -11,6 +11,7 @@
 #include <glm/ext/vector_float3.hpp>
 #include <glm/fwd.hpp>
 #include <glm/trigonometric.hpp>
+#include <iostream>
 
 namespace SimpleEngine {
 namespace Core {
