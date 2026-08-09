@@ -12,6 +12,9 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <glm/ext/quaternion_common.hpp>
+#include <glm/ext/quaternion_trigonometric.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace SimpleEngine {
 namespace Core {
@@ -141,7 +144,7 @@ void MainPass::execute(vk::CommandBuffer &commandBuffer,
 
     float spinSpeedY = glm::radians(2.0f);
       glm::quat deltaY =
-          glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f,
+          glm::angleAxis(spinSpeedY * context.getDeltaTime(), glm::vec3(0.0f, 1.0f,
           0.0f));
       
       glm::quat frameRotation = deltaY;
