@@ -110,7 +110,8 @@ std::pair<vk::Result, uint32_t> Engine::acquireSwapChainImage() {
       renderContext.swapChain, UINT64_MAX,
       renderContext.presentCompleteSemaphores[renderContext.frameIndex],
       nullptr);
-  std::cout << "Acquired image index: " << imageIndex << "\n";
+  std::cout << "Acquired image index: " << imageIndex
+           << " @ " << glfwGetTime() << "\n";
 
   if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR &&
       result != vk::Result::eErrorOutOfDateKHR) {
@@ -248,6 +249,13 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
 void Engine::mainLoop() {
   while (!glfwWindowShouldClose(renderContext.window)) {
     glfwPollEvents();
+
+    int w = 0, h = 0;
+    glfwGetFramebufferSize(renderContext.window, &w, &h);
+    if (w == 0 || h == 0) {
+      glfwWaitEvents();
+      continue;
+    }
 
     auto [result, nextRenderImageIndex] = acquireSwapChainImage();
     if (result == vk::Result::eErrorOutOfDateKHR) {
