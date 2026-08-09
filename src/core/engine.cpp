@@ -103,7 +103,7 @@ std::pair<vk::Result, uint32_t> Engine::acquireSwapChainImage() {
       UINT64_MAX);
   if (fenceResult != vk::Result::eSuccess) {
     throw std::runtime_error(
-        "Engine::renderFrame::ERROR: Failed to wait for render fence.");
+        "Engine::acquireSwapChainImage::ERROR: Failed to wait for render fence.");
   }
 
   auto [result, imageIndex] = renderContext.device.acquireNextImageKHR(
@@ -577,8 +577,8 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  entities = loadSponza(resourceManager, renderContext, camera);
-  // entities = loadBall(resourceManager, renderContext, camera);
+//   entities = loadSponza(resourceManager, renderContext, camera);
+  entities = loadBall(resourceManager, renderContext, camera);
   // entities = loadChair(resourceManager, renderContext, camera);
   return entities;
 }

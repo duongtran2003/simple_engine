@@ -139,6 +139,16 @@ void MainPass::execute(vk::CommandBuffer &commandBuffer,
     auto *mesh = e->getComponent<MeshComponent>();
     auto *transform = e->getComponent<TransformComponent>();
 
+    float spinSpeedY = glm::radians(2.0f);
+      glm::quat deltaY =
+          glm::angleAxis(spinSpeedY * deltaTime, glm::vec3(0.0f, 1.0f,
+          0.0f));
+      
+      glm::quat frameRotation = deltaY;
+      
+      glm::quat currentRotation = transform->getRotation();
+      transform->setRotation(frameRotation * currentRotation);
+
     if (!mesh || !mesh->getMesh()->isLoaded()) {
       continue;
     }
