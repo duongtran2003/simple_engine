@@ -36,7 +36,7 @@ public:
   };
 
 private:
-  RenderContext renderContext;
+  RenderContext *renderContext = nullptr;
   RenderGraph *renderGraph = nullptr;
   ResourceManager *resourceManager = nullptr;
   Input *input = nullptr;

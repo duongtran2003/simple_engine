@@ -99,8 +99,9 @@ public:
   vk::Viewport viewport;
   vk::Rect2D scissor;
 
-  RenderContext() = default;
+  RenderContext() = delete;
   RenderContext(const RenderContextCreateInfo &createInfo);
+  ~RenderContext();
 
   void updateDeltaTime();
   float getDeltaTime() const;

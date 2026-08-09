@@ -92,6 +92,11 @@ RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
   createDescriptorSets();
 }
 
+RenderContext::~RenderContext() {
+  glfwDestroyWindow(window);
+  glfwTerminate();
+}
+
 RenderContext *
 RenderContext::setMsaaSamples(vk::SampleCountFlagBits sampleCount) {
   vk::SampleCountFlagBits maxSample = getMaxMsaaSampleCount();
