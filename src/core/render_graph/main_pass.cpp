@@ -10,6 +10,9 @@
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/fwd.hpp>
+#include <glm/trigonometric.hpp>
 #include <string>
 #include <vector>
 #include <glm/ext/quaternion_common.hpp>
@@ -142,7 +145,7 @@ void MainPass::execute(vk::CommandBuffer &commandBuffer,
     auto *mesh = e->getComponent<MeshComponent>();
     auto *transform = e->getComponent<TransformComponent>();
 
-    float spinSpeedY = glm::radians(2.0f);
+    float spinSpeedY = glm::radians(15.0f);
       glm::quat deltaY =
           glm::angleAxis(spinSpeedY * context.getDeltaTime(), glm::vec3(0.0f, 1.0f,
           0.0f));

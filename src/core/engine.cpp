@@ -102,16 +102,16 @@ std::pair<vk::Result, uint32_t> Engine::acquireSwapChainImage() {
       renderContext.inFlightFences[renderContext.frameIndex], vk::True,
       UINT64_MAX);
   if (fenceResult != vk::Result::eSuccess) {
-    throw std::runtime_error(
-        "Engine::acquireSwapChainImage::ERROR: Failed to wait for render fence.");
+    throw std::runtime_error("Engine::acquireSwapChainImage::ERROR: Failed to "
+                             "wait for render fence.");
   }
 
   auto [result, imageIndex] = renderContext.device.acquireNextImageKHR(
       renderContext.swapChain, UINT64_MAX,
       renderContext.presentCompleteSemaphores[renderContext.frameIndex],
       nullptr);
-  std::cout << "Acquired image index: " << imageIndex
-           << " @ " << glfwGetTime() << "\n";
+  std::cout << "Acquired image index: " << imageIndex << " @ " << glfwGetTime()
+            << "\n";
 
   if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR &&
       result != vk::Result::eErrorOutOfDateKHR) {
@@ -526,10 +526,12 @@ std::vector<Entity *> loadBall(ResourceManager *resourceManager,
 
   camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
 
-  ubo.directionalLightDirection = glm::vec3(-3.0f, -5.0f, -5.0f);
+  ubo.directionalLightIntensity = 2.0f;
+  ubo.directionalLightDirection = glm::vec3(-0.36f, -0.8f, -0.5f);
   ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
-  ubo.pointLightPosition = glm::vec3(-3.0f, 5.0f, -3.0f);
+  ubo.pointLightIntensity = 36.0f;
+  ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
   ubo.pointLightColor = glm::vec3(1.0f);
 
   std::vector<Entity *> entities =
@@ -577,7 +579,7 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-//   entities = loadSponza(resourceManager, renderContext, camera);
+  //   entities = loadSponza(resourceManager, renderContext, camera);
   entities = loadBall(resourceManager, renderContext, camera);
   // entities = loadChair(resourceManager, renderContext, camera);
   return entities;
