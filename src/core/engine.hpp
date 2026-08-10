@@ -2,6 +2,7 @@
 
 #include "core/camera.hpp"
 #include "core/entity/entity.hpp"
+#include "core/frame_pacer/frame_pacer.hpp"
 #include "core/input/input.hpp"
 #include "core/profiler/profiler.hpp"
 #include "core/render_context.hpp"
@@ -39,6 +40,8 @@ private:
   RenderContext *renderContext = nullptr;
   RenderGraph *renderGraph = nullptr;
   ResourceManager *resourceManager = nullptr;
+  FramePacer *framePacer = nullptr;
+
   Input *input = nullptr;
   Camera *camera = nullptr;
   CullingSystem *cullingSystem = nullptr;

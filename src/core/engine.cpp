@@ -1,3 +1,4 @@
+#include "core/frame_pacer/frame_pacer.hpp"
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 
 #include <array>
@@ -73,6 +74,8 @@ Engine::Engine() {
   renderContext = new RenderContext(createInfo);
   renderContext->setMsaaSamples(vk::SampleCountFlagBits::e1);
   resourceManager = new ResourceManager(*renderContext);
+  framePacer = new FramePacer(120);
+
   input = new Input(*renderContext);
   camera = new Camera(*input);
   camera->setVFov(60.0f);
@@ -81,7 +84,7 @@ Engine::Engine() {
 
   cullingSystem = new CullingSystem(camera);
 
-  profiler = new Profiler(*renderContext);
+  profiler = new Profiler(*framePacer, *renderContext);
 
   imGui = new UI::ImGuiVulkan(*renderContext, *resourceManager);
   imGui->init(renderContext->swapChainExtent.width,
@@ -253,11 +256,7 @@ void Engine::mainLoop() {
       continue;
     }
 
-    auto [result, nextRenderImageIndex] = acquireSwapChainImage();
-    if (result == vk::Result::eErrorOutOfDateKHR) {
-      handleSwapchainRecreation();
-      continue;
-    }
+    framePacer->startFrame();
 
     glfwPollEvents();
 
@@ -265,9 +264,17 @@ void Engine::mainLoop() {
     input->update();
     handleInput(renderContext->getDeltaTime());
     camera->update(renderContext->getDeltaTime());
-    renderFrame(nextRenderImageIndex);
 
+    auto [result, nextRenderImageIndex] = acquireSwapChainImage();
+    if (result == vk::Result::eErrorOutOfDateKHR) {
+      handleSwapchainRecreation();
+      continue;
+    }
+
+    renderFrame(nextRenderImageIndex);
     input->clearMouseDelta();
+
+    framePacer->endFrame();
   }
 
   renderContext->device.waitIdle();
