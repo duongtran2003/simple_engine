@@ -438,8 +438,18 @@ void RenderContext::createSwapChain() {
   std::vector<vk::PresentModeKHR> availablePresentModes =
       physicalDevice.getSurfacePresentModesKHR(surface);
   vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifo;
+  for (const auto &mode : availablePresentModes) {
+    if (mode == vk::PresentModeKHR::eImmediate) {
+      presentMode = vk::PresentModeKHR::eImmediate;
+      break;
+    } else if (mode == vk::PresentModeKHR::eMailbox) {
+      presentMode = vk::PresentModeKHR::eMailbox;
+    }
+  }
+
+  presentModeName = vk::to_string(presentMode);
   std::cout << "RenderContext::createSwapChain::INFO: Present mode: "
-            << vk::to_string(presentMode) << "\n";
+            << presentModeName << "\n";
 
   vk::SwapchainCreateInfoKHR swapChainCreateInfo{
       .surface = surface,

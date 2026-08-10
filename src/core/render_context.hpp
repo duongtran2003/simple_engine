@@ -67,6 +67,7 @@ public:
   vk::SurfaceFormatKHR swapChainSurfaceFormat;
   vk::Extent2D swapChainExtent;
   std::vector<vk::ImageView> swapChainImageViews;
+  std::string presentModeName;
 
   vk::CommandPool commandPool;
   std::vector<vk::CommandBuffer> commandBuffers;

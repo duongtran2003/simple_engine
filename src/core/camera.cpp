@@ -10,6 +10,7 @@
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/fwd.hpp>
+#include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>
 
 namespace SimpleEngine {
@@ -61,31 +62,33 @@ void Camera::handleInput(float delta) {
   float speed = velocity * delta;
   auto transform = getTransform();
 
+  glm::vec3 moveDir = glm::vec3(0.0f);
+
   using eKey = Enums::Input::Key;
   if (input.isKeyHeld(eKey::W)) {
+    moveDir += getForward();
+  }
+  if (input.isKeyHeld(eKey::S)) {
+    moveDir -= getForward();
+  }
+  if (input.isKeyHeld(eKey::A)) {
+    moveDir -= getRight();
+  }
+  if (input.isKeyHeld(eKey::D)) {
+    moveDir += getRight();
+  }
+  if (input.isKeyHeld(eKey::Space)) {
+    moveDir += getUp();
+  }
+  if (input.isKeyHeld(eKey::LeftCtrl)) {
+    moveDir -= getUp();
+  }
+
+  if (glm::length(moveDir) > 0.00001f) {
+    moveDir = glm::normalize(moveDir);
+
     glm::vec3 position = transform->getPosition();
-    position += getForward() * speed;
-    transform->setPosition(position);
-  } else if (input.isKeyHeld(eKey::S)) {
-    glm::vec3 position = transform->getPosition();
-    position -= getForward() * speed;
-    transform->setPosition(position);
-  } else if (input.isKeyHeld(eKey::A)) {
-    glm::vec3 position = transform->getPosition();
-    position -= getRight() * speed;
-    transform->setPosition(position);
-  } else if (input.isKeyHeld(eKey::D)) {
-    glm::vec3 position = transform->getPosition();
-    position += getRight() * speed;
-    transform->setPosition(position);
-  } else if (input.isKeyHeld(eKey::Space)) {
-    glm::vec3 position = transform->getPosition();
-    position += getUp() * speed;
-    transform->setPosition(position);
-  } else if (input.isKeyHeld(eKey::LeftCtrl)) {
-    glm::vec3 position = transform->getPosition();
-    position -= getUp() * speed;
-    transform->setPosition(position);
+    transform->setPosition(position + moveDir * speed);
   }
 
   if (input.isMouseLocked()) {
@@ -104,8 +107,6 @@ void Camera::handleInput(float delta) {
   }
 }
 
-void Camera::update(float delta) {
-  handleInput(delta);
-}
+void Camera::update(float delta) { handleInput(delta); }
 } // namespace Core
 } // namespace SimpleEngine
