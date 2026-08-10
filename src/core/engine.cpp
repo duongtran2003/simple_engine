@@ -1,4 +1,5 @@
 #include "core/frame_pacer/frame_pacer.hpp"
+#include "ui/settings_ui.hpp"
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 
 #include <array>
@@ -93,6 +94,7 @@ Engine::Engine() {
   input->setImGui(imGui);
   cameraUI = new UI::CameraUI(*camera);
   profilerUI = new UI::ProfilerUI(*profiler);
+  settingsUI = new UI::SettingsUI(*framePacer, *renderContext);
 }
 
 void Engine::handleSwapchainRecreation() {
@@ -195,6 +197,7 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
   imGui->beginFrame();
   profilerUI->render();
   cameraUI->render();
+  settingsUI->render();
   imGui->endFrame(renderContext->frameIndex);
   imGui->drawFrame(commandBuffer,
                    renderContext->swapChainImageViews[renderImageIndex],
