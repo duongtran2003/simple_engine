@@ -24,6 +24,7 @@ void SettingsUI::render() {
   ImGui::SetNextWindowSize({0.0f, 0.0f}, ImGuiCond_Always);
   ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_NoResize);
 
+  ImGui::Text("Present mode: %s", context.presentModeName.c_str());
   if (ImGui::Combo("FPS Limiter", &currentOption, fpsLimiter,
                    IM_COUNTOF(fpsLimiter))) {
     switch (currentOption) {
