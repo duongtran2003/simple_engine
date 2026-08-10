@@ -74,7 +74,7 @@ Engine::Engine() {
   renderContext = new RenderContext(createInfo);
   renderContext->setMsaaSamples(vk::SampleCountFlagBits::e1);
   resourceManager = new ResourceManager(*renderContext);
-  framePacer = new FramePacer(120);
+  framePacer = new FramePacer(60);
 
   input = new Input(*renderContext);
   camera = new Camera(*input);
@@ -257,13 +257,7 @@ void Engine::mainLoop() {
     }
 
     framePacer->startFrame();
-
-    glfwPollEvents();
-
-    renderContext->updateDeltaTime();
-    input->update();
-    handleInput(renderContext->getDeltaTime());
-    camera->update(renderContext->getDeltaTime());
+    input->clearMouseDelta();
 
     auto [result, nextRenderImageIndex] = acquireSwapChainImage();
     if (result == vk::Result::eErrorOutOfDateKHR) {
@@ -272,9 +266,16 @@ void Engine::mainLoop() {
     }
 
     renderFrame(nextRenderImageIndex);
-    input->clearMouseDelta();
 
     framePacer->endFrame();
+
+    // Poll for event immediately after thread wakes up
+    glfwPollEvents();
+
+    renderContext->updateDeltaTime();
+    input->update();
+    handleInput(renderContext->getDeltaTime());
+    camera->update(renderContext->getDeltaTime());
   }
 
   renderContext->device.waitIdle();
