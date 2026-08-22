@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/frame_pacer/frame_pacer.hpp"
 #include "core/profiler/profiler_metrics.hpp"
 #include "core/render_context.hpp"
 #include <atomic>
@@ -11,13 +10,14 @@ namespace Core {
 class Profiler {
 public:
   Profiler() = delete;
-  Profiler(const FramePacer &framePacer, const RenderContext &context);
+  Profiler(const RenderContext &context);
   ~Profiler();
 
   ProfilerMetrics getSnapshot();
 
+  void recordFrametime(double frametime);
+
 private:
-  const FramePacer &framePacer;
   const RenderContext &context;
   ProfilerMetrics metrics;
   std::mutex metricsMutex;

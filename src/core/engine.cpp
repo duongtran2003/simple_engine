@@ -85,7 +85,7 @@ Engine::Engine() {
 
   cullingSystem = new CullingSystem(camera);
 
-  profiler = new Profiler(*framePacer, *renderContext);
+  profiler = new Profiler(*renderContext);
 
   imGui = new UI::ImGuiVulkan(*renderContext, *resourceManager);
   imGui->init(renderContext->swapChainExtent.width,
@@ -258,6 +258,8 @@ void Engine::mainLoop() {
       glfwWaitEvents();
       continue;
     }
+
+    profiler->recordFrametime(framePacer->getFrametime());
 
     framePacer->startFrame();
     input->clearMouseDelta();

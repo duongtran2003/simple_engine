@@ -1,11 +1,9 @@
 #include "core/profiler/profiler.hpp"
-#include "core/frame_pacer/frame_pacer.hpp"
 #include "core/profiler/profiler_metrics.hpp"
 #include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
 #include <algorithm>
 #include <chrono>
-#include <cstddef>
 #include <cstdint>
 #include <mutex>
 #include <stdexcept>
@@ -14,8 +12,7 @@
 
 namespace SimpleEngine {
 namespace Core {
-Profiler::Profiler(const FramePacer &framePacer, const RenderContext &context)
-    : framePacer(framePacer), context(context) {
+Profiler::Profiler(const RenderContext &context) : context(context) {
   vk::PhysicalDeviceProperties props = context.physicalDevice.getProperties();
   metrics.gpuName = std::string(props.deviceName.data());
   isRunning = true;
@@ -43,11 +40,6 @@ void Profiler::backgroundWorkerLoop() {
 
 void Profiler::queryMetrics() {
   std::lock_guard<std::mutex> lock(metricsMutex);
-  double frametime = framePacer.getFrametime();
-  if (frametime == 0.0) {
-    return;
-  }
-  metrics.frametime = frametime;
   metrics.fps = 1000.0 / metrics.frametime;
   metrics.fpsMin = std::min(metrics.fpsMin, metrics.fps);
   metrics.fpsMax = std::max(metrics.fpsMax, metrics.fps);
@@ -73,6 +65,11 @@ void Profiler::queryMetrics() {
   metrics.vramUsageHistory[metrics.historyOffset] = metrics.usedVram;
 
   metrics.historyOffset = (metrics.historyOffset + 1) % METRICS_HISTORY_SIZE;
+}
+
+void Profiler::recordFrametime(double frametime) {
+  std::lock_guard<std::mutex> lock(metricsMutex);
+  metrics.frametime = frametime;
 }
 } // namespace Core
 } // namespace SimpleEngine

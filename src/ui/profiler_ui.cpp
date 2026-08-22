@@ -18,12 +18,12 @@ void ProfilerUI::render() {
 
   float fpsGraphMin = 0.0f;
   float fpsGraphMax = metricsSnapshot.fpsMax + 20.0f;
-  ImGui::Text("FPS: %6.2f", metricsSnapshot.fps);
+  ImGui::Text("FPS: %.0f", metricsSnapshot.fps);
   ImGui::PlotLines("##FPS_GRAPH", metricsSnapshot.fpsHistory.data(),
                    metricsSnapshot.fpsHistory.size(),
                    metricsSnapshot.historyOffset, NULL, fpsGraphMin,
                    fpsGraphMax, ImVec2(0.0f, 80.0f));
-  ImGui::Text("Frametime: %6.4f", metricsSnapshot.frametime);
+  ImGui::Text("Frametime: %6.4f ms", metricsSnapshot.frametime);
 
   float vramUsageGraphMin = 0.0f;
   float vramUsageGraphMax = metricsSnapshot.totalVram;

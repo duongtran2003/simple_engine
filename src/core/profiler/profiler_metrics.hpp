@@ -17,7 +17,7 @@ struct ProfilerMetrics {
   std::vector<float> fpsHistory =
       std::vector<float>(METRICS_HISTORY_SIZE, 0.0f);
 
-  double frametime = 0.0;
+  double frametime = 16.666;
   std::vector<double> frametimeHistory =
       std::vector<double>(METRICS_HISTORY_SIZE, 0.0);
 
