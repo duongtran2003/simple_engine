@@ -20,7 +20,8 @@ void ProfilerUI::render() {
   float fpsGraphMax = metricsSnapshot.fpsMax + 20.0f;
   ImGui::Text("FPS: %6.2f", metricsSnapshot.fps);
   ImGui::PlotLines("##FPS_GRAPH", metricsSnapshot.fpsHistory.data(),
-                   metricsSnapshot.fpsHistory.size(), 0, NULL, fpsGraphMin,
+                   metricsSnapshot.fpsHistory.size(),
+                   metricsSnapshot.historyOffset, NULL, fpsGraphMin,
                    fpsGraphMax, ImVec2(0.0f, 80.0f));
   ImGui::Text("Frametime: %6.4f", metricsSnapshot.frametime);
 
@@ -28,10 +29,10 @@ void ProfilerUI::render() {
   float vramUsageGraphMax = metricsSnapshot.totalVram;
   ImGui::Text("VRAM Usage: %6.2f/%6.2f MB", metricsSnapshot.usedVram,
               metricsSnapshot.totalVram);
-  ImGui::PlotLines("##VRAM_USAGE_GRAPH",
-                   metricsSnapshot.vramUsageHistory.data(),
-                   metricsSnapshot.vramUsageHistory.size(), 0, NULL,
-                   vramUsageGraphMin, vramUsageGraphMax, ImVec2(0.0f, 80.0f));
+  ImGui::PlotLines(
+      "##VRAM_USAGE_GRAPH", metricsSnapshot.vramUsageHistory.data(),
+      metricsSnapshot.vramUsageHistory.size(), metricsSnapshot.historyOffset,
+      NULL, vramUsageGraphMin, vramUsageGraphMax, ImVec2(0.0f, 80.0f));
 
   ImGui::End();
 }

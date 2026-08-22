@@ -1,3 +1,7 @@
+#include "core/frame_pacer/frame_pacer.hpp"
+#include "ui/settings_ui.hpp"
+#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
+
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -16,6 +20,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -68,57 +73,67 @@ Engine::Engine() {
                                                     .inFlightFrame = 2,
                                                     .width = 1600,
                                                     .height = 900};
-  renderContext = RenderContext(createInfo);
-  renderContext.setMsaaSamples(vk::SampleCountFlagBits::e1);
-  resourceManager = new ResourceManager(renderContext);
-  input = new Input(renderContext);
+  renderContext = new RenderContext(createInfo);
+  renderContext->setMsaaSamples(vk::SampleCountFlagBits::e1);
+  resourceManager = new ResourceManager(*renderContext);
+  framePacer = new FramePacer(60);
+
+  input = new Input(*renderContext);
   camera = new Camera(*input);
   camera->setVFov(60.0f);
-  float aspect = (float)renderContext.width / (float)renderContext.height;
+  float aspect = (float)renderContext->width / (float)renderContext->height;
   camera->setAspectRatio(aspect);
 
   cullingSystem = new CullingSystem(camera);
 
-  renderGraph = new RenderGraph(renderContext);
-  profiler = new Profiler(renderContext);
+  profiler = new Profiler(*framePacer, *renderContext);
 
-  imGui = new UI::ImGuiVulkan(renderContext, *resourceManager);
-  imGui->init(renderContext.swapChainExtent.width,
-              renderContext.swapChainExtent.height);
+  imGui = new UI::ImGuiVulkan(*renderContext, *resourceManager);
+  imGui->init(renderContext->swapChainExtent.width,
+              renderContext->swapChainExtent.height);
   imGui->initResources();
   input->setImGui(imGui);
   cameraUI = new UI::CameraUI(*camera);
   profilerUI = new UI::ProfilerUI(*profiler);
+  settingsUI = new UI::SettingsUI(*framePacer, *renderContext);
 }
 
-void Engine::renderFrame() {
-  auto fenceResult = renderContext.device.waitForFences(
-      renderContext.inFlightFences[renderContext.frameIndex], vk::True,
+void Engine::handleSwapchainRecreation() {
+  renderContext->recreateSwapChain();
+  setupExampleRenderGraph();
+}
+
+std::pair<vk::Result, uint32_t> Engine::acquireSwapChainImage() {
+  auto fenceResult = renderContext->device.waitForFences(
+      renderContext->inFlightFences[renderContext->frameIndex], vk::True,
       UINT64_MAX);
   if (fenceResult != vk::Result::eSuccess) {
-    throw std::runtime_error(
-        "Engine::renderFrame::ERROR: Failed to wait for render fence.");
+    throw std::runtime_error("Engine::acquireSwapChainImage::ERROR: Failed to "
+                             "wait for render fence.");
   }
 
-  auto [result, imageIndex] = renderContext.device.acquireNextImageKHR(
-      renderContext.swapChain, UINT64_MAX,
-      renderContext.presentCompleteSemaphores[renderContext.frameIndex],
+  auto [result, imageIndex] = renderContext->device.acquireNextImageKHR(
+      renderContext->swapChain, UINT64_MAX,
+      renderContext->presentCompleteSemaphores[renderContext->frameIndex],
       nullptr);
-  std::cout << "Acquired image index: " << imageIndex << "\n";
 
-  if (result == vk::Result::eErrorOutOfDateKHR) {
-    return;
-  }
-  if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
-    throw std::runtime_error(
-        "Engine::renderFrame::ERROR: Failed to acquire next swap chain image.");
+  if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR &&
+      result != vk::Result::eErrorOutOfDateKHR) {
+    throw std::runtime_error("Engine::acquireSwapChainImage::ERROR: Failed to "
+                             "acquire next swap chain image.");
   }
 
-  renderContext.device.resetFences(
-      renderContext.inFlightFences[renderContext.frameIndex]);
+  if (result != vk::Result::eErrorOutOfDateKHR) {
+    renderContext->device.resetFences(
+        renderContext->inFlightFences[renderContext->frameIndex]);
+  }
 
+  return {result, imageIndex};
+}
+
+void Engine::renderFrame(uint32_t renderImageIndex) {
   vk::CommandBuffer commandBuffer =
-      renderContext.commandBuffers[renderContext.frameIndex];
+      renderContext->commandBuffers[renderContext->frameIndex];
   commandBuffer.reset();
 
   vk::CommandBufferBeginInfo beginInfo{
@@ -128,18 +143,18 @@ void Engine::renderFrame() {
   ubo.view = camera->getCamera()->getViewMatrix();
   ubo.proj = camera->getCamera()->getProjectionMatrix();
   ubo.cameraPos = camera->getTransform()->getPosition();
-  memcpy(renderContext.getCurrentFrameUniformBufferPtr(), &ubo, sizeof(ubo));
+  memcpy(renderContext->getCurrentFrameUniformBufferPtr(), &ubo, sizeof(ubo));
 
   renderGraph->execute(commandBuffer, renderObjects);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0, 1, 0,
-      vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+      commandBuffer, renderContext->swapChainImages[renderImageIndex], 1, 0, 1,
+      0, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageAspectFlagBits::eColor);
 
   GraphResource *outputResource = renderGraph->getOutputResource();
   bool fromLastLayout = true;
-  outputResource->transitionLayout(commandBuffer, renderContext.frameIndex,
+  outputResource->transitionLayout(commandBuffer, renderContext->frameIndex,
                                    vk::ImageLayout::eTransferSrcOptimal,
                                    fromLastLayout);
 
@@ -152,8 +167,8 @@ void Engine::renderFrame() {
 
   dstOffsets[0] = vk::Offset3D(0, 0, 0);
   dstOffsets[1] = vk::Offset3D(
-      static_cast<int32_t>(renderContext.swapChainExtent.width),
-      static_cast<int32_t>(renderContext.swapChainExtent.height), 1);
+      static_cast<int32_t>(renderContext->swapChainExtent.width),
+      static_cast<int32_t>(renderContext->swapChainExtent.height), 1);
 
   vk::ImageBlit blitRegion{
       .srcSubresource = {.aspectMask = outputResource->getAspectMask(),
@@ -167,15 +182,15 @@ void Engine::renderFrame() {
                          .layerCount = 1},
       .dstOffsets = dstOffsets};
 
-  commandBuffer.blitImage(outputResource->getImage(renderContext.frameIndex),
-                          outputResource->getLayout(renderContext.frameIndex),
-                          renderContext.swapChainImages[imageIndex],
+  commandBuffer.blitImage(outputResource->getImage(renderContext->frameIndex),
+                          outputResource->getLayout(renderContext->frameIndex),
+                          renderContext->swapChainImages[renderImageIndex],
                           vk::ImageLayout::eTransferDstOptimal, 1, &blitRegion,
                           vk::Filter::eLinear);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0, 1, 0,
-      vk::ImageLayout::eTransferDstOptimal,
+      commandBuffer, renderContext->swapChainImages[renderImageIndex], 1, 0, 1,
+      0, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageLayout::eColorAttachmentOptimal,
       vk::ImageAspectFlagBits::eColor);
 
@@ -183,14 +198,16 @@ void Engine::renderFrame() {
   imGui->beginFrame();
   profilerUI->render();
   cameraUI->render();
-  imGui->endFrame(renderContext.frameIndex);
-  imGui->drawFrame(commandBuffer, renderContext.swapChainImageViews[imageIndex],
-                   renderContext.frameIndex);
+  settingsUI->render();
+  imGui->endFrame(renderContext->frameIndex);
+  imGui->drawFrame(commandBuffer,
+                   renderContext->swapChainImageViews[renderImageIndex],
+                   renderContext->frameIndex);
 
   Helper::VulkanHelper::transitionImageLayout(
-      commandBuffer, renderContext.swapChainImages[imageIndex], 1, 0, 1, 0,
-      vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
-      vk::ImageAspectFlagBits::eColor);
+      commandBuffer, renderContext->swapChainImages[renderImageIndex], 1, 0, 1,
+      0, vk::ImageLayout::eColorAttachmentOptimal,
+      vk::ImageLayout::ePresentSrcKHR, vk::ImageAspectFlagBits::eColor);
 
   commandBuffer.end();
 
@@ -200,72 +217,99 @@ void Engine::renderFrame() {
   vk::SubmitInfo submitInfo{
       .waitSemaphoreCount = 1,
       .pWaitSemaphores =
-          &renderContext.presentCompleteSemaphores[renderContext.frameIndex],
+          &renderContext->presentCompleteSemaphores[renderContext->frameIndex],
       .pWaitDstStageMask = &waitDestinationStageMask,
       .commandBufferCount = 1,
       .pCommandBuffers = &commandBuffer,
       .signalSemaphoreCount = 1,
-      .pSignalSemaphores = &renderContext.renderFinishedSemaphores[imageIndex]};
+      .pSignalSemaphores =
+          &renderContext->renderFinishedSemaphores[renderImageIndex]};
 
-  vk::Result submitResult = renderContext.graphicsQueue.submit(
-      1, &submitInfo, renderContext.inFlightFences[renderContext.frameIndex]);
+  vk::Result submitResult = renderContext->graphicsQueue.submit(
+      1, &submitInfo, renderContext->inFlightFences[renderContext->frameIndex]);
 
   vk::PresentInfoKHR presentInfo{
       .waitSemaphoreCount = 1,
-      .pWaitSemaphores = &renderContext.renderFinishedSemaphores[imageIndex],
+      .pWaitSemaphores =
+          &renderContext->renderFinishedSemaphores[renderImageIndex],
       .swapchainCount = 1,
-      .pSwapchains = &renderContext.swapChain,
-      .pImageIndices = &imageIndex};
+      .pSwapchains = &renderContext->swapChain,
+      .pImageIndices = &renderImageIndex};
 
   vk::Result presentResult =
-      renderContext.graphicsQueue.presentKHR(presentInfo);
+      renderContext->graphicsQueue.presentKHR(presentInfo);
 
   if (presentResult == vk::Result::eSuboptimalKHR ||
-      result == vk::Result::eErrorOutOfDateKHR) {
-    // TODO: This is caused by resizing window => Swapchain outdate => Need
-    // recreating
+      presentResult == vk::Result::eErrorOutOfDateKHR ||
+      renderContext->didFrameBufferSizeChange()) {
+    handleSwapchainRecreation();
   } else {
     assert(presentResult == vk::Result::eSuccess);
   }
 
-  renderContext.frameIndex =
-      (renderContext.frameIndex + 1) % renderContext.inFlightFrame;
+  renderContext->frameIndex =
+      (renderContext->frameIndex + 1) % renderContext->inFlightFrame;
 }
 
 void Engine::mainLoop() {
-  while (!glfwWindowShouldClose(renderContext.window)) {
-    renderContext.updateDeltaTime();
-    glfwPollEvents();
-    input->update();
-    handleInput(renderContext.getDeltaTime());
-    camera->update(renderContext.getDeltaTime());
-    renderFrame();
+  while (!glfwWindowShouldClose(renderContext->window)) {
+    int w = 0, h = 0;
+    glfwGetFramebufferSize(renderContext->window, &w, &h);
+    if (w == 0 || h == 0) {
+      glfwWaitEvents();
+      continue;
+    }
 
+    framePacer->startFrame();
     input->clearMouseDelta();
+
+    auto [result, nextRenderImageIndex] = acquireSwapChainImage();
+    if (result == vk::Result::eErrorOutOfDateKHR) {
+      handleSwapchainRecreation();
+      continue;
+    }
+
+    renderFrame(nextRenderImageIndex);
+
+    framePacer->endFrame();
+
+    // Poll for event immediately after thread wakes up
+    glfwPollEvents();
+
+    renderContext->updateDeltaTime();
+    input->update();
+    handleInput(renderContext->getDeltaTime());
+    camera->update(renderContext->getDeltaTime());
   }
 
-  renderContext.device.waitIdle();
+  renderContext->device.waitIdle();
 }
 
 void Engine::setupExampleRenderGraph() {
+  if (renderGraph != nullptr) {
+    delete renderGraph;
+  }
+  renderGraph = new RenderGraph(*renderContext);
+
   GraphResource *colorResource = new GraphResource(
-      "color_image", renderContext.swapChainExtent.width,
-      renderContext.swapChainExtent.height, vk::Format::eR16G16B16A16Sfloat,
+      "color_image", renderContext->swapChainExtent.width,
+      renderContext->swapChainExtent.height, vk::Format::eR16G16B16A16Sfloat,
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc |
           vk::ImageUsageFlagBits::eSampled,
-      vk::SampleCountFlagBits::e1, renderContext.inFlightFrame, renderContext);
-  colorResource->bindSlot(renderContext.bindlessResourceDescriptorSets, 1);
+      vk::SampleCountFlagBits::e1, renderContext->inFlightFrame,
+      *renderContext);
+  colorResource->bindSlot(renderContext->bindlessResourceDescriptorSets, 1);
 
   GraphResource *depthResource = new GraphResource(
-      "depth_image", renderContext.swapChainExtent.width,
-      renderContext.swapChainExtent.height, vk::Format::eD32Sfloat,
+      "depth_image", renderContext->swapChainExtent.width,
+      renderContext->swapChainExtent.height, vk::Format::eD32Sfloat,
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eDepth,
       vk::ImageUsageFlagBits::eDepthStencilAttachment |
           vk::ImageUsageFlagBits::eSampled,
-      renderContext.msaaSamples, renderContext.inFlightFrame, renderContext);
-  depthResource->bindSlot(renderContext.bindlessResourceDescriptorSets, 2);
+      renderContext->msaaSamples, renderContext->inFlightFrame, *renderContext);
+  depthResource->bindSlot(renderContext->bindlessResourceDescriptorSets, 2);
 
   const uint32_t shadowMapRes = 1024;
   GraphResource *depthMapResource = new GraphResource(
@@ -277,15 +321,16 @@ void Engine::setupExampleRenderGraph() {
   depthMapResource->bindSlot(renderContext.bindlessResourceDescriptorSets, 3);
 
   GraphResource *finalColorResource = new GraphResource(
-      "final_color", renderContext.swapChainExtent.width,
-      renderContext.swapChainExtent.height,
-      renderContext.swapChainSurfaceFormat.format, vk::ImageLayout::eUndefined,
+      "final_color", renderContext->swapChainExtent.width,
+      renderContext->swapChainExtent.height,
+      renderContext->swapChainSurfaceFormat.format, vk::ImageLayout::eUndefined,
       vk::ImageAspectFlagBits::eColor,
       vk::ImageUsageFlagBits::eColorAttachment |
           vk::ImageUsageFlagBits::eTransferSrc |
           vk::ImageUsageFlagBits::eSampled,
-      renderContext.msaaSamples, renderContext.inFlightFrame, renderContext);
-  finalColorResource->bindSlot(renderContext.bindlessResourceDescriptorSets, 4);
+      renderContext->msaaSamples, renderContext->inFlightFrame, *renderContext);
+  finalColorResource->bindSlot(renderContext->bindlessResourceDescriptorSets,
+                               3);
 
   renderGraph->addResource(colorResource);
   renderGraph->addResource(depthResource);
@@ -305,8 +350,8 @@ void Engine::setupExampleRenderGraph() {
   RenderPass::CreateInfo mainPassCreateInfo{
       .rendering = {.colorFormats = {colorResource->getFormat()},
                     .depthFormat = depthResource->getFormat()}};
-  MainPass *mainPass = new MainPass("main_pass", mainPassCreateInfo,
-                                    renderContext, *resourceManager);
+  MainPass *mainPass = new MainPass("main_pass", renderingCreateInfo,
+                                    *renderContext, *resourceManager);
   mainPass->setColors({{.resource = colorResource,
                         .accessType = RenderPass::ResourceAccessType::Write}});
   mainPass->setDepth({.resource = depthResource,
@@ -319,7 +364,7 @@ void Engine::setupExampleRenderGraph() {
       .rendering = {.colorFormats = {colorResource->getFormat()},
                     .depthFormat = depthResource->getFormat()}};
   SkyboxPass *skyboxPass = new SkyboxPass("skybox_pass", skyboxCreateInfo,
-                                          renderContext, *resourceManager);
+                                          *renderContext, *resourceManager);
   skyboxPass->setColors(
       {{.resource = colorResource,
         .accessType = RenderPass::ResourceAccessType::Modify}});
@@ -331,7 +376,7 @@ void Engine::setupExampleRenderGraph() {
                     .depthFormat = vk::Format::eD32Sfloat}};
   TonemappingPass *tonemappingPass =
       new TonemappingPass("tonemapping_pass", tonemappingCreateInfo,
-                          renderContext, *resourceManager);
+                          *renderContext, *resourceManager);
   tonemappingPass->setSampled(
       {.resource = colorResource,
        .accessType = RenderPass::ResourceAccessType::Read},
@@ -516,10 +561,12 @@ std::vector<Entity *> loadBall(ResourceManager *resourceManager,
 
   camera->getTransform()->setPosition({0.0f, 0.0f, 5.0f});
 
-  ubo.directionalLightDirection = glm::vec3(-3.0f, -5.0f, -5.0f);
+  ubo.directionalLightIntensity = 2.0f;
+  ubo.directionalLightDirection = glm::vec3(-0.36f, -0.8f, -0.5f);
   ubo.directionalLightColor = glm::vec3(1.0f, 0.96f, 0.89f);
 
-  ubo.pointLightPosition = glm::vec3(-3.0f, 5.0f, -3.0f);
+  ubo.pointLightIntensity = 36.0f;
+  ubo.pointLightPosition = glm::vec3(-7.0f, 4.5f, -0.36f);
   ubo.pointLightColor = glm::vec3(1.0f);
 
   std::vector<Entity *> entities =
@@ -567,8 +614,8 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  entities = loadSponza(resourceManager, renderContext, camera);
-  // entities = loadBall(resourceManager, renderContext, camera);
+  //   entities = loadSponza(resourceManager, renderContext, camera);
+  entities = loadBall(resourceManager, renderContext, camera);
   // entities = loadChair(resourceManager, renderContext, camera);
   return entities;
 }
@@ -583,23 +630,23 @@ void Engine::initRenderObjectsList() {
       .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
 
   vk::WriteDescriptorSet descriptorWrite{
-      .dstSet = renderContext.bindlessDescriptorSets,
+      .dstSet = renderContext->bindlessDescriptorSets,
       .dstBinding = 1,
       .dstArrayElement = 0,
       .descriptorCount = 1,
       .descriptorType = vk::DescriptorType::eCombinedImageSampler,
       .pImageInfo = &imageInfo};
 
-  renderContext.device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
-  renderObjects = loadScene(resourceManager, renderContext, camera);
-  renderContext.createStorageBuffers<ObjectData>(renderObjects.size());
+  renderContext->device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+  renderObjects = loadScene(resourceManager, *renderContext, camera);
+  renderContext->createStorageBuffers<ObjectData>(renderObjects.size());
 }
 
 void Engine::handleInput(float delta) {
   using eKey = Enums::Input::Key;
   if (input->isKeyJustPressed(eKey::Escape) ||
       input->isKeyJustPressed(eKey::CapsLock)) {
-    glfwSetWindowShouldClose(renderContext.window, true);
+    glfwSetWindowShouldClose(renderContext->window, true);
   }
 
   if (input->isKeyJustPressed(eKey::L)) {

@@ -1,4 +1,5 @@
 #include "core/profiler/profiler.hpp"
+#include "core/frame_pacer/frame_pacer.hpp"
 #include "core/profiler/profiler_metrics.hpp"
 #include "core/render_context.hpp"
 #include "vulkan/vulkan.hpp"
@@ -13,7 +14,8 @@
 
 namespace SimpleEngine {
 namespace Core {
-Profiler::Profiler(const RenderContext &context) : context(context) {
+Profiler::Profiler(const FramePacer &framePacer, const RenderContext &context)
+    : framePacer(framePacer), context(context) {
   vk::PhysicalDeviceProperties props = context.physicalDevice.getProperties();
   metrics.gpuName = std::string(props.deviceName.data());
   isRunning = true;
@@ -41,12 +43,12 @@ void Profiler::backgroundWorkerLoop() {
 
 void Profiler::queryMetrics() {
   std::lock_guard<std::mutex> lock(metricsMutex);
-  float deltaTime = context.getDeltaTime();
-  if (deltaTime == 0.0f) {
+  double frametime = framePacer.getFrametime();
+  if (frametime == 0.0) {
     return;
   }
-  metrics.frametime = deltaTime;
-  metrics.fps = 1.0f / metrics.frametime;
+  metrics.frametime = frametime;
+  metrics.fps = 1000.0 / metrics.frametime;
   metrics.fpsMin = std::min(metrics.fpsMin, metrics.fps);
   metrics.fpsMax = std::max(metrics.fpsMax, metrics.fps);
 
@@ -66,15 +68,10 @@ void Profiler::queryMetrics() {
         "Profiler::queryMetrics::ERROR: MEMORY_BUDGET_EXT not enabled");
   }
 
-  if (metrics.historyOffset >= metrics.fpsHistory.size()) {
-    metrics.fpsHistory.push_back(metrics.fps);
-    metrics.frametimeHistory.push_back(metrics.frametime);
-    metrics.vramUsageHistory.push_back(metrics.usedVram);
-  } else {
-    metrics.fpsHistory[metrics.historyOffset] = metrics.fps;
-    metrics.frametimeHistory[metrics.historyOffset] = metrics.frametime;
-    metrics.vramUsageHistory[metrics.historyOffset] = metrics.usedVram;
-  }
+  metrics.fpsHistory[metrics.historyOffset] = metrics.fps;
+  metrics.frametimeHistory[metrics.historyOffset] = metrics.frametime;
+  metrics.vramUsageHistory[metrics.historyOffset] = metrics.usedVram;
+
   metrics.historyOffset = (metrics.historyOffset + 1) % METRICS_HISTORY_SIZE;
 }
 } // namespace Core

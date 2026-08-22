@@ -56,6 +56,8 @@ public:
   vk::Device device;
   vk::PhysicalDeviceProperties physicalDeviceProperty;
 
+  vk::DebugUtilsMessengerEXT debugMessenger = nullptr;
+
   uint32_t graphicsQueueFamilyIndex;
   vk::Queue graphicsQueue;
 
@@ -65,6 +67,7 @@ public:
   vk::SurfaceFormatKHR swapChainSurfaceFormat;
   vk::Extent2D swapChainExtent;
   std::vector<vk::ImageView> swapChainImageViews;
+  std::string presentModeName;
 
   vk::CommandPool commandPool;
   std::vector<vk::CommandBuffer> commandBuffers;
@@ -97,11 +100,14 @@ public:
   vk::Viewport viewport;
   vk::Rect2D scissor;
 
-  RenderContext() = default;
+  RenderContext() = delete;
   RenderContext(const RenderContextCreateInfo &createInfo);
+  ~RenderContext();
 
   void updateDeltaTime();
   float getDeltaTime() const;
+
+  void recreateSwapChain();
 
   RenderContext *setMsaaSamples(vk::SampleCountFlagBits sampleCount);
   void *getCurrentFrameUniformBufferPtr();
@@ -111,17 +117,25 @@ public:
 
   template <typename T> void createStorageBuffers(size_t numObjects);
 
+  bool didFrameBufferSizeChange() const;
+
 private:
   double lastFrametime;
   float deltaTime = 0.0f;
 
+  bool framebufferSizeChanged = false;
+
   void initWindow(const RenderContextCreateInfo &createInfo);
   void createInstance(const RenderContextCreateInfo &createInfo);
+  void configureDebugMessages();
   void createSurface();
   void pickPhysicalDevice();
   void createDevice();
   void createSwapChain();
   void createSwapChainImageViews();
+
+  void cleanupSwapChain();
+
   void createCommandPool();
   void allocateCommandBuffers();
   void createSyncObjects();

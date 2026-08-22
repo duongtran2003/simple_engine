@@ -14,14 +14,17 @@ struct ProfilerMetrics {
   float fps = 0.0f;
   float fpsMin = 0.0f;
   float fpsMax = 0.0f;
-  std::vector<float> fpsHistory = {};
+  std::vector<float> fpsHistory =
+      std::vector<float>(METRICS_HISTORY_SIZE, 0.0f);
 
-  float frametime = 0.0f;
-  std::vector<float> frametimeHistory = {};
+  double frametime = 0.0;
+  std::vector<double> frametimeHistory =
+      std::vector<double>(METRICS_HISTORY_SIZE, 0.0);
 
   float totalVram = 0.0f;
   float usedVram = 0.0f;
-  std::vector<float> vramUsageHistory = {};
+  std::vector<float> vramUsageHistory =
+      std::vector<float>(METRICS_HISTORY_SIZE, 0.0f);
 
   size_t historyOffset = 0;
 };

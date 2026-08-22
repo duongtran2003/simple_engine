@@ -12,18 +12,25 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <vulkan/vk_platform.h>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_hpp_macros.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
-#if defined(_WIN32)
-#define NOMINMAX
-#include <windows.h>
-// Must include windows.h first
-#include <timeapi.h>
-#pragma comment(lib, "winmm.lib")
-#endif
+// #define RENDER_DOC_BUILD
+static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(
+    vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
+    vk::DebugUtilsMessageTypeFlagsEXT type,
+    const vk::DebugUtilsMessengerCallbackDataEXT *pCallbackData, void *) {
+  if (severity == vk::DebugUtilsMessageSeverityFlagBitsEXT::eError ||
+      severity == vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning) {
+    std::cout << "Vulkan::ValidationLayers::" << to_string(type) << ": "
+              << pCallbackData->pMessage << std::endl;
+  }
+
+  return vk::False;
+}
 
 namespace SimpleEngine {
 namespace Core {
@@ -32,10 +39,17 @@ std::vector<const char *> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName, vk::EXTMemoryBudgetExtensionName};
 
 #if defined(_DEBUG) || !defined(NDEBUG)
+#ifdef RENDER_DOC_BUILD
+const std::vector<char const *> requiredLayers = {};
+constexpr bool VALIDATION_LAYER_ENABLED = false;
+#else
 const std::vector<char const *> requiredLayers = {
     "VK_LAYER_KHRONOS_validation"};
+constexpr bool VALIDATION_LAYER_ENABLED = true;
+#endif
 #else
 const std::vector<char const *> requiredLayers = {};
+constexpr bool VALIDATION_LAYER_ENABLED = false;
 #endif
 
 constexpr uint32_t WIDTH = 800;
@@ -58,6 +72,9 @@ RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
 
   initWindow(createInfo);
   createInstance(createInfo);
+  if (VALIDATION_LAYER_ENABLED) {
+    configureDebugMessages();
+  }
   createSurface();
   pickPhysicalDevice();
   createDevice();
@@ -73,6 +90,11 @@ RenderContext::RenderContext(const RenderContextCreateInfo &createInfo) {
   createDescriptorPool();
   createDescriptorSetLayout();
   createDescriptorSets();
+}
+
+RenderContext::~RenderContext() {
+  glfwDestroyWindow(window);
+  glfwTerminate();
 }
 
 RenderContext *
@@ -119,10 +141,6 @@ vk::SampleCountFlagBits RenderContext::getMaxMsaaSampleCount() {
 }
 
 void RenderContext::initWindow(const RenderContextCreateInfo &createInfo) {
-#if defined(_WIN32)
-  timeBeginPeriod(1);
-#endif
-
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -132,6 +150,19 @@ void RenderContext::initWindow(const RenderContextCreateInfo &createInfo) {
       !createInfo.appName.empty() ? createInfo.appName.c_str()
                                   : APP_NAME.c_str(),
       nullptr, nullptr);
+
+  glfwSetWindowUserPointer(window, this);
+  glfwSetFramebufferSizeCallback(
+      window, [](GLFWwindow *window, int width, int height) {
+        auto *context =
+            static_cast<RenderContext *>(glfwGetWindowUserPointer(window));
+
+        if (context) {
+          context->framebufferSizeChanged = true;
+        }
+        std::cout << "RenderContext::framebufferSizeCallback::INFO: "
+                     "Framebuffer size changed.\n";
+      });
 }
 
 void RenderContext::createInstance(const RenderContextCreateInfo &createInfo) {
@@ -160,6 +191,11 @@ void RenderContext::createInstance(const RenderContextCreateInfo &createInfo) {
   auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
   std::vector<char const *> requiredExtensions(
       glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+  if (VALIDATION_LAYER_ENABLED) {
+    requiredExtensions.push_back(vk::EXTDebugUtilsExtensionName);
+  }
+
   auto extensionProperties = vk::enumerateInstanceExtensionProperties();
   auto unsupportedPropertyIt = std::ranges::find_if(
       requiredExtensions,
@@ -186,6 +222,22 @@ void RenderContext::createInstance(const RenderContextCreateInfo &createInfo) {
   instance = vk::createInstance(instanceCreateInfo, nullptr,
                                 vk::detail::defaultDispatchLoaderDynamic);
   vk::detail::defaultDispatchLoaderDynamic.init(instance);
+}
+
+void RenderContext::configureDebugMessages() {
+  vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(
+      vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+      vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+  vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(
+      vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+      vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+      vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+  vk::DebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfoEXT{
+      .messageSeverity = severityFlags,
+      .messageType = messageTypeFlags,
+      .pfnUserCallback = &debugCallback};
+  debugMessenger =
+      instance.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfoEXT);
 }
 
 void RenderContext::createSurface() {
@@ -358,6 +410,8 @@ void RenderContext::createSwapChain() {
     _swapChainExtent = vk::Extent2D({.width = clampedW, .height = clampedH});
   }
   swapChainExtent = _swapChainExtent;
+  width = swapChainExtent.width;
+  height = swapChainExtent.height;
 
   uint32_t minImageCount = surfaceCapabilities.minImageCount + 1;
   if (surfaceCapabilities.maxImageCount > 0 &&
@@ -384,8 +438,18 @@ void RenderContext::createSwapChain() {
   std::vector<vk::PresentModeKHR> availablePresentModes =
       physicalDevice.getSurfacePresentModesKHR(surface);
   vk::PresentModeKHR presentMode = vk::PresentModeKHR::eFifo;
+  for (const auto &mode : availablePresentModes) {
+    if (mode == vk::PresentModeKHR::eImmediate) {
+      presentMode = vk::PresentModeKHR::eImmediate;
+      break;
+    } else if (mode == vk::PresentModeKHR::eMailbox) {
+      presentMode = vk::PresentModeKHR::eMailbox;
+    }
+  }
+
+  presentModeName = vk::to_string(presentMode);
   std::cout << "RenderContext::createSwapChain::INFO: Present mode: "
-            << vk::to_string(presentMode) << "\n";
+            << presentModeName << "\n";
 
   vk::SwapchainCreateInfoKHR swapChainCreateInfo{
       .surface = surface,
@@ -425,6 +489,30 @@ void RenderContext::createSwapChainImageViews() {
     vk::ImageView imageView = device.createImageView(createInfo);
     swapChainImageViews.push_back(imageView);
   }
+}
+
+void RenderContext::cleanupSwapChain() {
+  for (const auto &imageView : swapChainImageViews) {
+    device.destroyImageView(imageView);
+  }
+  device.destroySwapchainKHR(swapChain);
+
+  swapChainImageViews.clear();
+  swapChainImages.clear();
+  swapChain = nullptr;
+}
+
+void RenderContext::recreateSwapChain() {
+  device.waitIdle();
+
+  cleanupSwapChain();
+  createSwapChain();
+  createSwapChainImageViews();
+
+  createViewport();
+  createScissor();
+
+  framebufferSizeChanged = false;
 }
 
 void RenderContext::createCommandPool() {
@@ -712,6 +800,10 @@ void RenderContext::updateDeltaTime() {
 }
 
 float RenderContext::getDeltaTime() const { return deltaTime; }
+
+bool RenderContext::didFrameBufferSizeChange() const {
+  return framebufferSizeChanged;
+}
 
 } // namespace Core
 } // namespace SimpleEngine
