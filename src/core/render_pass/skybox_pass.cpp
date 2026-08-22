@@ -1,4 +1,4 @@
-#include "core/render_graph/skybox_pass.hpp"
+#include "core/render_pass/skybox_pass.hpp"
 #include "core/entity/entity.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/render_pass.hpp"

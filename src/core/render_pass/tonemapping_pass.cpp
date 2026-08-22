@@ -1,4 +1,4 @@
-#include "core/render_graph/tonemapping_pass.hpp"
+#include "core/render_pass/tonemapping_pass.hpp"
 #include "core/entity/entity.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/graph_resource.hpp"

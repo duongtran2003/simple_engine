@@ -36,11 +36,12 @@
 #include "core/raw_texture.hpp"
 #include "core/render_context.hpp"
 #include "core/render_graph/graph_resource.hpp"
-#include "core/render_graph/main_pass.hpp"
 #include "core/render_graph/render_graph.hpp"
 #include "core/render_graph/render_pass.hpp"
-#include "core/render_graph/skybox_pass.hpp"
-#include "core/render_graph/tonemapping_pass.hpp"
+#include "core/render_pass/main_pass.hpp"
+#include "core/render_pass/shadow_pass.hpp"
+#include "core/render_pass/skybox_pass.hpp"
+#include "core/render_pass/tonemapping_pass.hpp"
 #include "core/resource/cubemap.hpp"
 #include "core/resource/mesh.hpp"
 #include "core/resource/resource_handle.hpp"
@@ -310,6 +311,15 @@ void Engine::setupExampleRenderGraph() {
       renderContext->msaaSamples, renderContext->inFlightFrame, *renderContext);
   depthResource->bindSlot(renderContext->bindlessResourceDescriptorSets, 2);
 
+  const uint32_t shadowMapRes = 1024;
+  GraphResource *depthMapResource = new GraphResource(
+      "depth_map", shadowMapRes, shadowMapRes, vk::Format::eD32Sfloat,
+      vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eDepth,
+      vk::ImageUsageFlagBits::eDepthStencilAttachment |
+          vk::ImageUsageFlagBits::eSampled,
+      renderContext->msaaSamples, renderContext->inFlightFrame, *renderContext);
+  depthMapResource->bindSlot(renderContext->bindlessResourceDescriptorSets, 3);
+
   GraphResource *finalColorResource = new GraphResource(
       "final_color", renderContext->swapChainExtent.width,
       renderContext->swapChainExtent.height,
@@ -324,18 +334,31 @@ void Engine::setupExampleRenderGraph() {
 
   renderGraph->addResource(colorResource);
   renderGraph->addResource(depthResource);
+  renderGraph->addResource(depthMapResource);
   renderGraph->addResource(finalColorResource);
   renderGraph->setOutputResource(finalColorResource->getName());
 
-  RenderPass::CreateInfo renderingCreateInfo{
+  RenderPass::CreateInfo shadowPassCreateInfo{
+      .rendering = {.colorFormats = {},
+                    .depthFormat = depthResource->getFormat()}};
+  ShadowPass *shadowPass = new ShadowPass("shadow_pass", shadowPassCreateInfo,
+                                          *renderContext, *resourceManager);
+  shadowPass->setDepth({.resource = depthMapResource,
+                        .accessType = RenderPass::ResourceAccessType::Write});
+  shadowPass->setShadowMapResolution(shadowMapRes);
+
+  RenderPass::CreateInfo mainPassCreateInfo{
       .rendering = {.colorFormats = {colorResource->getFormat()},
                     .depthFormat = depthResource->getFormat()}};
-  MainPass *mainPass = new MainPass("main_pass", renderingCreateInfo,
+  MainPass *mainPass = new MainPass("main_pass", mainPassCreateInfo,
                                     *renderContext, *resourceManager);
   mainPass->setColors({{.resource = colorResource,
                         .accessType = RenderPass::ResourceAccessType::Write}});
   mainPass->setDepth({.resource = depthResource,
                       .accessType = RenderPass::ResourceAccessType::Write});
+  mainPass->setSampled({.resource = depthMapResource,
+                        .accessType = RenderPass::ResourceAccessType::Read},
+                       MainPass::SampleSlot::ShadowMap);
 
   RenderPass::CreateInfo skyboxCreateInfo{
       .rendering = {.colorFormats = {colorResource->getFormat()},
@@ -362,6 +385,7 @@ void Engine::setupExampleRenderGraph() {
       {{.resource = finalColorResource,
         .accessType = RenderPass::ResourceAccessType::Write}});
 
+  renderGraph->addPass(shadowPass);
   renderGraph->addPass(tonemappingPass);
   renderGraph->addPass(mainPass);
   renderGraph->addPass(skyboxPass);

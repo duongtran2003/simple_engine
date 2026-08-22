@@ -1,9 +1,10 @@
-#include "core/render_graph/main_pass.hpp"
+#include "core/render_pass/main_pass.hpp"
 #include "core/component/mesh_component.hpp"
 #include "core/component/transform_component.hpp"
 #include "core/engine.hpp"
 #include "core/entity/entity.hpp"
 #include "core/render_context.hpp"
+#include "core/render_graph/graph_resource.hpp"
 #include "core/render_graph/render_pass.hpp"
 #include "core/resource/mesh.hpp"
 #include "core/resource/resource_manager.hpp"
@@ -177,10 +178,18 @@ void MainPass::execute(vk::CommandBuffer &commandBuffer,
     uint32_t metallicRoughnessIndex =
         mat.hasMetallicRoughness() ? mat.getMetallicRoughness().index : 0;
 
+    GraphResource *shadowMapResource =
+        sampledResources[static_cast<size_t>(SampleSlot::ShadowMap)].resource;
+    if (shadowMapResource == nullptr) {
+      throw std::runtime_error("MainPass::execute::ERROR: ShadowMap "
+                               "sampled resource is required.");
+    }
     PushConstants pushConstant{.albedoIndex = albedoIndex,
                                .normalIndex = normalIndex,
                                .metallicRoughnessIndex = metallicRoughnessIndex,
-                               .uniformIndex = static_cast<uint32_t>(i)};
+                               .uniformIndex = static_cast<uint32_t>(i),
+                               .shadowMapIndex =
+                                   shadowMapResource->getBindSlot()};
 
     commandBuffer.pushConstants(graphicsPipelineLayout,
                                 vk::ShaderStageFlagBits::eVertex |
