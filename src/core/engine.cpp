@@ -317,8 +317,8 @@ void Engine::setupExampleRenderGraph() {
       vk::ImageLayout::eUndefined, vk::ImageAspectFlagBits::eDepth,
       vk::ImageUsageFlagBits::eDepthStencilAttachment |
           vk::ImageUsageFlagBits::eSampled,
-      renderContext.msaaSamples, renderContext.inFlightFrame, renderContext);
-  depthMapResource->bindSlot(renderContext.bindlessResourceDescriptorSets, 3);
+      renderContext->msaaSamples, renderContext->inFlightFrame, *renderContext);
+  depthMapResource->bindSlot(renderContext->bindlessResourceDescriptorSets, 3);
 
   GraphResource *finalColorResource = new GraphResource(
       "final_color", renderContext->swapChainExtent.width,
@@ -342,7 +342,7 @@ void Engine::setupExampleRenderGraph() {
       .rendering = {.colorFormats = {},
                     .depthFormat = depthResource->getFormat()}};
   ShadowPass *shadowPass = new ShadowPass("shadow_pass", shadowPassCreateInfo,
-                                          renderContext, *resourceManager);
+                                          *renderContext, *resourceManager);
   shadowPass->setDepth({.resource = depthMapResource,
                         .accessType = RenderPass::ResourceAccessType::Write});
   shadowPass->setShadowMapResolution(shadowMapRes);
@@ -350,7 +350,7 @@ void Engine::setupExampleRenderGraph() {
   RenderPass::CreateInfo mainPassCreateInfo{
       .rendering = {.colorFormats = {colorResource->getFormat()},
                     .depthFormat = depthResource->getFormat()}};
-  MainPass *mainPass = new MainPass("main_pass", renderingCreateInfo,
+  MainPass *mainPass = new MainPass("main_pass", mainPassCreateInfo,
                                     *renderContext, *resourceManager);
   mainPass->setColors({{.resource = colorResource,
                         .accessType = RenderPass::ResourceAccessType::Write}});
