@@ -10,16 +10,30 @@ namespace SimpleEngine {
 namespace Core {
 class Image {
 public:
+  struct ImageCreateInfo {
+    vk::ImageType type;
+    vk::Format format;
+    vk::Extent3D extent;
+    uint32_t mipLevels;
+    uint32_t arrayLayers;
+    vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1;
+    vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
+    vk::ImageUsageFlags usage;
+    vk::SharingMode sharingMode = vk::SharingMode::eExclusive;
+    vk::ImageAspectFlags aspectMask;
+    uint32_t width;
+    uint32_t height;
+    uint32_t channels;
+    Enums::Image::Filter magFilter = Enums::Image::Filter::eLinear;
+    Enums::Image::Filter minFilter = Enums::Image::Filter::eLinear;
+    Enums::Image::Wrap wrapU = Enums::Image::Wrap::eClampToEdge;
+    Enums::Image::Wrap wrapV = Enums::Image::Wrap::eClampToEdge;
+    Enums::Image::Wrap wrapW = Enums::Image::Wrap::eClampToEdge;
+    Enums::Image::ColorSpace colorSpace = Enums::Image::ColorSpace::eLinear;
+  };
+
   Image() = delete;
-  Image(vk::ImageType type, vk::Format format, vk::Extent3D extent,
-        uint32_t mipLevels, uint32_t arrayLayers,
-        vk::SampleCountFlagBits sampleCount, vk::ImageTiling tiling,
-        vk::ImageUsageFlags usage, vk::SharingMode sharingMode,
-        vk::ImageAspectFlags aspectMask, uint32_t width, uint32_t height,
-        uint32_t channels, Enums::Image::Filter magFilter,
-        Enums::Image::Filter minFilter, Enums::Image::Wrap wrapU,
-        Enums::Image::Wrap wrapV, Enums::Image::Wrap wrapW,
-        Enums::Image::ColorSpace colorSpace, const RenderContext *context);
+  Image(const ImageCreateInfo &createInfo, const RenderContext *context);
 
   ~Image();
   void Create();

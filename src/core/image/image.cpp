@@ -8,40 +8,32 @@
 
 namespace SimpleEngine {
 namespace Core {
-Image::Image(vk::ImageType type, vk::Format format, vk::Extent3D extent,
-             uint32_t mipLevels, uint32_t arrayLayers,
-             vk::SampleCountFlagBits sampleCount, vk::ImageTiling tiling,
-             vk::ImageUsageFlags usage, vk::SharingMode sharingMode,
-             vk::ImageAspectFlags aspectMask, uint32_t width, uint32_t height,
-             uint32_t channels, Enums::Image::Filter magFilter,
-             Enums::Image::Filter minFilter, Enums::Image::Wrap wrapU,
-             Enums::Image::Wrap wrapV, Enums::Image::Wrap wrapW,
-             Enums::Image::ColorSpace colorSpace,
-             const RenderContext *context) {
-  m_type = type;
-  m_format = format;
-  m_extent = extent;
-  m_mipLevels = mipLevels;
-  m_arrayLayers = arrayLayers;
-  m_sampleCount = sampleCount;
-  m_tiling = tiling;
-  m_usage = usage;
-  m_sharingMode = sharingMode;
-  m_aspectMask = aspectMask;
+Image::Image(const ImageCreateInfo &createInfo, const RenderContext *context) {
+  m_type = createInfo.type;
+  m_format = createInfo.format;
+  m_extent = createInfo.extent;
+  m_mipLevels = createInfo.mipLevels;
+  m_arrayLayers = createInfo.arrayLayers;
+  m_sampleCount = createInfo.sampleCount;
+  m_tiling = createInfo.tiling;
+  m_usage = createInfo.usage;
+  m_sharingMode = createInfo.sharingMode;
+  m_aspectMask = createInfo.aspectMask;
+
+  m_width = createInfo.width;
+  m_height = createInfo.height;
+  m_channels = createInfo.channels;
+
+  m_magFilter = createInfo.magFilter;
+  m_minFilter = createInfo.minFilter;
+
+  m_wrapU = createInfo.wrapU;
+  m_wrapV = createInfo.wrapV;
+  m_wrapW = createInfo.wrapW;
+
+  m_colorSpace = createInfo.colorSpace;
+
   m_pContext = context;
-
-  m_width = width;
-  m_height = height;
-  m_channels = channels;
-
-  m_magFilter = magFilter;
-  m_minFilter = minFilter;
-
-  m_wrapU = wrapU;
-  m_wrapV = wrapV;
-  m_wrapW = wrapW;
-
-  m_colorSpace = colorSpace;
 
   Create();
 }
@@ -156,9 +148,6 @@ void Image::CreateSampler() {
     vkWWrap = vk::SamplerAddressMode::eClampToEdge;
   }
 
-  auto anisotropyEnable =
-      m_sampleCount != vk::SampleCountFlagBits::e1 ? vk::True : vk::False;
-
   vk::PhysicalDeviceProperties deviceProperties =
       m_pContext->physicalDevice.getProperties();
   float maxAnisotropy =
@@ -170,7 +159,7 @@ void Image::CreateSampler() {
                              .addressModeV = vkVWrap,
                              .addressModeW = vkWWrap,
                              .mipLodBias = -0.5f,
-                             .anisotropyEnable = anisotropyEnable,
+                             .anisotropyEnable = vk::True,
                              .maxAnisotropy = maxAnisotropy,
                              .compareEnable = vk::False,
                              .compareOp = vk::CompareOp::eAlways,
