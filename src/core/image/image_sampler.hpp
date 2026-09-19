@@ -4,6 +4,7 @@
 #include "enums/image_enums.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
+#include <string>
 #include <vulkan/vulkan.hpp>
 
 namespace SimpleEngine {
@@ -11,6 +12,8 @@ namespace Core {
 class ImageSampler {
 public:
   struct CreateInfo {
+    std::string name;
+
     Enums::Image::Filter magFilter = Enums::Image::Filter::eLinear;
     Enums::Image::Filter minFilter = Enums::Image::Filter::eLinear;
     Enums::Image::Wrap wrapU = Enums::Image::Wrap::eClampToEdge;
@@ -25,11 +28,14 @@ public:
   ImageSampler(const CreateInfo &createInfo, const RenderContext *context);
   ~ImageSampler();
   void Free();
-  bool IsValid();
+  bool IsValid() const;
+  const std::string &GetName() const;
 
 private:
   const RenderContext *m_pContext;
   bool m_isValid = false;
+
+  std::string m_name;
 
   Enums::Image::Filter m_magFilter;
   Enums::Image::Filter m_minFilter;

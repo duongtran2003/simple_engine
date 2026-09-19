@@ -3,6 +3,7 @@
 #include "enums/image_enums.hpp"
 #include "vulkan/vulkan.hpp"
 #include <algorithm>
+#include <string>
 
 namespace SimpleEngine {
 namespace Core {
@@ -19,6 +20,8 @@ ImageSampler::ImageSampler(const CreateInfo &createInfo,
   m_compareEnable = createInfo.compareEnable;
   m_compareOp = createInfo.compareOp;
 
+  m_name = createInfo.name;
+
   m_pContext = context;
 
   Create();
@@ -34,7 +37,7 @@ void ImageSampler::Free() {
   m_isValid = false;
 }
 
-bool ImageSampler::IsValid() { return m_isValid; }
+bool ImageSampler::IsValid() const { return m_isValid; }
 
 void ImageSampler::Create() {
   vk::Filter vkMagFilter, vkMinFilter;
@@ -95,5 +98,7 @@ void ImageSampler::Create() {
   m_sampler = m_pContext->device.createSampler(info);
   m_isValid = true;
 }
+
+const std::string &ImageSampler::GetName() const { return m_name; }
 } // namespace Core
 } // namespace SimpleEngine

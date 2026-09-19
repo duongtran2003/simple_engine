@@ -32,7 +32,7 @@ public:
 
   ~Image();
   void Free();
-  bool IsValid();
+  bool IsValid() const;
   void TransitionLayout(vk::ImageLayout toLayout, bool keepContent,
                         vk::CommandBuffer &commandBuffer);
 

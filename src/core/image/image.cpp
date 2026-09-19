@@ -118,6 +118,6 @@ void Image::TransitionLayout(vk::ImageLayout toLayout, bool keepContent,
   m_layout = toLayout;
 }
 
-bool Image::IsValid() { return m_isValid; }
+bool Image::IsValid() const { return m_isValid; }
 } // namespace Core
 } // namespace SimpleEngine
