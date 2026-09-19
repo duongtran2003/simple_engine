@@ -18,7 +18,7 @@ public:
   ~ImagePool();
 
   Image *Get(ImageHandle handle);
-  ImageHandle Allocate(const Image::ImageCreateInfo &imageCreateInfo);
+  ImageHandle Allocate(const Image::CreateInfo &imageCreateInfo);
   void Free(ImageHandle handle);
 
 private:

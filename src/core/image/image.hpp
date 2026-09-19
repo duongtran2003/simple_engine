@@ -10,7 +10,7 @@ namespace SimpleEngine {
 namespace Core {
 class Image {
 public:
-  struct ImageCreateInfo {
+  struct CreateInfo {
     vk::ImageType type;
     vk::Format format;
     vk::Extent3D extent;
@@ -24,19 +24,13 @@ public:
     uint32_t width;
     uint32_t height;
     uint32_t channels;
-    Enums::Image::Filter magFilter = Enums::Image::Filter::eLinear;
-    Enums::Image::Filter minFilter = Enums::Image::Filter::eLinear;
-    Enums::Image::Wrap wrapU = Enums::Image::Wrap::eClampToEdge;
-    Enums::Image::Wrap wrapV = Enums::Image::Wrap::eClampToEdge;
-    Enums::Image::Wrap wrapW = Enums::Image::Wrap::eClampToEdge;
     Enums::Image::ColorSpace colorSpace = Enums::Image::ColorSpace::eLinear;
   };
 
   Image() = delete;
-  Image(const ImageCreateInfo &createInfo, const RenderContext *context);
+  Image(const CreateInfo &createInfo, const RenderContext *context);
 
   ~Image();
-  void Create();
   void Free();
   bool IsValid();
   void TransitionLayout(vk::ImageLayout toLayout, bool keepContent,
@@ -51,7 +45,6 @@ private:
   vk::ImageView m_view;
   vk::DeviceSize m_size;
   vk::DeviceMemory m_memory;
-  vk::Sampler m_sampler;
 
   vk::ImageType m_type;
   vk::Format m_format;
@@ -69,19 +62,12 @@ private:
   uint32_t m_height;
   uint32_t m_channels;
 
-  Enums::Image::Filter m_magFilter;
-  Enums::Image::Filter m_minFilter;
-
-  Enums::Image::Wrap m_wrapU;
-  Enums::Image::Wrap m_wrapV;
-  Enums::Image::Wrap m_wrapW;
-
   Enums::Image::ColorSpace m_colorSpace;
 
+  void Create();
   void CreateImage();
   void AllocMemory();
   void CreateView();
-  void CreateSampler();
 };
 } // namespace Core
 } // namespace SimpleEngine

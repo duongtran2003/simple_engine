@@ -8,7 +8,7 @@
 
 namespace SimpleEngine {
 namespace Core {
-Image::Image(const ImageCreateInfo &createInfo, const RenderContext *context) {
+Image::Image(const CreateInfo &createInfo, const RenderContext *context) {
   m_type = createInfo.type;
   m_format = createInfo.format;
   m_extent = createInfo.extent;
@@ -24,13 +24,6 @@ Image::Image(const ImageCreateInfo &createInfo, const RenderContext *context) {
   m_height = createInfo.height;
   m_channels = createInfo.channels;
 
-  m_magFilter = createInfo.magFilter;
-  m_minFilter = createInfo.minFilter;
-
-  m_wrapU = createInfo.wrapU;
-  m_wrapV = createInfo.wrapV;
-  m_wrapW = createInfo.wrapW;
-
   m_colorSpace = createInfo.colorSpace;
 
   m_pContext = context;
@@ -44,7 +37,6 @@ void Image::Create() {
   CreateImage();
   AllocMemory();
   CreateView();
-  CreateSampler();
   m_isValid = true;
 }
 
@@ -53,7 +45,6 @@ void Image::Free() {
     return;
   }
 
-  m_pContext->device.destroySampler(m_sampler);
   m_pContext->device.destroyImageView(m_view);
   m_pContext->device.freeMemory(m_memory);
   m_pContext->device.destroyImage(m_image);
@@ -110,65 +101,6 @@ void Image::CreateView() {
                            .layerCount = m_arrayLayers}};
 
   m_view = m_pContext->device.createImageView(info);
-}
-
-void Image::CreateSampler() {
-  vk::Filter vkMagFilter, vkMinFilter;
-  if (m_magFilter == Enums::Image::Filter::eLinear) {
-    vkMagFilter = vk::Filter::eLinear;
-  } else {
-    vkMagFilter = vk::Filter::eNearest;
-  }
-  if (m_minFilter == Enums::Image::Filter::eLinear) {
-    vkMinFilter = vk::Filter::eLinear;
-  } else {
-    vkMinFilter = vk::Filter::eNearest;
-  }
-
-  vk::SamplerAddressMode vkUWrap, vkVWrap, vkWWrap;
-  if (m_wrapU == Enums::Image::Wrap::eMirroredRepeat) {
-    vkUWrap = vk::SamplerAddressMode::eMirroredRepeat;
-  } else if (m_wrapU == Enums::Image::Wrap::eRepeat) {
-    vkUWrap = vk::SamplerAddressMode::eRepeat;
-  } else {
-    vkUWrap = vk::SamplerAddressMode::eClampToEdge;
-  }
-  if (m_wrapV == Enums::Image::Wrap::eMirroredRepeat) {
-    vkVWrap = vk::SamplerAddressMode::eMirroredRepeat;
-  } else if (m_wrapV == Enums::Image::Wrap::eRepeat) {
-    vkVWrap = vk::SamplerAddressMode::eRepeat;
-  } else {
-    vkVWrap = vk::SamplerAddressMode::eClampToEdge;
-  }
-  if (m_wrapW == Enums::Image::Wrap::eMirroredRepeat) {
-    vkWWrap = vk::SamplerAddressMode::eMirroredRepeat;
-  } else if (m_wrapW == Enums::Image::Wrap::eRepeat) {
-    vkWWrap = vk::SamplerAddressMode::eRepeat;
-  } else {
-    vkWWrap = vk::SamplerAddressMode::eClampToEdge;
-  }
-
-  vk::PhysicalDeviceProperties deviceProperties =
-      m_pContext->physicalDevice.getProperties();
-  float maxAnisotropy =
-      std::min(16.0f, deviceProperties.limits.maxSamplerAnisotropy);
-
-  vk::SamplerCreateInfo info{.magFilter = vkMagFilter,
-                             .minFilter = vkMinFilter,
-                             .addressModeU = vkUWrap,
-                             .addressModeV = vkVWrap,
-                             .addressModeW = vkWWrap,
-                             .mipLodBias = -0.5f,
-                             .anisotropyEnable = vk::True,
-                             .maxAnisotropy = maxAnisotropy,
-                             .compareEnable = vk::False,
-                             .compareOp = vk::CompareOp::eAlways,
-                             .minLod = 0.0f,
-                             .maxLod = vk::LodClampNone,
-                             .borderColor = vk::BorderColor::eIntOpaqueBlack,
-                             .unnormalizedCoordinates = vk::False};
-
-  m_sampler = m_pContext->device.createSampler(info);
 }
 
 void Image::TransitionLayout(vk::ImageLayout toLayout, bool keepContent,

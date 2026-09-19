@@ -38,7 +38,7 @@ Image *ImagePool::Get(ImageHandle handle) {
   return slot.image.get();
 }
 
-ImageHandle ImagePool::Allocate(const Image::ImageCreateInfo &imageCreateInfo) {
+ImageHandle ImagePool::Allocate(const Image::CreateInfo &imageCreateInfo) {
   if (m_freeList.size() == 0) {
     return ImageHandle{0, 0};
   }
