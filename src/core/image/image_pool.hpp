@@ -23,14 +23,14 @@ public:
 
 private:
   struct Slot {
-    std::unique_ptr<Image> image;
-    uint32_t generation = 1;
+    std::unique_ptr<Image> Image;
+    uint32_t Generation = 1;
   };
 
   const RenderContext *m_pContext;
 
-  std::vector<Slot> m_slots;
-  std::vector<uint32_t> m_freeList;
+  std::vector<Slot> m_Slots;
+  std::vector<uint32_t> m_FreeList;
 };
 } // namespace Core
 } // namespace SimpleEngine
