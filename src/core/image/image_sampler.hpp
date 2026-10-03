@@ -12,8 +12,6 @@ namespace Core {
 class ImageSampler {
 public:
   struct CreateInfo {
-    std::string Name;
-
     Enums::Image::Filter MagFilter = Enums::Image::Filter::eLinear;
     Enums::Image::Filter MinFilter = Enums::Image::Filter::eLinear;
     Enums::Image::Wrap WrapU = Enums::Image::Wrap::eClampToEdge;
@@ -25,18 +23,17 @@ public:
   };
 
   ImageSampler() = delete;
-  ImageSampler(const CreateInfo &createInfo, const RenderContext *context);
+  ImageSampler(const CreateInfo &createInfo, const std::string &hashedKey,
+               const RenderContext *context);
   ~ImageSampler();
   void Free();
   bool IsValid() const;
-  const std::string &GetName() const;
   const std::string &GetHashedKey() const;
 
 private:
   const RenderContext *m_pContext;
   bool m_IsValid = false;
 
-  std::string m_Name;
   std::string m_HashedKey;
 
   Enums::Image::Filter m_MagFilter;
@@ -51,7 +48,6 @@ private:
   vk::Sampler m_Sampler;
 
   void Create();
-  void GenerateHashedKey();
 };
 } // namespace Core
 } // namespace SimpleEngine

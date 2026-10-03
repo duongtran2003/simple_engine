@@ -29,7 +29,9 @@ Image::Image(const CreateInfo &createInfo, const RenderContext *context) {
   Create();
 }
 
-Image::~Image() {};
+Image::~Image() {
+  // TODO: Destructor
+};
 
 void Image::Create() {
   CreateImage();
