@@ -40,6 +40,44 @@ void ImageSampler::Free() {
 
 bool ImageSampler::IsValid() const { return m_IsValid; }
 
+void ImageSampler::GenerateHashedKey() {
+  std::string hashed = "";
+  if (m_MagFilter == Enums::Image::Filter::eLinear) {
+    hashed += "MAG_LINEAR_";
+  } else {
+    hashed += "MAG_NEAREST_";
+  }
+  if (m_MinFilter == Enums::Image::Filter::eLinear) {
+    hashed += "MIN_LINEAR_";
+  } else {
+    hashed += "MIN_NEAREST_";
+  }
+
+  if (m_WrapU == Enums::Image::Wrap::eMirroredRepeat) {
+    hashed += "U_MIRROREDREPEAT_";
+  } else if (m_WrapU == Enums::Image::Wrap::eRepeat) {
+    hashed += "U_REPEAT_";
+  } else {
+    hashed += "U_CLAMP_";
+  }
+  if (m_WrapV == Enums::Image::Wrap::eMirroredRepeat) {
+    hashed += "V_MIRROREDREPEAT_";
+  } else if (m_WrapV == Enums::Image::Wrap::eRepeat) {
+    hashed += "V_REPEAT_";
+  } else {
+    hashed += "V_CLAMP_";
+  }
+  if (m_WrapW == Enums::Image::Wrap::eMirroredRepeat) {
+    hashed += "W_MIRROREDREPEAT_";
+  } else if (m_WrapW == Enums::Image::Wrap::eRepeat) {
+    hashed += "W_REPEAT_";
+  } else {
+    hashed += "W_CLAMP_";
+  }
+
+  m_HashedKey = hashed;
+}
+
 void ImageSampler::Create() {
   vk::Filter vkMagFilter, vkMinFilter;
   if (m_MagFilter == Enums::Image::Filter::eLinear) {
@@ -101,5 +139,6 @@ void ImageSampler::Create() {
 }
 
 const std::string &ImageSampler::GetName() const { return m_Name; }
+const std::string &ImageSampler::GetHashedKey() const { return m_HashedKey; }
 } // namespace Core
 } // namespace SimpleEngine
