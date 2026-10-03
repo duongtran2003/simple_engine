@@ -34,7 +34,7 @@ public:
 private:
   const RenderContext *m_pContext;
 
-  vk::DeviceSize m_Size;
+  vk::DeviceSize m_Size = 0;
   vk::BufferUsageFlags m_Usage;
   vk::MemoryPropertyFlags m_Properties;
 

@@ -27,7 +27,7 @@ ImageSampler::ImageSampler(const CreateInfo &createInfo,
   m_HashedKey = hashedKey;
 }
 
-ImageSampler::~ImageSampler() {};
+ImageSampler::~ImageSampler() { Free(); };
 void ImageSampler::Free() {
   if (!m_IsValid) {
     return;
@@ -35,6 +35,7 @@ void ImageSampler::Free() {
 
   m_pContext->device.destroySampler(m_Sampler);
   m_IsValid = false;
+  m_Sampler = nullptr;
 }
 
 bool ImageSampler::IsValid() const { return m_IsValid; }
