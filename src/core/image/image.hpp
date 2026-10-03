@@ -36,6 +36,14 @@ public:
   void TransitionLayout(vk::ImageLayout toLayout, bool keepContent,
                         vk::CommandBuffer &commandBuffer);
 
+  vk::Image GetImage() const;
+  vk::ImageView GetView() const;
+  vk::Format GetFormat() const;
+  vk::Extent3D GetExtent() const;
+  vk::ImageLayout GetLayout() const;
+
+  void UploadData(const void *pixels, vk::DeviceSize size);
+
 private:
   const RenderContext *m_pContext;
 

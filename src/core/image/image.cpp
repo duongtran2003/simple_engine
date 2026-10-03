@@ -3,6 +3,7 @@
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
+#include <cstring>
 
 namespace SimpleEngine {
 namespace Core {
@@ -119,5 +120,35 @@ void Image::TransitionLayout(vk::ImageLayout toLayout, bool keepContent,
 }
 
 bool Image::IsValid() const { return m_IsValid; }
+vk::Image Image::GetImage() const { return m_Image; }
+vk::ImageView Image::GetView() const { return m_View; }
+vk::Format Image::GetFormat() const { return m_Format; }
+vk::Extent3D Image::GetExtent() const { return m_Extent; };
+vk::ImageLayout Image::GetLayout() const { return m_Layout; }
+
+void Image::UploadData(const void *pixels, vk::DeviceSize size) {
+  auto [stagingBuffer, stagingMemory] = Helper::VulkanHelper::createBuffer(
+      size, vk::BufferUsageFlagBits::eTransferSrc,
+      vk::MemoryPropertyFlagBits::eHostVisible |
+          vk::MemoryPropertyFlagBits::eHostCoherent,
+      *m_pContext);
+
+  void *data = m_pContext->device.mapMemory(stagingMemory, 0, size);
+  memcpy(data, pixels, static_cast<size_t>(size));
+  m_pContext->device.unmapMemory(stagingMemory);
+
+  vk::CommandBuffer commandBuffer =
+      Helper::VulkanHelper::beginSingleTimeCommands(*m_pContext);
+
+  TransitionLayout(vk::ImageLayout::eTransferDstOptimal, false, commandBuffer);
+  Helper::VulkanHelper::copyBufferToImage(commandBuffer, stagingBuffer, m_Image,
+                                          m_Extent.width, m_Extent.height,
+                                          vk::ImageAspectFlagBits::eColor);
+  TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal, true,
+                   commandBuffer);
+  Helper::VulkanHelper::endSingleTimeCommands(commandBuffer, *m_pContext);
+  m_pContext->device.destroyBuffer(stagingBuffer);
+  m_pContext->device.freeMemory(stagingMemory);
+}
 } // namespace Core
 } // namespace SimpleEngine

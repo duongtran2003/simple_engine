@@ -30,6 +30,8 @@ public:
   bool IsValid() const;
   const std::string &GetHashedKey() const;
 
+  vk::Sampler GetSampler() const;
+
 private:
   const RenderContext *m_pContext;
   bool m_IsValid = false;

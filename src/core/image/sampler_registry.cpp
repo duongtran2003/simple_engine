@@ -26,9 +26,9 @@ SamplerRegistry::Retrieve(const ImageSampler::CreateInfo &retrieveInfo) {
 
   auto sampler =
       std::make_unique<ImageSampler>(retrieveInfo, hashed, m_pContext);
+  const ImageSampler *res = sampler.get();
   m_Samplers[hashed] = std::move(sampler);
 
-  const ImageSampler *res = sampler.get();
   return res;
 }
 

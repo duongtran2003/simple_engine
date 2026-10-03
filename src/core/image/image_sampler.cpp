@@ -100,5 +100,6 @@ void ImageSampler::Create() {
 }
 
 const std::string &ImageSampler::GetHashedKey() const { return m_HashedKey; }
+vk::Sampler ImageSampler::GetSampler() const { return m_Sampler; }
 } // namespace Core
 } // namespace SimpleEngine
