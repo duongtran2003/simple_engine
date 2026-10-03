@@ -12,16 +12,16 @@ namespace Core {
 class ImageSampler {
 public:
   struct CreateInfo {
-    std::string name;
+    std::string Name;
 
-    Enums::Image::Filter magFilter = Enums::Image::Filter::eLinear;
-    Enums::Image::Filter minFilter = Enums::Image::Filter::eLinear;
-    Enums::Image::Wrap wrapU = Enums::Image::Wrap::eClampToEdge;
-    Enums::Image::Wrap wrapV = Enums::Image::Wrap::eClampToEdge;
-    Enums::Image::Wrap wrapW = Enums::Image::Wrap::eClampToEdge;
-    uint32_t anisotropyEnable = vk::True;
-    uint32_t compareEnable = vk::False;
-    vk::CompareOp compareOp = vk::CompareOp::eAlways;
+    Enums::Image::Filter MagFilter = Enums::Image::Filter::eLinear;
+    Enums::Image::Filter MinFilter = Enums::Image::Filter::eLinear;
+    Enums::Image::Wrap WrapU = Enums::Image::Wrap::eClampToEdge;
+    Enums::Image::Wrap WrapV = Enums::Image::Wrap::eClampToEdge;
+    Enums::Image::Wrap WrapW = Enums::Image::Wrap::eClampToEdge;
+    uint32_t AnisotropyEnable = vk::True;
+    uint32_t CompareEnable = vk::False;
+    vk::CompareOp CompareOp = vk::CompareOp::eAlways;
   };
 
   ImageSampler() = delete;
@@ -30,25 +30,28 @@ public:
   void Free();
   bool IsValid() const;
   const std::string &GetName() const;
+  const std::string &GetHashedKey() const;
 
 private:
   const RenderContext *m_pContext;
-  bool m_isValid = false;
+  bool m_IsValid = false;
 
-  std::string m_name;
+  std::string m_Name;
+  std::string m_HashedKey;
 
-  Enums::Image::Filter m_magFilter;
-  Enums::Image::Filter m_minFilter;
-  Enums::Image::Wrap m_wrapU;
-  Enums::Image::Wrap m_wrapV;
-  Enums::Image::Wrap m_wrapW;
-  uint32_t m_anisotropyEnable;
-  uint32_t m_compareEnable;
-  vk::CompareOp m_compareOp;
+  Enums::Image::Filter m_MagFilter;
+  Enums::Image::Filter m_MinFilter;
+  Enums::Image::Wrap m_WrapU;
+  Enums::Image::Wrap m_WrapV;
+  Enums::Image::Wrap m_WrapW;
+  uint32_t m_AnisotropyEnable;
+  uint32_t m_CompareEnable;
+  vk::CompareOp m_CompareOp;
 
-  vk::Sampler m_sampler;
+  vk::Sampler m_Sampler;
 
   void Create();
+  void GenerateHashedKey();
 };
 } // namespace Core
 } // namespace SimpleEngine
