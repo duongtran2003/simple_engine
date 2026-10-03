@@ -30,9 +30,7 @@ Image::Image(const CreateInfo &createInfo, const RenderContext *context) {
   Create();
 }
 
-Image::~Image() {
-  // TODO: Destructor
-};
+Image::~Image() { Free(); };
 
 void Image::Create() {
   CreateImage();
@@ -51,6 +49,9 @@ void Image::Free() {
   m_pContext->device.destroyImage(m_Image);
 
   m_IsValid = false;
+  m_Image = nullptr;
+  m_View = nullptr;
+  m_Memory = nullptr;
 }
 
 void Image::CreateImage() {

@@ -47,7 +47,7 @@ private:
   uint32_t m_CompareEnable;
   vk::CompareOp m_CompareOp;
 
-  vk::Sampler m_Sampler;
+  vk::Sampler m_Sampler = nullptr;
 
   void Create();
 };

@@ -49,10 +49,10 @@ private:
 
   bool m_IsValid = false;
 
-  vk::Image m_Image;
-  vk::ImageView m_View;
-  vk::DeviceSize m_Size;
-  vk::DeviceMemory m_Memory;
+  vk::Image m_Image = nullptr;
+  vk::ImageView m_View = nullptr;
+  vk::DeviceSize m_Size = 0;
+  vk::DeviceMemory m_Memory = nullptr;
 
   vk::ImageType m_Type;
   vk::Format m_Format;
