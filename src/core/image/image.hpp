@@ -11,20 +11,20 @@ namespace Core {
 class Image {
 public:
   struct CreateInfo {
-    vk::ImageType type;
-    vk::Format format;
-    vk::Extent3D extent;
-    uint32_t mipLevels;
-    uint32_t arrayLayers;
-    vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1;
-    vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
-    vk::ImageUsageFlags usage;
-    vk::SharingMode sharingMode = vk::SharingMode::eExclusive;
-    vk::ImageAspectFlags aspectMask;
-    uint32_t width;
-    uint32_t height;
-    uint32_t channels;
-    Enums::Image::ColorSpace colorSpace = Enums::Image::ColorSpace::eLinear;
+    vk::ImageType Type;
+    vk::Format Format;
+    vk::Extent3D Extent;
+    uint32_t MipLevels;
+    uint32_t ArrayLayers;
+    vk::SampleCountFlagBits SampleCount = vk::SampleCountFlagBits::e1;
+    vk::ImageTiling Tiling = vk::ImageTiling::eOptimal;
+    vk::ImageUsageFlags Usage;
+    vk::SharingMode SharingMode = vk::SharingMode::eExclusive;
+    vk::ImageAspectFlags AspectMask;
+    uint32_t Width;
+    uint32_t Height;
+    uint32_t Channels;
+    Enums::Image::ColorSpace ColorSpace = Enums::Image::ColorSpace::eLinear;
   };
 
   Image() = delete;
@@ -39,30 +39,30 @@ public:
 private:
   const RenderContext *m_pContext;
 
-  bool m_isValid = false;
+  bool m_IsValid = false;
 
-  vk::Image m_image;
-  vk::ImageView m_view;
-  vk::DeviceSize m_size;
-  vk::DeviceMemory m_memory;
+  vk::Image m_Image;
+  vk::ImageView m_View;
+  vk::DeviceSize m_Size;
+  vk::DeviceMemory m_Memory;
 
-  vk::ImageType m_type;
-  vk::Format m_format;
-  vk::Extent3D m_extent;
-  uint32_t m_mipLevels;
-  uint32_t m_arrayLayers;
-  vk::SampleCountFlagBits m_sampleCount;
-  vk::ImageTiling m_tiling;
-  vk::ImageUsageFlags m_usage;
-  vk::SharingMode m_sharingMode;
-  vk::ImageLayout m_layout;
-  vk::ImageAspectFlags m_aspectMask;
+  vk::ImageType m_Type;
+  vk::Format m_Format;
+  vk::Extent3D m_Extent;
+  uint32_t m_MipLevels;
+  uint32_t m_ArrayLayers;
+  vk::SampleCountFlagBits m_SampleCount;
+  vk::ImageTiling m_Tiling;
+  vk::ImageUsageFlags m_Usage;
+  vk::SharingMode m_SharingMode;
+  vk::ImageLayout m_Layout;
+  vk::ImageAspectFlags m_AspectMask;
 
-  uint32_t m_width;
-  uint32_t m_height;
-  uint32_t m_channels;
+  uint32_t m_Width;
+  uint32_t m_Height;
+  uint32_t m_Channels;
 
-  Enums::Image::ColorSpace m_colorSpace;
+  Enums::Image::ColorSpace m_ColorSpace;
 
   void Create();
   void CreateImage();
