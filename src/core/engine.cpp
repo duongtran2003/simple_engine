@@ -75,7 +75,7 @@ Engine::Engine() {
   renderContext = new RenderContext(createInfo);
   renderContext->setMsaaSamples(vk::SampleCountFlagBits::e1);
   resourceManager = new ResourceManager(*renderContext);
-  framePacer = new FramePacer(60);
+  framePacer = new FramePacer(120);
 
   input = new Input(*renderContext);
   camera = new Camera(*input);
@@ -590,8 +590,8 @@ std::vector<Entity *> loadScene(ResourceManager *resourceManager,
                                 RenderContext &renderContext, Camera *camera) {
 
   std::vector<Entity *> entities;
-  //   entities = loadSponza(resourceManager, renderContext, camera);
-  entities = loadBall(resourceManager, renderContext, camera);
+  entities = loadSponza(resourceManager, renderContext, camera);
+  // entities = loadBall(resourceManager, renderContext, camera);
   // entities = loadChair(resourceManager, renderContext, camera);
   return entities;
 }

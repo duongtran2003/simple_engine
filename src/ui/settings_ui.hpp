@@ -10,7 +10,7 @@ private:
   const Core::RenderContext &context;
 
   const char *fpsLimiter[6] = {"60", "72", "90", "120", "144", "Uncapped"};
-  int currentOption = 0;
+  int currentOption = 3;
 
 public:
   SettingsUI() = delete;

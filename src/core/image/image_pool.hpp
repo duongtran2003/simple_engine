@@ -23,7 +23,7 @@ public:
 
 private:
   struct Slot {
-    std::unique_ptr<Image> Image;
+    std::unique_ptr<SimpleEngine::Core::Image> Image;
     uint32_t Generation = 1;
   };
 

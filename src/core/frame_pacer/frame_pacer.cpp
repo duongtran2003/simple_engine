@@ -6,7 +6,7 @@
 namespace SimpleEngine {
 namespace Core {
 
-FramePacer::FramePacer() : FramePacer(60) {}
+FramePacer::FramePacer() {}
 
 FramePacer::FramePacer(int64_t target) { setTargetFPS(target); }
 
