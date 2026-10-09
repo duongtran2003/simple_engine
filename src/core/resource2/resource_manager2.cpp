@@ -38,7 +38,7 @@ ResourceManager2::~ResourceManager2() {
 }
 
 const Texture2 *ResourceManager2::Get(TextureHandle handle) {
-  if (handle.Id >= m_TextureSlots.size()) {
+  if (handle.Id == 0 || handle.Id >= m_TextureSlots.size()) {
     return nullptr;
   }
 
@@ -104,6 +104,53 @@ ResourceManager2::AllocateTexture(const std::string &path,
   TextureHandle handle{.Id = freeSlotIdx, .Generation = freeSlot.Generation};
   m_TextureCache[path] = handle;
   return handle;
+}
+
+void ResourceManager2::ReleaseTexture(TextureHandle handle) {
+  if (handle.Id == 0 || handle.Id >= m_TextureSlots.size()) {
+    return;
+  }
+
+  TextureSlot &slot = m_TextureSlots[handle.Id];
+  if (slot.Generation != handle.Generation || slot.RefCount == 0) {
+    return;
+  }
+
+  slot.RefCount--;
+  if (slot.RefCount == 0) {
+    FreeTextureSlot(handle.Id);
+  }
+}
+
+void ResourceManager2::FreeTexture(TextureHandle handle) {
+  if (handle.Id == 0 || handle.Id >= m_TextureSlots.size()) {
+    return;
+  }
+
+  TextureSlot &slot = m_TextureSlots[handle.Id];
+  if (slot.Generation != handle.Generation || slot.RefCount == 0) {
+    return;
+  }
+
+  slot.RefCount = 0;
+  FreeTextureSlot(handle.Id);
+}
+
+void ResourceManager2::FreeTextureSlot(uint32_t slotIndex) {
+  TextureSlot &slot = m_TextureSlots[slotIndex];
+  std::string path = slot.Texture.GetPath();
+  m_TextureCache.erase(path);
+
+  ImageHandle imageHandle = slot.Texture.GetImageHandle();
+  if (imageHandle.IsValid()) {
+    m_pImagePool->Free(imageHandle);
+  }
+
+  slot.Generation++;
+  slot.RefCount = 0;
+  slot.Texture = Texture2();
+
+  m_TextureFreeList.push_back(slotIndex);
 }
 } // namespace Core
 } // namespace SimpleEngine

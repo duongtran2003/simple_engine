@@ -33,7 +33,11 @@ public:
   const Texture2 *Get(TextureHandle handle);
   TextureHandle AllocateTexture(const std::string &path,
                                 const TextureAllocateInfo &allocateInfo);
+  // TODO: Implement deferred texture unloading
   void ReleaseTexture(TextureHandle handle);
+
+  // Force free texture regardless RefCount
+  void FreeTexture(TextureHandle handle);
 
 private:
   struct TextureSlot {
@@ -51,6 +55,7 @@ private:
   const RenderContext *m_pContext = nullptr;
 
   void InitTextureSlots();
+  void FreeTextureSlot(uint32_t slotIndex);
 };
 } // namespace Core
 } // namespace SimpleEngine
