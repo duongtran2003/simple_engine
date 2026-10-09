@@ -484,6 +484,22 @@ void AssetLoader::loadImageTexture(const std::string &path,
   stbi_image_free(pixels);
 }
 
+void AssetLoader::LoadImage(const std::string &path,
+                            std::vector<unsigned char> &pixels, int &width,
+                            int &height, int &channels) {
+  unsigned char *pRaw =
+      stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+  if (!pRaw) {
+    stbi_image_free(pRaw);
+    throw std::runtime_error(
+        "AssetLoader::LoadImage::ERROR: Failed to load image at " + path);
+  }
+
+  size_t size = static_cast<size_t>(width * height * channels);
+  pixels = std::vector<unsigned char>(pRaw, pRaw + size);
+  stbi_image_free(pRaw);
+}
+
 void AssetLoader::loadGltfSceneFromGltf(
     const std::string &path, const std::string &name,
     std::vector<Core::RawSceneNode> &nodes,

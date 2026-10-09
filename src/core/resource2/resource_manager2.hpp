@@ -5,8 +5,9 @@
 #include "core/render_context.hpp"
 #include "core/resource2/texture2.hpp"
 #include "core/resource2/texture_handle.hpp"
+#include "enums/image_enums.hpp"
+#include "vulkan/vulkan.hpp"
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -17,18 +18,26 @@ namespace SimpleEngine {
 namespace Core {
 class ResourceManager2 {
 public:
+  struct TextureAllocateInfo {
+    Enums::Image::ColorSpace ColorSpace;
+    vk::ImageAspectFlags AspectMask;
+    uint32_t MipLevels;
+    uint32_t ArrayLayers;
+  };
+
   ResourceManager2() = delete;
   ResourceManager2(ImagePool *imagePool, SamplerRegistry *samplerRegistry,
                    const RenderContext *renderContext);
   ~ResourceManager2();
 
-  Texture2 *Get(TextureHandle handle);
-  TextureHandle AllocateTexture(const std::string& path);
+  const Texture2 *Get(TextureHandle handle);
+  TextureHandle AllocateTexture(const std::string &path,
+                                const TextureAllocateInfo &allocateInfo);
   void ReleaseTexture(TextureHandle handle);
 
 private:
   struct TextureSlot {
-    std::unique_ptr<Texture2> Texture;
+    Texture2 Texture;
     uint32_t Generation = 1;
     uint32_t RefCount = 0;
   };

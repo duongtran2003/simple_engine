@@ -6,7 +6,10 @@
 
 namespace SimpleEngine {
 namespace Core {
-Texture2::Texture2(const std::string &path) { m_Path = path; }
+Texture2::Texture2(const std::string &path, const ImageHandle &imageHandle) {
+  m_Path = path;
+  m_ImageHandle = imageHandle;
+}
 Texture2::~Texture2() {
   // TODO: Destructor
 }
@@ -18,10 +21,5 @@ uint32_t Texture2::GetBindlessIndex() const { return m_BindlessIndex; }
 
 void Texture2::SetSampler(ImageSampler *sampler) { m_Sampler = sampler; }
 void Texture2::SetBindlessIndex(uint32_t index) { m_BindlessIndex = index; }
-
-void Texture2::LoadTexture() {
-
-}
-
 } // namespace Core
 } // namespace SimpleEngine

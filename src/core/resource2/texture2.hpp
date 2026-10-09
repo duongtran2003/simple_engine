@@ -9,8 +9,8 @@ namespace SimpleEngine {
 namespace Core {
 class Texture2 {
 public:
-  Texture2() = delete;
-  Texture2(const std::string &path);
+  Texture2() = default;
+  Texture2(const std::string &path, const ImageHandle& imageHandle);
   ~Texture2();
 
   const std::string &GetPath() const;
@@ -18,7 +18,6 @@ public:
   const ImageSampler *GetSampler() const;
   uint32_t GetBindlessIndex() const;
 
-  void LoadTexture();
   void SetSampler(ImageSampler *sampler);
   void SetBindlessIndex(uint32_t index);
 

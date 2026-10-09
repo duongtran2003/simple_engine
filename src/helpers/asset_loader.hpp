@@ -26,6 +26,9 @@ public:
 
   static void loadImageTexture(const std::string &path,
                                Core::RawTexture &rawTexture);
+  static void LoadImage(const std::string &path,
+                        std::vector<unsigned char> &pixels, int &width,
+                        int &height, int &channels);
 
 private:
   static tinygltf::Model loadTinyGltfModelFromBinary(const std::string &path);
