@@ -46,20 +46,20 @@ struct Vertex {
   }
 };
 
-class Mesh {
+class Mesh2 {
 public:
-  Mesh() = default;
+  Mesh2() = default;
 
-  Mesh(Mesh &&) noexcept = default;
-  Mesh &operator=(Mesh &&) noexcept = default;
+  Mesh2(Mesh2 &&) noexcept = default;
+  Mesh2 &operator=(Mesh2 &&) noexcept = default;
 
-  Mesh(const Mesh &) = delete;
-  Mesh &operator=(const Mesh &) = delete;
+  Mesh2(const Mesh2 &) = delete;
+  Mesh2 &operator=(const Mesh2 &) = delete;
 
-  Mesh(const std::string &identifier, std::unique_ptr<Buffer> vertexBuffer,
+  Mesh2(const std::string &identifier, std::unique_ptr<Buffer> vertexBuffer,
        std::unique_ptr<Buffer> indexBuffer, uint32_t vertexCount,
        uint32_t indexCount, vk::IndexType indexType = vk::IndexType::eUint32);
-  ~Mesh();
+  ~Mesh2();
 
   const std::string &GetIdentifier() const;
   const Buffer *GetVertexBuffer() const;

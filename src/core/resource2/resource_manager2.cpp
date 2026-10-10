@@ -4,6 +4,8 @@
 #include "core/image/image_pool.hpp"
 #include "core/image/sampler_registry.hpp"
 #include "core/render_context.hpp"
+#include "core/resource2/mesh2.hpp"
+#include "core/resource2/mesh_handle.hpp"
 #include "core/resource2/texture2.hpp"
 #include "core/resource2/texture_handle.hpp"
 #include "enums/image_enums.hpp"
@@ -48,6 +50,19 @@ const Texture2 *ResourceManager2::Get(TextureHandle handle) {
   }
 
   return &slot.Texture;
+}
+
+const Mesh2 *ResourceManager2::Get(MeshHandle handle) {
+  if (handle.Id == 0 || handle.Id >= m_MeshSlots.size()) {
+    return nullptr;
+  }
+
+  const MeshSlot &slot = m_MeshSlots[handle.Id];
+  if (slot.Generation != handle.Generation || slot.RefCount == 0) {
+    return nullptr;
+  }
+
+  return &slot.Mesh;
 }
 
 TextureHandle

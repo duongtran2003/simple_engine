@@ -3,6 +3,8 @@
 #include "core/image/image_pool.hpp"
 #include "core/image/sampler_registry.hpp"
 #include "core/render_context.hpp"
+#include "core/resource2/mesh2.hpp"
+#include "core/resource2/mesh_handle.hpp"
 #include "core/resource2/texture2.hpp"
 #include "core/resource2/texture_handle.hpp"
 #include "enums/image_enums.hpp"
@@ -39,9 +41,20 @@ public:
   // Force free texture regardless RefCount
   void FreeTexture(TextureHandle handle);
 
+  const Mesh2 *Get(MeshHandle handle);
+  MeshHandle AllocateMesh();
+  void ReleaseMesh(MeshHandle handle);
+  void FreeMesh(MeshHandle handle);
+
 private:
   struct TextureSlot {
     Texture2 Texture;
+    uint32_t Generation = 1;
+    uint32_t RefCount = 0;
+  };
+
+  struct MeshSlot {
+    Mesh2 Mesh;
     uint32_t Generation = 1;
     uint32_t RefCount = 0;
   };
@@ -50,12 +63,20 @@ private:
   std::vector<uint32_t> m_TextureFreeList;
   std::unordered_map<std::string, TextureHandle> m_TextureCache;
 
+  std::vector<MeshSlot> m_MeshSlots;
+  std::vector<uint32_t> m_MeshFreeList;
+  std::unordered_map<std::string, MeshHandle> m_MeshCache;
+
   ImagePool *m_pImagePool = nullptr;
   SamplerRegistry *m_pSamplerRegistry = nullptr;
+
   const RenderContext *m_pContext = nullptr;
 
   void InitTextureSlots();
   void FreeTextureSlot(uint32_t slotIndex);
+
+  void InitMeshSlots();
+  void FreeMeshSlot(uint32_t slotIndex);
 };
 } // namespace Core
 } // namespace SimpleEngine
