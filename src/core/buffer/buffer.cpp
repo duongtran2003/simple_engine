@@ -96,7 +96,7 @@ void Buffer::Unmap() {
   m_Mapped = nullptr;
 }
 
-void Buffer::Write(void *data) {
+void Buffer::Write(const void *data) {
   if (IsMapped()) {
     memcpy(m_Mapped, data, m_Size);
     return;

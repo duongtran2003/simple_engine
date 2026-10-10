@@ -35,6 +35,8 @@ public:
   bool IsValid() const;
   void TransitionLayout(vk::ImageLayout toLayout, bool keepContent,
                         vk::CommandBuffer &commandBuffer);
+  void TransitionMipLayout(vk::ImageLayout oldLayout, vk::ImageLayout toLayout,
+                           uint32_t mipLevel, vk::CommandBuffer &commandBuffer);
 
   vk::Image GetImage() const;
   vk::ImageView GetView() const;
@@ -76,6 +78,8 @@ private:
   void CreateImage();
   void AllocMemory();
   void CreateView();
+
+  void GenerateMipmap(vk::CommandBuffer &commandBuffer);
 };
 } // namespace Core
 } // namespace SimpleEngine

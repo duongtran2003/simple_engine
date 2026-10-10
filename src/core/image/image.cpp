@@ -1,9 +1,10 @@
 #include "core/image/image.hpp"
+#include "core/buffer/buffer.hpp"
 #include "core/render_context.hpp"
 #include "helpers/vulkan_helper.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
-#include <cstring>
+#include <stdexcept>
 
 namespace SimpleEngine {
 namespace Core {
@@ -120,6 +121,18 @@ void Image::TransitionLayout(vk::ImageLayout toLayout, bool keepContent,
   m_Layout = toLayout;
 }
 
+void Image::TransitionMipLayout(vk::ImageLayout oldLayout,
+                                vk::ImageLayout toLayout, uint32_t mipLevel,
+                                vk::CommandBuffer &commandBuffer) {
+  if (!m_IsValid) {
+    return;
+  }
+
+  Helper::VulkanHelper::transitionImageLayout(
+      commandBuffer, m_Image, 1, mipLevel, m_ArrayLayers, 0, oldLayout,
+      toLayout, m_AspectMask);
+}
+
 bool Image::IsValid() const { return m_IsValid; }
 vk::Image Image::GetImage() const { return m_Image; }
 vk::ImageView Image::GetView() const { return m_View; }
@@ -128,28 +141,95 @@ vk::Extent3D Image::GetExtent() const { return m_Extent; };
 vk::ImageLayout Image::GetLayout() const { return m_Layout; }
 
 void Image::UploadData(const void *pixels, vk::DeviceSize size) {
-  auto [stagingBuffer, stagingMemory] = Helper::VulkanHelper::createBuffer(
-      size, vk::BufferUsageFlagBits::eTransferSrc,
-      vk::MemoryPropertyFlagBits::eHostVisible |
-          vk::MemoryPropertyFlagBits::eHostCoherent,
-      *m_pContext);
-
-  void *data = m_pContext->device.mapMemory(stagingMemory, 0, size);
-  memcpy(data, pixels, static_cast<size_t>(size));
-  m_pContext->device.unmapMemory(stagingMemory);
+  Buffer::CreateInfo bufferCreateInfo{
+      .Size = size,
+      .Usage = vk::BufferUsageFlagBits::eTransferSrc,
+      .Properties = vk::MemoryPropertyFlagBits::eHostVisible |
+                    vk::MemoryPropertyFlagBits::eHostCoherent};
+  Buffer stagingBuffer = Buffer(bufferCreateInfo, m_pContext);
+  stagingBuffer.Write(pixels);
 
   vk::CommandBuffer commandBuffer =
       Helper::VulkanHelper::beginSingleTimeCommands(*m_pContext);
 
   TransitionLayout(vk::ImageLayout::eTransferDstOptimal, false, commandBuffer);
-  Helper::VulkanHelper::copyBufferToImage(commandBuffer, stagingBuffer, m_Image,
+  Helper::VulkanHelper::copyBufferToImage(commandBuffer, stagingBuffer.GetBuffer(), m_Image,
                                           m_Extent.width, m_Extent.height,
                                           vk::ImageAspectFlagBits::eColor);
-  TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal, true,
-                   commandBuffer);
+
+  if (m_MipLevels > 1) {
+    GenerateMipmap(commandBuffer);
+  } else {
+    TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal, true,
+                     commandBuffer);
+  }
+
   Helper::VulkanHelper::endSingleTimeCommands(commandBuffer, *m_pContext);
-  m_pContext->device.destroyBuffer(stagingBuffer);
-  m_pContext->device.freeMemory(stagingMemory);
+}
+
+void Image::GenerateMipmap(vk::CommandBuffer &commandBuffer) {
+  vk::FormatProperties formatProperties =
+      m_pContext->physicalDevice.getFormatProperties(m_Format);
+  if (!(formatProperties.optimalTilingFeatures &
+        vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
+    throw std::runtime_error(
+        "Image::GenerateMipmap::ERROR: Format is not supported.");
+  }
+
+  int32_t mipHeight = static_cast<int32_t>(m_Height);
+  int32_t mipWidth = static_cast<int32_t>(m_Width);
+  for (uint32_t i = 1; i < m_MipLevels; i++) {
+    TransitionMipLayout(vk::ImageLayout::eTransferDstOptimal,
+                        vk::ImageLayout::eTransferSrcOptimal, i - 1,
+                        commandBuffer);
+
+    vk::ArrayWrapper1D<vk::Offset3D, 2> srcOffsets, dstOffsets;
+
+    srcOffsets[0] = vk::Offset3D(0, 0, 0);
+    srcOffsets[1] = vk::Offset3D(mipWidth, mipHeight, 1);
+
+    dstOffsets[0] = vk::Offset3D(0, 0, 0);
+    dstOffsets[1] = vk::Offset3D(mipWidth > 1 ? mipWidth / 2 : 1,
+                                 mipHeight > 1 ? mipHeight / 2 : 1, 1);
+
+    vk::ImageSubresourceLayers blitSrcSubResource = {
+        .aspectMask = vk::ImageAspectFlagBits::eColor,
+        .mipLevel = i - 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1};
+
+    vk::ImageSubresourceLayers blitDstSubResource = {
+        .aspectMask = vk::ImageAspectFlagBits::eColor,
+        .mipLevel = i,
+        .baseArrayLayer = 0,
+        .layerCount = 1};
+
+    vk::ImageBlit blit = {.srcSubresource = blitSrcSubResource,
+                          .srcOffsets = srcOffsets,
+                          .dstSubresource = blitDstSubResource,
+                          .dstOffsets = dstOffsets};
+
+    commandBuffer.blitImage(m_Image, vk::ImageLayout::eTransferSrcOptimal,
+                            m_Image, vk::ImageLayout::eTransferDstOptimal,
+                            {blit}, vk::Filter::eLinear);
+
+    TransitionMipLayout(vk::ImageLayout::eTransferSrcOptimal,
+                        vk::ImageLayout::eShaderReadOnlyOptimal, i - 1,
+                        commandBuffer);
+
+    if (mipWidth > 1) {
+      mipWidth /= 2;
+    }
+
+    if (mipHeight > 1) {
+      mipHeight /= 2;
+    }
+  }
+
+  TransitionMipLayout(vk::ImageLayout::eTransferDstOptimal,
+                      vk::ImageLayout::eShaderReadOnlyOptimal, m_MipLevels - 1,
+                      commandBuffer);
+  m_Layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 }
 } // namespace Core
 } // namespace SimpleEngine

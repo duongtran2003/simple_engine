@@ -62,7 +62,7 @@ public:
                          const Core::RenderContext &context);
 
   static void copyBufferToImage(vk::CommandBuffer &commandBuffer,
-                                vk::Buffer &src, vk::Image &dst, uint32_t width,
+                                vk::Buffer src, vk::Image dst, uint32_t width,
                                 uint32_t height,
                                 vk::ImageAspectFlags aspectMask);
 };

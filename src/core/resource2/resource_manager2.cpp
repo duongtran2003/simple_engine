@@ -81,8 +81,8 @@ ResourceManager2::AllocateTexture(const std::string &path,
       .Format = format,
       .Extent = vk::Extent3D{static_cast<uint32_t>(width),
                              static_cast<uint32_t>(height), 1},
-      .MipLevels = 1,
-      .ArrayLayers = 1,
+      .MipLevels = allocateInfo.MipLevels,
+      .ArrayLayers = allocateInfo.ArrayLayers,
       .Usage = vk::ImageUsageFlagBits::eTransferSrc |
                vk::ImageUsageFlagBits::eTransferDst |
                vk::ImageUsageFlagBits::eSampled,

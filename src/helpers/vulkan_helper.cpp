@@ -323,7 +323,7 @@ void VulkanHelper::copyBuffer(const vk::Buffer &src, vk::Buffer &dst,
 }
 
 void VulkanHelper::copyBufferToImage(vk::CommandBuffer &commandBuffer,
-                                     vk::Buffer &src, vk::Image &dst,
+                                     vk::Buffer src, vk::Image dst,
                                      uint32_t width, uint32_t height,
                                      vk::ImageAspectFlags aspectMask) {
   vk::BufferImageCopy region{

@@ -29,7 +29,7 @@ public:
   vk::DeviceMemory GetMemory() const;
   void *GetMapped() const;
 
-  void Write(void *data);
+  void Write(const void *data);
 
 private:
   const RenderContext *m_pContext;
