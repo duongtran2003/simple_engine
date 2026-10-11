@@ -2,14 +2,16 @@
 
 #include "core/raw_scene_node.hpp"
 #include "core/raw_texture.hpp"
+#include "core/resource2/raw_model_data.hpp"
 #include "enums/texture.hpp"
+#include <fastgltf/types.hpp>
+#include <filesystem>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/fwd.hpp>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <tiny_gltf.h>
 #include <unordered_map>
 #include <vector>
 
@@ -30,6 +32,9 @@ public:
                         std::vector<unsigned char> &pixels, int &width,
                         int &height, int &channels);
 
+  static std::optional<Core::RawModelData>
+  LoadGltf(const std::filesystem::path &filePath);
+
 private:
   static tinygltf::Model loadTinyGltfModelFromBinary(const std::string &path);
   static tinygltf::Model loadTinyGltfModelFromASCII(const std::string &path);
@@ -48,6 +53,16 @@ private:
       const glm::mat4 &parentTransform, std::vector<Core::RawSceneNode> &nodes,
       std::unordered_map<std::string, Core::RawTexture> &texturesMap,
       const std::string &scenePath);
+
+  static void ParseGltf(const std::filesystem::path &filePath,
+                        fastgltf::Asset &asset);
+  static void ExtractGltfSamplers(fastgltf::Asset &asset,
+                                  std::vector<Core::RawSamplerData> &samplers);
+  static void ExtractGltfImages(fastgltf::Asset &asset,
+                                std::vector<Core::RawImageData> &images,
+                                const std::filesystem::path &filePath);
+  static void ExtractGltfTextures(fastgltf::Asset& asset, std::vector<Core::RawTextureData>& textures);
+  static void ExtractGltfMaterials(fastgltf::Asset& asset, std::vector<Core::RawMaterialData>& materials);
 };
 } // namespace Helper
 } // namespace SimpleEngine

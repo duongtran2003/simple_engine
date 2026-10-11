@@ -2,11 +2,14 @@
 #include "core/raw_scene_node.hpp"
 #include "core/raw_texture.hpp"
 #include "core/resource/mesh.hpp"
+#include "core/resource2/raw_model_data.hpp"
+#include "enums/image_enums.hpp"
 #include "enums/texture.hpp"
 #include "helpers/math.hpp"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <fastgltf/util.hpp>
 #include <filesystem>
 #include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
@@ -26,14 +29,224 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
+#include <variant>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
+#include <fastgltf/core.hpp>
+#include <fastgltf/tools.hpp>
+#include <fastgltf/types.hpp>
 #include <tiny_gltf.h>
 #include <vector>
 
 namespace SimpleEngine {
+
+// Converter
+Enums::Image::Filter GetFilterEnum(fastgltf::Filter filter) {
+  switch (filter) {
+  case fastgltf::Filter::Nearest:
+  case fastgltf::Filter::NearestMipMapNearest:
+  case fastgltf::Filter::NearestMipMapLinear:
+    return Enums::Image::Filter::eNearest;
+  case fastgltf::Filter::Linear:
+  case fastgltf::Filter::LinearMipMapNearest:
+  case fastgltf::Filter::LinearMipMapLinear:
+  default:
+    return Enums::Image::Filter::eLinear;
+  }
+}
+
+Enums::Image::MipmapMode GetMipmapModeEnum(fastgltf::Filter filter) {
+  switch (filter) {
+  case fastgltf::Filter::NearestMipMapNearest:
+  case fastgltf::Filter::LinearMipMapNearest:
+    return Enums::Image::MipmapMode::eNearest;
+  case fastgltf::Filter::NearestMipMapLinear:
+  case fastgltf::Filter::LinearMipMapLinear:
+  default:
+    return Enums::Image::MipmapMode::eLinear;
+  }
+}
+
+Enums::Image::Wrap GetWrapEnum(fastgltf::Wrap wrap) {
+  switch (wrap) {
+  case fastgltf::Wrap::ClampToEdge:
+    return Enums::Image::Wrap::eClampToEdge;
+  case fastgltf::Wrap::MirroredRepeat:
+    return Enums::Image::Wrap::eMirroredRepeat;
+  case fastgltf::Wrap::Repeat:
+  default:
+    return Enums::Image::Wrap::eRepeat;
+  }
+}
+
 namespace Helper {
+
+void AssetLoader::ParseGltf(const std::filesystem::path &filePath,
+                            fastgltf::Asset &asset) {
+  if (!std::filesystem::exists(filePath)) {
+    throw std::runtime_error(
+        "Helper::AssetLoader::LoadGltf::ERROR: File not found at " +
+        filePath.string());
+  }
+
+  auto data = fastgltf::GltfDataBuffer::FromPath(filePath);
+  if (!data) {
+    throw std::runtime_error(
+        "Helper::AssetLoader::LoadGltf::ERROR: Failed to load data from " +
+        filePath.string());
+  }
+
+  auto gltfOptions = fastgltf::Options::DontRequireValidAssetMember |
+                     fastgltf::Options::AllowDouble |
+                     fastgltf::Options::LoadExternalBuffers |
+                     fastgltf::Options::LoadExternalImages;
+
+  fastgltf::Parser gltfParser;
+  auto parseResult =
+      gltfParser.loadGltf(data.get(), filePath.parent_path(), gltfOptions);
+  if (parseResult.error() != fastgltf::Error::None) {
+    throw std::runtime_error(
+        "Helper::AssetLoader::LoadGltf::ERROR: Parsing error at" +
+        filePath.string());
+  }
+
+  asset = std::move(parseResult.get());
+}
+
+void AssetLoader::ExtractGltfSamplers(
+    fastgltf::Asset &asset, std::vector<Core::RawSamplerData> &samplers) {
+  samplers.reserve(asset.samplers.size());
+  for (const auto &sampler : asset.samplers) {
+    Core::RawSamplerData rawSampler{};
+    if (sampler.magFilter.has_value()) {
+      rawSampler.MagFilter = GetFilterEnum(sampler.magFilter.value());
+    }
+    if (sampler.minFilter.has_value()) {
+      rawSampler.MinFilter = GetFilterEnum(sampler.minFilter.value());
+      rawSampler.MipmapMode = GetMipmapModeEnum(sampler.minFilter.value());
+    }
+    rawSampler.WrapU = GetWrapEnum(sampler.wrapS);
+    rawSampler.WrapV = GetWrapEnum(sampler.wrapT);
+    samplers.push_back(rawSampler);
+  }
+}
+
+void AssetLoader::ExtractGltfImages(fastgltf::Asset &asset,
+                                    std::vector<Core::RawImageData> &images,
+                                    const std::filesystem::path &filePath) {
+  images.reserve(asset.images.size());
+  for (const auto &image : asset.images) {
+    Core::RawImageData rawImage{};
+    rawImage.Name = image.name;
+
+    // NOTE: I have no idea what this does but fastgltf seems to use it
+    fastgltf::visitor visitor{
+        [&](const fastgltf::sources::URI &uri) {
+          rawImage.FilePath =
+              (filePath.parent_path() / uri.uri.fspath()).string();
+        },
+        [&](const fastgltf::sources::Array &array) {
+          rawImage.Bytes.assign(
+              reinterpret_cast<const uint8_t *>(array.bytes.data()),
+              reinterpret_cast<const uint8_t *>(array.bytes.data()) +
+                  array.bytes.size());
+        },
+        [&](const fastgltf::sources::BufferView &bufferView) {
+          const auto &view = asset.bufferViews[bufferView.bufferViewIndex];
+          const auto &buffer = asset.buffers[view.bufferIndex];
+          fastgltf::visitor visitor{
+              [&](const fastgltf::sources::Array &array) {
+                const uint8_t *start =
+                    reinterpret_cast<const uint8_t *>(array.bytes.data()) +
+                    view.byteOffset;
+                rawImage.Bytes.assign(start, start + view.byteLength);
+              },
+              [&](const auto &) {
+                std::cout << "Helper::AssetLoader::ExtractGltfImages::ERROR: "
+                             "Unsupported bufferView source backing.\n";
+              }};
+          std::visit(visitor, buffer.data);
+        },
+        [&](const auto &) {
+          std::cout << "Helper::AssetLoader::ExtractGltfImages::ERROR: "
+                       "Unsupported image source type.\n";
+        }};
+    std::visit(visitor, image.data);
+    images.push_back(std::move(rawImage));
+  }
+}
+
+void AssetLoader::ExtractGltfTextures(
+    fastgltf::Asset &asset, std::vector<Core::RawTextureData> &textures) {
+  textures.reserve(asset.textures.size());
+  for (const auto &texture : asset.textures) {
+    Core::RawTextureData rawTexture{};
+    rawTexture.SamplerIndex =
+        static_cast<int32_t>(texture.samplerIndex.value());
+    rawTexture.ImageIndex = static_cast<int32_t>(texture.imageIndex.value());
+    textures.push_back(rawTexture);
+  }
+}
+
+void AssetLoader::ExtractGltfMaterials(
+    fastgltf::Asset &asset, std::vector<Core::RawMaterialData> &materials) {
+  materials.reserve(asset.materials.size());
+  for (const auto &material : asset.materials) {
+    Core::RawMaterialData rawMaterial{};
+    rawMaterial.Name = material.name;
+
+    const auto &pbr = material.pbrData;
+    if (pbr.baseColorTexture.has_value()) {
+      rawMaterial.BaseColorTextureIndex =
+          static_cast<int32_t>(pbr.baseColorTexture->textureIndex);
+    }
+    rawMaterial.BaseColorFactor =
+        glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1],
+                  pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
+
+    if (pbr.metallicRoughnessTexture.has_value()) {
+      rawMaterial.MetallicRoughnessTextureIndex =
+          static_cast<int32_t>(pbr.metallicRoughnessTexture->textureIndex);
+    }
+    rawMaterial.MetallicFactor = pbr.metallicFactor;
+    rawMaterial.RoughnessFactor = pbr.roughnessFactor;
+
+    if (material.normalTexture.has_value()) {
+      rawMaterial.NormalTextureIndex =
+          static_cast<int32_t>(material.normalTexture->textureIndex);
+    }
+    if (material.occlusionTexture.has_value()) {
+      rawMaterial.OcclusionTextureIndex =
+          static_cast<int32_t>(material.occlusionTexture->textureIndex);
+    }
+    if (material.emissiveTexture.has_value()) {
+      rawMaterial.EmissiveTextureIndex =
+          static_cast<int32_t>(material.emissiveTexture->textureIndex);
+    }
+    rawMaterial.EmissiveFactor =
+        glm::vec3(material.emissiveFactor[0], material.emissiveFactor[1],
+                  material.emissiveFactor[2]);
+
+    rawMaterial.AlphaCutoff = material.alphaCutoff;
+    rawMaterial.DoubleSided = material.doubleSided;
+
+    materials.push_back(rawMaterial);
+  }
+}
+
+std::optional<Core::RawModelData>
+AssetLoader::LoadGltf(const std::filesystem::path &filePath) {
+  fastgltf::Asset gltf;
+  ParseGltf(filePath, gltf);
+  Core::RawModelData modelData{};
+  ExtractGltfSamplers(gltf, modelData.Samplers);
+  ExtractGltfImages(gltf, modelData.Images, filePath);
+  ExtractGltfTextures(gltf, modelData.Textures);
+  ExtractGltfMaterials(gltf, modelData.Materials);
+}
+
 tinygltf::Model
 AssetLoader::loadTinyGltfModelFromBinary(const std::string &path) {
   tinygltf::Model model;

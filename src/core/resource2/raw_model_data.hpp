@@ -29,7 +29,6 @@ struct RawImageData {
   std::string Name;
   std::string FilePath;
   std::vector<uint8_t> Bytes;
-  std::string MimeType;
 };
 
 struct RawTextureData {
