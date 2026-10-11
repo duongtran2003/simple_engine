@@ -12,10 +12,10 @@
         "vulkan-binding"
       ]
     },
-    "tinyobjloader",
     "vulkan-headers",
     "vulkan-loader",
     "stb",
-    "catch2"
+    "catch2",
+    "fastgltf"
   ]
 }
