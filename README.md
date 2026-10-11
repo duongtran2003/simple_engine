@@ -1,4 +1,4 @@
-# Simple Engine
+# Simple Engine (WIP, under full and heavy refactoring)
 
 A real-time rendering engine written in C++, utilizing **Vulkan** as its backend for rendering. This is my hobby project, serves as a playground for me to explore the world of modern graphics programming. 
 
