@@ -4,6 +4,7 @@
 #include "core/raw_texture.hpp"
 #include "core/resource2/raw_model_data.hpp"
 #include "enums/texture.hpp"
+#include <cstdint>
 #include <fastgltf/types.hpp>
 #include <filesystem>
 #include <glm/ext/matrix_float4x4.hpp>
@@ -61,8 +62,15 @@ private:
   static void ExtractGltfImages(fastgltf::Asset &asset,
                                 std::vector<Core::RawImageData> &images,
                                 const std::filesystem::path &filePath);
-  static void ExtractGltfTextures(fastgltf::Asset& asset, std::vector<Core::RawTextureData>& textures);
-  static void ExtractGltfMaterials(fastgltf::Asset& asset, std::vector<Core::RawMaterialData>& materials);
+  static void ExtractGltfTextures(fastgltf::Asset &asset,
+                                  std::vector<Core::RawTextureData> &textures);
+  static void
+  ExtractGltfMaterials(fastgltf::Asset &asset,
+                       std::vector<Core::RawMaterialData> &materials);
+  static void
+  ExtractMeshes(fastgltf::Asset &asset,
+                std::vector<std::vector<uint32_t>> &meshToPrimitives,
+                Core::RawModelData &modelData, const std::filesystem::path &filePath);
 };
 } // namespace Helper
 } // namespace SimpleEngine

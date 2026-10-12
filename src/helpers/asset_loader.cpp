@@ -6,9 +6,11 @@
 #include "enums/image_enums.hpp"
 #include "enums/texture.hpp"
 #include "helpers/math.hpp"
+#include "vulkan/vulkan.hpp"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <fastgltf/math.hpp>
 #include <fastgltf/util.hpp>
 #include <filesystem>
 #include <glm/ext/matrix_float3x3.hpp>
@@ -236,6 +238,77 @@ void AssetLoader::ExtractGltfMaterials(
   }
 }
 
+void AssetLoader::ExtractMeshes(
+    fastgltf::Asset &asset,
+    std::vector<std::vector<uint32_t>> &meshToPrimitives,
+    Core::RawModelData &modelData, const std::filesystem::path &filePath) {
+  meshToPrimitives.resize(asset.meshes.size());
+  for (size_t meshIdx = 0; meshIdx < asset.meshes.size(); meshIdx++) {
+    const auto &mesh = asset.meshes[meshIdx];
+    std::string meshName = mesh.name.empty()
+                               ? ("mesh_" + std::to_string(meshIdx))
+                               : std::string(mesh.name);
+    for (size_t primitiveIdx = 0; primitiveIdx < mesh.primitives.size();
+         primitiveIdx++) {
+      const auto &primitive = mesh.primitives[primitiveIdx];
+      Core::RawPrimitiveData rawPrimitive{};
+      rawPrimitive.Identifier = filePath.string() + "#" + meshName + "_" +
+                                std::to_string(primitiveIdx);
+      rawPrimitive.MaterialIndex =
+          primitive.materialIndex.has_value()
+              ? static_cast<int32_t>(primitive.materialIndex.value())
+              : -1;
+
+      auto *positionIt = primitive.findAttribute("POSITION");
+      if (positionIt != primitive.attributes.end()) {
+        const auto &accessor = asset.accessors[positionIt->accessorIndex];
+        rawPrimitive.Vertices.resize(accessor.count);
+        fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
+            asset, accessor, [&](fastgltf::math::fvec3 position, size_t idx) {
+              rawPrimitive.Vertices[idx].Position =
+                  glm::vec3(position[0], position[1], position[2]);
+            });
+      }
+
+      auto *normalIt = primitive.findAttribute("NORMAL");
+      if (normalIt != primitive.attributes.end()) {
+        const auto &accessor = asset.accessors[positionIt->accessorIndex];
+        rawPrimitive.Vertices.resize(accessor.count);
+        fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
+            asset, accessor, [&](fastgltf::math::fvec3 normal, size_t idx) {
+              rawPrimitive.Vertices[idx].Normal =
+                  glm::vec3(normal[0], normal[1], normal[2]);
+            });
+      }
+
+      auto *texCoordIt = primitive.findAttribute("TEXCOORD_0");
+      if (texCoordIt != primitive.attributes.end()) {
+        const auto &accessor = asset.accessors[positionIt->accessorIndex];
+        rawPrimitive.Vertices.resize(accessor.count);
+        fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(
+            asset, accessor, [&](fastgltf::math::fvec2 uv, size_t idx) {
+              rawPrimitive.Vertices[idx].TexCoords = glm::vec2(uv[0], uv[1]);
+            });
+      }
+
+      if (primitive.indicesAccessor.has_value()) {
+        const auto &accessor = asset.accessors[*primitive.indicesAccessor];
+        rawPrimitive.Indices.resize(accessor.count);
+
+        fastgltf::iterateAccessorWithIndex<uint32_t>(
+            asset, accessor, [&](uint32_t index, size_t idx) {
+              rawPrimitive.Indices[idx] = index;
+            });
+        rawPrimitive.IndexType = vk::IndexType::eUint32;
+      }
+
+      uint32_t globalIndex = static_cast<uint32_t>(modelData.Primitives.size());
+      modelData.Primitives.push_back(std::move(rawPrimitive));
+      meshToPrimitives[meshIdx].push_back(globalIndex);
+    }
+  }
+}
+
 std::optional<Core::RawModelData>
 AssetLoader::LoadGltf(const std::filesystem::path &filePath) {
   fastgltf::Asset gltf;
@@ -245,6 +318,8 @@ AssetLoader::LoadGltf(const std::filesystem::path &filePath) {
   ExtractGltfImages(gltf, modelData.Images, filePath);
   ExtractGltfTextures(gltf, modelData.Textures);
   ExtractGltfMaterials(gltf, modelData.Materials);
+  std::vector<std::vector<uint32_t>> meshToPrimitives;
+  ExtractMeshes(gltf, meshToPrimitives, modelData, filePath);
 }
 
 tinygltf::Model
