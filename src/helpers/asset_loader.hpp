@@ -70,7 +70,11 @@ private:
   static void
   ExtractMeshes(fastgltf::Asset &asset,
                 std::vector<std::vector<uint32_t>> &meshToPrimitives,
-                Core::RawModelData &modelData, const std::filesystem::path &filePath);
+                Core::RawModelData &modelData,
+                const std::filesystem::path &filePath);
+  static void
+  BuildNodesHierarchy(fastgltf::Asset &asset, std::vector<Core::RawNode> &nodes,
+                      std::vector<std::vector<uint32_t>> &meshToPrimitives);
 };
 } // namespace Helper
 } // namespace SimpleEngine

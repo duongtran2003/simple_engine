@@ -165,6 +165,12 @@ void AssetLoader::ExtractGltfImages(fastgltf::Asset &asset,
                     view.byteOffset;
                 rawImage.Bytes.assign(start, start + view.byteLength);
               },
+              [&](const fastgltf::sources::ByteView &viewData) {
+                const uint8_t *start =
+                    reinterpret_cast<const uint8_t *>(viewData.bytes.data()) +
+                    view.byteOffset;
+                rawImage.Bytes.assign(start, start + view.byteLength);
+              },
               [&](const auto &) {
                 std::cout << "Helper::AssetLoader::ExtractGltfImages::ERROR: "
                              "Unsupported bufferView source backing.\n";
@@ -186,8 +192,9 @@ void AssetLoader::ExtractGltfTextures(
   for (const auto &texture : asset.textures) {
     Core::RawTextureData rawTexture{};
     rawTexture.SamplerIndex =
-        static_cast<int32_t>(texture.samplerIndex.value());
-    rawTexture.ImageIndex = static_cast<int32_t>(texture.imageIndex.value());
+        static_cast<int32_t>(texture.samplerIndex.value_or(-1));
+    rawTexture.ImageIndex =
+        static_cast<int32_t>(texture.imageIndex.value_or(-1));
     textures.push_back(rawTexture);
   }
 }
@@ -260,22 +267,23 @@ void AssetLoader::ExtractMeshes(
               : -1;
 
       auto *positionIt = primitive.findAttribute("POSITION");
-      if (positionIt != primitive.attributes.end()) {
-        const auto &accessor = asset.accessors[positionIt->accessorIndex];
-        rawPrimitive.Vertices.resize(accessor.count);
-        fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
-            asset, accessor, [&](fastgltf::math::fvec3 position, size_t idx) {
-              rawPrimitive.Vertices[idx].Position =
-                  glm::vec3(position[0], position[1], position[2]);
-            });
+      if (positionIt == primitive.attributes.end()) {
+        continue;
       }
+      const auto &accessor = asset.accessors[positionIt->accessorIndex];
+      rawPrimitive.Vertices.resize(accessor.count);
+      fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
+          asset, accessor, [&](fastgltf::math::fvec3 position, size_t idx) {
+            rawPrimitive.Vertices[idx].Position =
+                glm::vec3(position[0], position[1], position[2]);
+          });
 
       auto *normalIt = primitive.findAttribute("NORMAL");
       if (normalIt != primitive.attributes.end()) {
-        const auto &accessor = asset.accessors[positionIt->accessorIndex];
-        rawPrimitive.Vertices.resize(accessor.count);
+        const auto &normalAccessor = asset.accessors[normalIt->accessorIndex];
         fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
-            asset, accessor, [&](fastgltf::math::fvec3 normal, size_t idx) {
+            asset, normalAccessor,
+            [&](fastgltf::math::fvec3 normal, size_t idx) {
               rawPrimitive.Vertices[idx].Normal =
                   glm::vec3(normal[0], normal[1], normal[2]);
             });
@@ -283,20 +291,19 @@ void AssetLoader::ExtractMeshes(
 
       auto *texCoordIt = primitive.findAttribute("TEXCOORD_0");
       if (texCoordIt != primitive.attributes.end()) {
-        const auto &accessor = asset.accessors[positionIt->accessorIndex];
-        rawPrimitive.Vertices.resize(accessor.count);
+        const auto &uvAccessor = asset.accessors[texCoordIt->accessorIndex];
         fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(
-            asset, accessor, [&](fastgltf::math::fvec2 uv, size_t idx) {
+            asset, uvAccessor, [&](fastgltf::math::fvec2 uv, size_t idx) {
               rawPrimitive.Vertices[idx].TexCoords = glm::vec2(uv[0], uv[1]);
             });
       }
 
       if (primitive.indicesAccessor.has_value()) {
-        const auto &accessor = asset.accessors[*primitive.indicesAccessor];
-        rawPrimitive.Indices.resize(accessor.count);
+        const auto &indexAccessor = asset.accessors[*primitive.indicesAccessor];
+        rawPrimitive.Indices.resize(indexAccessor.count);
 
         fastgltf::iterateAccessorWithIndex<uint32_t>(
-            asset, accessor, [&](uint32_t index, size_t idx) {
+            asset, indexAccessor, [&](uint32_t index, size_t idx) {
               rawPrimitive.Indices[idx] = index;
             });
         rawPrimitive.IndexType = vk::IndexType::eUint32;
@@ -306,6 +313,57 @@ void AssetLoader::ExtractMeshes(
       modelData.Primitives.push_back(std::move(rawPrimitive));
       meshToPrimitives[meshIdx].push_back(globalIndex);
     }
+  }
+}
+
+void AssetLoader::BuildNodesHierarchy(
+    fastgltf::Asset &asset, std::vector<Core::RawNode> &nodes,
+    std::vector<std::vector<uint32_t>> &meshToPrimitives) {
+  nodes.reserve(asset.nodes.size());
+  for (size_t nodeIdx = 0; nodeIdx < asset.nodes.size(); nodeIdx++) {
+    const auto &node = asset.nodes[nodeIdx];
+    Core::RawNode rawNode{};
+    rawNode.Name = node.name;
+    fastgltf::visitor visitor{
+        [&](const fastgltf::TRS &trs) {
+          rawNode.Translation = glm::vec3{
+              trs.translation[0], trs.translation[1], trs.translation[2]};
+          rawNode.Rotation = glm::quat{trs.rotation[3], trs.rotation[0],
+                                       trs.rotation[1], trs.rotation[2]};
+          rawNode.Scale = glm::vec3{trs.scale[0], trs.scale[1], trs.scale[2]};
+
+          glm::mat4 T = glm::translate(glm::mat4(1.0f), rawNode.Translation);
+          glm::mat4 R = glm::mat4_cast(rawNode.Rotation);
+          glm::mat4 S = glm::scale(glm::mat4(1.0f), rawNode.Scale);
+          rawNode.LocalMatrix = T * R * S;
+        },
+        [&](const fastgltf::math::fmat4x4 &mat) {
+          rawNode.LocalMatrix = glm::make_mat4(mat.data());
+
+          rawNode.Translation = glm::vec3(rawNode.LocalMatrix[3]);
+
+          glm::vec3 scale;
+          scale.x = glm::length(glm::vec3(rawNode.LocalMatrix[0]));
+          scale.y = glm::length(glm::vec3(rawNode.LocalMatrix[1]));
+          scale.z = glm::length(glm::vec3(rawNode.LocalMatrix[2]));
+          rawNode.Scale = scale;
+
+          glm::mat3 rotMtx(glm::vec3(rawNode.LocalMatrix[0]) / scale.x,
+                           glm::vec3(rawNode.LocalMatrix[1]) / scale.y,
+                           glm::vec3(rawNode.LocalMatrix[2]) / scale.z);
+          rawNode.Rotation = glm::quat_cast(rotMtx);
+        }};
+    std::visit(visitor, node.transform);
+
+    if (node.meshIndex.has_value()) {
+      rawNode.PrimitiveIndices = meshToPrimitives[node.meshIndex.value()];
+    }
+
+    for (size_t childIdx : node.children) {
+      rawNode.ChildrenIndices.push_back(static_cast<unsigned int>(childIdx));
+    }
+
+    nodes.push_back(rawNode);
   }
 }
 
@@ -320,6 +378,22 @@ AssetLoader::LoadGltf(const std::filesystem::path &filePath) {
   ExtractGltfMaterials(gltf, modelData.Materials);
   std::vector<std::vector<uint32_t>> meshToPrimitives;
   ExtractMeshes(gltf, meshToPrimitives, modelData, filePath);
+  BuildNodesHierarchy(gltf, modelData.Nodes, meshToPrimitives);
+
+  for (size_t i = 0; i < modelData.Nodes.size(); i++) {
+    for (uint32_t childIdx : modelData.Nodes[i].ChildrenIndices) {
+      if (childIdx < modelData.Nodes.size()) {
+        modelData.Nodes[childIdx].ParentIndex = static_cast<int32_t>(i);
+      }
+    }
+  }
+
+  const auto &scene = gltf.scenes[gltf.defaultScene.value_or(0)];
+  for (size_t rootIdx : scene.nodeIndices) {
+    modelData.RootNodeIndices.push_back(static_cast<uint32_t>(rootIdx));
+  }
+
+  return modelData;
 }
 
 tinygltf::Model
