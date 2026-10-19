@@ -15,6 +15,7 @@
 #include <vector>
 
 constexpr uint32_t MAX_TEXTURES_POOL_SIZE = 65536;
+constexpr uint32_t MAX_MESHES_POOL_SIZE = 65536;
 
 namespace SimpleEngine {
 namespace Core {
@@ -25,6 +26,12 @@ public:
     vk::ImageAspectFlags AspectMask;
     uint32_t MipLevels;
     uint32_t ArrayLayers;
+  };
+
+  struct MeshAllocateInfo {
+    std::vector<Vertex> Vertices;
+    std::vector<uint32_t> Indices;
+    vk::IndexType IndexType;
   };
 
   ResourceManager2() = delete;
@@ -42,7 +49,8 @@ public:
   void FreeTexture(TextureHandle handle);
 
   const Mesh2 *Get(MeshHandle handle);
-  MeshHandle AllocateMesh();
+  MeshHandle AllocateMesh(const std::string &identifier,
+                          const MeshAllocateInfo &allocateInfo);
   void ReleaseMesh(MeshHandle handle);
   void FreeMesh(MeshHandle handle);
 

@@ -1,4 +1,5 @@
 #include "core/resource2/resource_manager2.hpp"
+#include "core/buffer/buffer.hpp"
 #include "core/image/image.hpp"
 #include "core/image/image_handle.hpp"
 #include "core/image/image_pool.hpp"
@@ -12,7 +13,9 @@
 #include "helpers/asset_loader.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstdint>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace SimpleEngine {
@@ -32,6 +35,14 @@ void ResourceManager2::InitTextureSlots() {
   m_TextureFreeList.reserve(MAX_TEXTURES_POOL_SIZE);
   for (int64_t i = MAX_TEXTURES_POOL_SIZE - 1; i >= 1; --i) {
     m_TextureFreeList.push_back(static_cast<uint32_t>(i));
+  }
+}
+
+void ResourceManager2::InitMeshSlots() {
+  m_MeshSlots.resize(MAX_MESHES_POOL_SIZE);
+  m_MeshFreeList.reserve(MAX_MESHES_POOL_SIZE);
+  for (int64_t i = MAX_MESHES_POOL_SIZE - 1; i >= 1; --i) {
+    m_MeshFreeList.push_back(static_cast<uint32_t>(i));
   }
 }
 
@@ -166,6 +177,54 @@ void ResourceManager2::FreeTextureSlot(uint32_t slotIndex) {
   slot.Texture = Texture2();
 
   m_TextureFreeList.push_back(slotIndex);
+}
+
+MeshHandle
+ResourceManager2::AllocateMesh(const std::string &identifier,
+                               const MeshAllocateInfo &allocateInfo) {
+  auto it = m_MeshCache.find(identifier);
+  if (it != m_MeshCache.end()) {
+    m_MeshSlots[it->second.Id].RefCount++;
+    return it->second;
+  }
+
+  if (m_MeshFreeList.size() == 0) {
+    return MeshHandle{0, 0};
+  }
+
+  uint32_t freeSlotIdx = m_MeshFreeList.back();
+  m_MeshFreeList.pop_back();
+
+  MeshSlot &freeSlot = m_MeshSlots[freeSlotIdx];
+
+  Buffer::CreateInfo vertexBufferInfo{
+      .Size = allocateInfo.Vertices.size() * sizeof(Vertex),
+      .Usage = vk::BufferUsageFlagBits::eVertexBuffer |
+               vk::BufferUsageFlagBits::eTransferDst,
+      .Properties = vk::MemoryPropertyFlagBits::eDeviceLocal};
+  auto vertexBuffer = std::make_unique<Buffer>(vertexBufferInfo, m_pContext);
+  vertexBuffer->Write(allocateInfo.Vertices.data());
+
+  Buffer::CreateInfo indexBufferInfo{
+      .Size = allocateInfo.Indices.size() * sizeof(uint32_t),
+      .Usage = vk::BufferUsageFlagBits::eIndexBuffer |
+               vk::BufferUsageFlagBits::eTransferDst,
+      .Properties = vk::MemoryPropertyFlagBits::eDeviceLocal};
+  auto indexBuffer = std::make_unique<Buffer>(indexBufferInfo, m_pContext);
+  indexBuffer->Write(allocateInfo.Indices.data());
+
+  Mesh2 mesh =
+      Mesh2(identifier, std::move(vertexBuffer), std::move(indexBuffer),
+            static_cast<uint32_t>(allocateInfo.Vertices.size()),
+            static_cast<uint32_t>(allocateInfo.Indices.size()),
+            allocateInfo.IndexType);
+
+  freeSlot.Mesh = std::move(mesh);
+  freeSlot.RefCount = 1;
+
+  MeshHandle handle{.Id = freeSlotIdx, .Generation = freeSlot.Generation};
+  m_MeshCache[identifier] = handle;
+  return handle;
 }
 } // namespace Core
 } // namespace SimpleEngine
