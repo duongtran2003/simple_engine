@@ -12,7 +12,7 @@ public:
     vk::MemoryPropertyFlags Properties;
   };
 
-  Buffer() = delete;
+  Buffer() = default;
   Buffer(const Buffer &other) = delete;
   Buffer &operator=(const Buffer &other) = delete;
   Buffer(Buffer &&other);
@@ -25,7 +25,7 @@ public:
 
   bool IsMapped() const;
   vk::DeviceSize GetSize() const;
-  vk::Buffer GetBuffer() const;
+  vk::Buffer& GetBuffer();
   vk::DeviceMemory GetMemory() const;
   void *GetMapped() const;
 

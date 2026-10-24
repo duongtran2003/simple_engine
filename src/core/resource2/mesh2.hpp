@@ -1,6 +1,7 @@
 #pragma once
 
-#include "core/buffer/buffer.hpp"
+#include "core/buffer/index_buffer.hpp"
+#include "core/buffer/vertex_buffer.hpp"
 #include "vulkan/vulkan.hpp"
 #include <array>
 #include <cstddef>
@@ -56,25 +57,23 @@ public:
   Mesh2(const Mesh2 &) = delete;
   Mesh2 &operator=(const Mesh2 &) = delete;
 
-  Mesh2(const std::string &identifier, std::unique_ptr<Buffer> vertexBuffer,
-       std::unique_ptr<Buffer> indexBuffer, uint32_t vertexCount,
-       uint32_t indexCount, vk::IndexType indexType = vk::IndexType::eUint32);
+  Mesh2(const std::string &identifier,
+        std::unique_ptr<VertexBuffer> vertexBuffer,
+        std::unique_ptr<IndexBuffer> indexBuffer,
+        vk::IndexType indexType = vk::IndexType::eUint32);
   ~Mesh2();
 
   const std::string &GetIdentifier() const;
-  const Buffer *GetVertexBuffer() const;
-  const Buffer *GetIndexBuffer() const;
+  const VertexBuffer *GetVertexBuffer() const;
+  const IndexBuffer *GetIndexBuffer() const;
   uint32_t GetVertexCount() const;
   uint32_t GetIndexCount() const;
   vk::IndexType GetIndexType() const;
 
 private:
   std::string m_Identifier;
-  std::unique_ptr<Buffer> m_VertexBuffer = nullptr;
-  std::unique_ptr<Buffer> m_IndexBuffer = nullptr;
-  uint32_t m_VertexCount = 0;
-  uint32_t m_IndexCount = 0;
-  vk::IndexType m_IndexType = vk::IndexType::eUint32;
+  std::unique_ptr<VertexBuffer> m_VertexBuffer = nullptr;
+  std::unique_ptr<IndexBuffer> m_IndexBuffer = nullptr;
 };
 } // namespace Core
 } // namespace SimpleEngine

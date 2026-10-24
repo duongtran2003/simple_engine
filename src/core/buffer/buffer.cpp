@@ -74,7 +74,7 @@ void Buffer::Free() {
 
 bool Buffer::IsMapped() const { return m_Mapped != nullptr; }
 vk::DeviceSize Buffer::GetSize() const { return m_Size; }
-vk::Buffer Buffer::GetBuffer() const { return m_Buffer; }
+vk::Buffer& Buffer::GetBuffer() { return m_Buffer; }
 vk::DeviceMemory Buffer::GetMemory() const { return m_Memory; }
 void *Buffer::GetMapped() const { return m_Mapped; }
 

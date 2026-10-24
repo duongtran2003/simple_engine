@@ -1,5 +1,6 @@
 #include "core/resource2/resource_manager2.hpp"
-#include "core/buffer/buffer.hpp"
+#include "core/buffer/index_buffer.hpp"
+#include "core/buffer/vertex_buffer.hpp"
 #include "core/image/image.hpp"
 #include "core/image/image_handle.hpp"
 #include "core/image/image_pool.hpp"
@@ -205,27 +206,13 @@ ResourceManager2::AllocateMesh(const std::string &identifier,
 
   MeshSlot &freeSlot = m_MeshSlots[freeSlotIdx];
 
-  Buffer::CreateInfo vertexBufferInfo{
-      .Size = allocateInfo.Vertices.size() * sizeof(Vertex),
-      .Usage = vk::BufferUsageFlagBits::eVertexBuffer |
-               vk::BufferUsageFlagBits::eTransferDst,
-      .Properties = vk::MemoryPropertyFlagBits::eDeviceLocal};
-  auto vertexBuffer = std::make_unique<Buffer>(vertexBufferInfo, m_pContext);
-  vertexBuffer->Write(allocateInfo.Vertices.data());
+  auto vertexBuffer =
+      std::make_unique<VertexBuffer>(allocateInfo.Vertices, m_pContext);
+  auto indexBuffer =
+      std::make_unique<IndexBuffer>(allocateInfo.Indices, m_pContext);
 
-  Buffer::CreateInfo indexBufferInfo{
-      .Size = allocateInfo.Indices.size() * sizeof(uint32_t),
-      .Usage = vk::BufferUsageFlagBits::eIndexBuffer |
-               vk::BufferUsageFlagBits::eTransferDst,
-      .Properties = vk::MemoryPropertyFlagBits::eDeviceLocal};
-  auto indexBuffer = std::make_unique<Buffer>(indexBufferInfo, m_pContext);
-  indexBuffer->Write(allocateInfo.Indices.data());
-
-  Mesh2 mesh =
-      Mesh2(identifier, std::move(vertexBuffer), std::move(indexBuffer),
-            static_cast<uint32_t>(allocateInfo.Vertices.size()),
-            static_cast<uint32_t>(allocateInfo.Indices.size()),
-            allocateInfo.IndexType);
+  Mesh2 mesh = Mesh2(identifier, std::move(vertexBuffer),
+                     std::move(indexBuffer), allocateInfo.IndexType);
 
   freeSlot.Mesh = std::move(mesh);
   freeSlot.RefCount = 1;
