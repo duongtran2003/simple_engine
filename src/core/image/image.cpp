@@ -73,7 +73,7 @@ void Image::CreateImage() {
 void Image::AllocMemory() {
   vk::MemoryRequirements memReq;
   m_pContext->device.getImageMemoryRequirements(m_Image, &memReq);
-  uint32_t memTypeIdx = Helper::VulkanHelper::findMemoryType(
+  uint32_t memTypeIdx = Helper::VulkanHelper::FindMemoryType(
       memReq.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal,
       m_pContext->physicalDevice);
 
@@ -114,7 +114,7 @@ void Image::TransitionLayout(vk::ImageLayout toLayout, bool keepContent,
 
   vk::ImageLayout oldLayout =
       keepContent ? m_Layout : vk::ImageLayout::eUndefined;
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, m_Image, m_MipLevels, 0, m_ArrayLayers, 0, oldLayout,
       toLayout, m_AspectMask);
 
@@ -128,7 +128,7 @@ void Image::TransitionMipLayout(vk::ImageLayout oldLayout,
     return;
   }
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, m_Image, 1, mipLevel, m_ArrayLayers, 0, oldLayout,
       toLayout, m_AspectMask);
 }
@@ -150,10 +150,10 @@ void Image::UploadData(const void *pixels, vk::DeviceSize size) {
   stagingBuffer.Write(pixels);
 
   vk::CommandBuffer commandBuffer =
-      Helper::VulkanHelper::beginSingleTimeCommands(*m_pContext);
+      Helper::VulkanHelper::BeginSingleTimeCommands(*m_pContext);
 
   TransitionLayout(vk::ImageLayout::eTransferDstOptimal, false, commandBuffer);
-  Helper::VulkanHelper::copyBufferToImage(commandBuffer, stagingBuffer.GetBuffer(), m_Image,
+  Helper::VulkanHelper::CopyBufferToImage(commandBuffer, stagingBuffer.GetBuffer(), m_Image,
                                           m_Extent.width, m_Extent.height,
                                           vk::ImageAspectFlagBits::eColor);
 
@@ -164,7 +164,7 @@ void Image::UploadData(const void *pixels, vk::DeviceSize size) {
                      commandBuffer);
   }
 
-  Helper::VulkanHelper::endSingleTimeCommands(commandBuffer, *m_pContext);
+  Helper::VulkanHelper::EndSingleTimeCommands(commandBuffer, *m_pContext);
 }
 
 void Image::GenerateMipmap(vk::CommandBuffer &commandBuffer) {

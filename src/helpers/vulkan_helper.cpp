@@ -13,7 +13,7 @@
 namespace SimpleEngine {
 namespace Helper {
 uint32_t
-VulkanHelper::findMemoryType(uint32_t memoryTypeBits,
+VulkanHelper::FindMemoryType(uint32_t memoryTypeBits,
                              vk::MemoryPropertyFlags properties,
                              const vk::PhysicalDevice &physicalDevice) {
   vk::PhysicalDeviceMemoryProperties memoryProperties =
@@ -30,7 +30,7 @@ VulkanHelper::findMemoryType(uint32_t memoryTypeBits,
       "VulkanHelper::findMemoryType()::ERROR: Cannot find memory type.");
 }
 
-void VulkanHelper::transitionImageLayout(
+void VulkanHelper::TransitionImageLayout(
     vk::CommandBuffer &commandBuffer, vk::Image image, uint32_t mipLevels,
     uint32_t baseMipLevel, uint32_t layerCount, uint32_t baseLayer,
     vk::ImageLayout oldLayout, vk::ImageLayout newLayout,
@@ -123,7 +123,7 @@ VulkanHelper::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
 
   vk::MemoryAllocateInfo allocateInfo{
       .allocationSize = memoryRequirements.size,
-      .memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits,
+      .memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits,
                                         properties, physicalDevice)};
 
   vk::DeviceMemory bufferMemory = device.allocateMemory(allocateInfo);
@@ -157,7 +157,7 @@ VulkanHelper::createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
   context.device.getImageMemoryRequirements(image, &memoryRequirement);
   vk::MemoryAllocateInfo imageMemoryAllocateInfo{
       .allocationSize = memoryRequirement.size,
-      .memoryTypeIndex = findMemoryType(
+      .memoryTypeIndex = FindMemoryType(
           memoryRequirement.memoryTypeBits,
           vk::MemoryPropertyFlagBits::eDeviceLocal, context.physicalDevice)};
 
@@ -203,7 +203,7 @@ VulkanHelper::createCubemapImage(uint32_t dimension, uint32_t mipLevels,
   context.device.getImageMemoryRequirements(image, &memoryRequirement);
   vk::MemoryAllocateInfo imageMemoryAllocateInfo{
       .allocationSize = memoryRequirement.size,
-      .memoryTypeIndex = findMemoryType(
+      .memoryTypeIndex = FindMemoryType(
           memoryRequirement.memoryTypeBits,
           vk::MemoryPropertyFlagBits::eDeviceLocal, context.physicalDevice)};
 
@@ -287,7 +287,7 @@ vk::Sampler VulkanHelper::createImageSampler(
 }
 
 vk::CommandBuffer
-VulkanHelper::beginSingleTimeCommands(const Core::RenderContext &context) {
+VulkanHelper::BeginSingleTimeCommands(const Core::RenderContext &context) {
   vk::CommandBufferAllocateInfo allocateInfo{
       .commandPool = context.commandPool,
       .level = vk::CommandBufferLevel::ePrimary,
@@ -303,7 +303,7 @@ VulkanHelper::beginSingleTimeCommands(const Core::RenderContext &context) {
   return commandBuffer;
 }
 
-void VulkanHelper::endSingleTimeCommands(vk::CommandBuffer commandBuffer,
+void VulkanHelper::EndSingleTimeCommands(vk::CommandBuffer commandBuffer,
                                          const Core::RenderContext &context) {
   commandBuffer.end();
   vk::SubmitInfo submitInfo{.commandBufferCount = 1,
@@ -314,15 +314,15 @@ void VulkanHelper::endSingleTimeCommands(vk::CommandBuffer commandBuffer,
   context.device.freeCommandBuffers(context.commandPool, 1, &commandBuffer);
 }
 
-void VulkanHelper::copyBuffer(const vk::Buffer &src, vk::Buffer &dst,
+void VulkanHelper::CopyBuffer(const vk::Buffer &src, vk::Buffer &dst,
                               vk::DeviceSize bufferSize,
                               const Core::RenderContext &context) {
-  vk::CommandBuffer commandBuffer = beginSingleTimeCommands(context);
+  vk::CommandBuffer commandBuffer = BeginSingleTimeCommands(context);
   commandBuffer.copyBuffer(src, dst, vk::BufferCopy(0, 0, bufferSize));
-  endSingleTimeCommands(commandBuffer, context);
+  EndSingleTimeCommands(commandBuffer, context);
 }
 
-void VulkanHelper::copyBufferToImage(vk::CommandBuffer &commandBuffer,
+void VulkanHelper::CopyBufferToImage(vk::CommandBuffer &commandBuffer,
                                      vk::Buffer src, vk::Image dst,
                                      uint32_t width, uint32_t height,
                                      vk::ImageAspectFlags aspectMask) {

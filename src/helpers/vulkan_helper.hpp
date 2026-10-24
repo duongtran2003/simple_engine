@@ -17,11 +17,11 @@ class VulkanHelper {
 public:
   VulkanHelper() = delete;
 
-  static uint32_t findMemoryType(uint32_t memoryTypeBits,
+  static uint32_t FindMemoryType(uint32_t memoryTypeBits,
                                  vk::MemoryPropertyFlags properties,
                                  const vk::PhysicalDevice &physicalDevice);
 
-  static void transitionImageLayout(vk::CommandBuffer &commandBuffer,
+  static void TransitionImageLayout(vk::CommandBuffer &commandBuffer,
                                     vk::Image image, uint32_t mipLevels,
                                     uint32_t baseMipLevel, uint32_t layerCount,
                                     uint32_t baseLayer,
@@ -53,15 +53,15 @@ public:
                                         const Core::RenderContext &context);
 
   static vk::CommandBuffer
-  beginSingleTimeCommands(const Core::RenderContext &context);
-  static void endSingleTimeCommands(vk::CommandBuffer commandBuffer,
+  BeginSingleTimeCommands(const Core::RenderContext &context);
+  static void EndSingleTimeCommands(vk::CommandBuffer commandBuffer,
                                     const Core::RenderContext &context);
 
-  static void copyBuffer(const vk::Buffer &src, vk::Buffer &dst,
+  static void CopyBuffer(const vk::Buffer &src, vk::Buffer &dst,
                          vk::DeviceSize bufferSize,
                          const Core::RenderContext &context);
 
-  static void copyBufferToImage(vk::CommandBuffer &commandBuffer,
+  static void CopyBufferToImage(vk::CommandBuffer &commandBuffer,
                                 vk::Buffer src, vk::Image dst, uint32_t width,
                                 uint32_t height,
                                 vk::ImageAspectFlags aspectMask);

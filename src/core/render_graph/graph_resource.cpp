@@ -121,7 +121,7 @@ void GraphResource::allocateMemories() {
 
   vk::MemoryAllocateInfo allocateInfo{
       .allocationSize = memoryRequirement.size,
-      .memoryTypeIndex = Helper::VulkanHelper::findMemoryType(
+      .memoryTypeIndex = Helper::VulkanHelper::FindMemoryType(
           memoryRequirement.memoryTypeBits,
           vk::MemoryPropertyFlagBits::eDeviceLocal, context.physicalDevice)};
 
@@ -187,7 +187,7 @@ void GraphResource::transitionLayout(vk::CommandBuffer &commandBuffer,
                                      bool fromLastLayout) {
   vk::ImageLayout lastLayout =
       fromLastLayout ? layouts[frameIndex] : vk::ImageLayout::eUndefined;
-  Helper::VulkanHelper::transitionImageLayout(commandBuffer, images[frameIndex],
+  Helper::VulkanHelper::TransitionImageLayout(commandBuffer, images[frameIndex],
                                               1, 0, 1, 0, lastLayout, dstLayout,
                                               aspectMask);
   layouts[frameIndex] = dstLayout;

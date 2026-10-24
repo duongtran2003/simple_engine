@@ -34,7 +34,7 @@ VertexBuffer::VertexBuffer(const std::vector<Vertex> &vertices,
       .Properties = vk::MemoryPropertyFlagBits::eDeviceLocal};
   m_Buffer = Buffer(vertexBufferInfo, m_pContext);
 
-  Helper::VulkanHelper::copyBuffer(
+  Helper::VulkanHelper::CopyBuffer(
       stagingBuffer.GetBuffer(), m_Buffer.GetBuffer(), bufferSize, *m_pContext);
 
   m_VertexCount = static_cast<uint32_t>(vertices.size());

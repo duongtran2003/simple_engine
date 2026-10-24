@@ -48,7 +48,7 @@ void Buffer::Create() {
 
   vk::MemoryAllocateInfo allocateInfo{
       .allocationSize = memoryRequirements.size,
-      .memoryTypeIndex = Helper::VulkanHelper::findMemoryType(
+      .memoryTypeIndex = Helper::VulkanHelper::FindMemoryType(
           memoryRequirements.memoryTypeBits, m_Properties,
           m_pContext->physicalDevice)};
 

@@ -33,7 +33,7 @@ IndexBuffer::IndexBuffer(const std::vector<uint32_t> &indices,
       .Properties = vk::MemoryPropertyFlagBits::eDeviceLocal};
   m_Buffer = Buffer(indexBufferInfo, m_pContext);
 
-  Helper::VulkanHelper::copyBuffer(
+  Helper::VulkanHelper::CopyBuffer(
       stagingBuffer.GetBuffer(), m_Buffer.GetBuffer(), bufferSize, *m_pContext);
 
   m_IndexCount = static_cast<uint32_t>(indices.size());

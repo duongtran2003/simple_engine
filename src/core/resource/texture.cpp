@@ -54,7 +54,7 @@ void Texture::generateMipmaps(vk::CommandBuffer &commandBuffer) {
   uint32_t mipHeight = height;
   uint32_t mipWidth = width;
   for (uint32_t i = 1; i < mipLevels; i++) {
-    Helper::VulkanHelper::transitionImageLayout(
+    Helper::VulkanHelper::TransitionImageLayout(
         commandBuffer, image, 1, i - 1, 1, 0,
         vk::ImageLayout::eTransferDstOptimal,
         vk::ImageLayout::eTransferSrcOptimal, vk::ImageAspectFlagBits::eColor);
@@ -89,7 +89,7 @@ void Texture::generateMipmaps(vk::CommandBuffer &commandBuffer) {
                             vk::ImageLayout::eTransferDstOptimal, {blit},
                             vk::Filter::eLinear);
 
-    Helper::VulkanHelper::transitionImageLayout(
+    Helper::VulkanHelper::TransitionImageLayout(
         commandBuffer, image, 1, i - 1, 1, 0,
         vk::ImageLayout::eTransferSrcOptimal,
         vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -104,7 +104,7 @@ void Texture::generateMipmaps(vk::CommandBuffer &commandBuffer) {
     }
   }
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, image, 1, mipLevels - 1, 1, 0,
       vk::ImageLayout::eTransferDstOptimal,
       vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor);
@@ -158,12 +158,12 @@ void Texture::readFromRawTexture() {
   renderContext.device.unmapMemory(stagingMemory);
 
   vk::CommandBuffer commandBuffer =
-      Helper::VulkanHelper::beginSingleTimeCommands(renderContext);
+      Helper::VulkanHelper::BeginSingleTimeCommands(renderContext);
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, newImage, mipLevels, 0, 1, 0, vk::ImageLayout::eUndefined,
       vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eColor);
-  Helper::VulkanHelper::copyBufferToImage(
+  Helper::VulkanHelper::CopyBufferToImage(
       commandBuffer, stagingBuffer, newImage, rawTexture.width,
       rawTexture.height, vk::ImageAspectFlagBits::eColor);
 
@@ -178,14 +178,14 @@ void Texture::readFromRawTexture() {
   if (rawTexture.useMipmap) {
     generateMipmaps(commandBuffer);
   } else {
-    Helper::VulkanHelper::transitionImageLayout(
+    Helper::VulkanHelper::TransitionImageLayout(
         commandBuffer, newImage, mipLevels, 0, 1, 0,
         vk::ImageLayout::eTransferDstOptimal,
         vk::ImageLayout::eShaderReadOnlyOptimal,
         vk::ImageAspectFlagBits::eColor);
   }
 
-  Helper::VulkanHelper::endSingleTimeCommands(commandBuffer, renderContext);
+  Helper::VulkanHelper::EndSingleTimeCommands(commandBuffer, renderContext);
 
   renderContext.graphicsQueue.waitIdle();
   renderContext.device.destroyBuffer(stagingBuffer);
@@ -220,12 +220,12 @@ void Texture::readFromPixels() {
   renderContext.device.unmapMemory(stagingMemory);
 
   vk::CommandBuffer commandBuffer =
-      Helper::VulkanHelper::beginSingleTimeCommands(renderContext);
+      Helper::VulkanHelper::BeginSingleTimeCommands(renderContext);
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, newImage, mipLevels, 0, 1, 0, vk::ImageLayout::eUndefined,
       vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eColor);
-  Helper::VulkanHelper::copyBufferToImage(commandBuffer, stagingBuffer,
+  Helper::VulkanHelper::CopyBufferToImage(commandBuffer, stagingBuffer,
                                           newImage, width, height,
                                           vk::ImageAspectFlagBits::eColor);
 
@@ -238,12 +238,12 @@ void Texture::readFromPixels() {
       Enums::Texture::Wrap::ClampToEdge, Enums::Texture::Wrap::ClampToEdge,
       renderContext);
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, newImage, mipLevels, 0, 1, 0,
       vk::ImageLayout::eTransferDstOptimal,
       vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor);
 
-  Helper::VulkanHelper::endSingleTimeCommands(commandBuffer, renderContext);
+  Helper::VulkanHelper::EndSingleTimeCommands(commandBuffer, renderContext);
 
   renderContext.graphicsQueue.waitIdle();
   renderContext.device.destroyBuffer(stagingBuffer);

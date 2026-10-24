@@ -49,7 +49,7 @@ void Mesh::createVertexBuffer(std::vector<Mesh::Vertex> &v) {
   vertexBuffer = std::move(buffer);
   vertexBufferMemory = std::move(memory);
 
-  Helper::VulkanHelper::copyBuffer(stagingBuffer, vertexBuffer, bufferSize,
+  Helper::VulkanHelper::CopyBuffer(stagingBuffer, vertexBuffer, bufferSize,
                                    renderContext);
 
   renderContext.graphicsQueue.waitIdle();
@@ -81,7 +81,7 @@ void Mesh::createIndexBuffer(std::vector<uint32_t> &i) {
   indexBuffer = std::move(buffer);
   indexBufferMemory = std::move(memory);
 
-  Helper::VulkanHelper::copyBuffer(stagingBuffer, indexBuffer, bufferSize,
+  Helper::VulkanHelper::CopyBuffer(stagingBuffer, indexBuffer, bufferSize,
                                    renderContext);
 
   renderContext.graphicsQueue.waitIdle();

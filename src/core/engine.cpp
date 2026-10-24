@@ -146,7 +146,7 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
 
   renderGraph->execute(commandBuffer, renderObjects);
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, renderContext->swapChainImages[renderImageIndex], 1, 0, 1,
       0, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageAspectFlagBits::eColor);
@@ -187,7 +187,7 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
                           vk::ImageLayout::eTransferDstOptimal, 1, &blitRegion,
                           vk::Filter::eLinear);
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, renderContext->swapChainImages[renderImageIndex], 1, 0, 1,
       0, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageLayout::eColorAttachmentOptimal,
@@ -203,7 +203,7 @@ void Engine::renderFrame(uint32_t renderImageIndex) {
                    renderContext->swapChainImageViews[renderImageIndex],
                    renderContext->frameIndex);
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, renderContext->swapChainImages[renderImageIndex], 1, 0, 1,
       0, vk::ImageLayout::eColorAttachmentOptimal,
       vk::ImageLayout::ePresentSrcKHR, vk::ImageAspectFlagBits::eColor);

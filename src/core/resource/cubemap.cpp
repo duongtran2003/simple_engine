@@ -98,9 +98,9 @@ void Cubemap::readFromFile() {
           vk::ImageAspectFlagBits::eColor, renderContext);
 
   vk::CommandBuffer commandBuffer =
-      Helper::VulkanHelper::beginSingleTimeCommands(renderContext);
+      Helper::VulkanHelper::BeginSingleTimeCommands(renderContext);
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, newImage, 1, 0, 6, 0, vk::ImageLayout::eUndefined,
       vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eColor);
 
@@ -128,11 +128,11 @@ void Cubemap::readFromFile() {
       stagingBuffer, newImage, vk::ImageLayout::eTransferDstOptimal,
       bufferCopyRegions.size(), bufferCopyRegions.data());
 
-  Helper::VulkanHelper::transitionImageLayout(
+  Helper::VulkanHelper::TransitionImageLayout(
       commandBuffer, newImage, 1, 0, 6, 0, vk::ImageLayout::eTransferDstOptimal,
       vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor);
 
-  Helper::VulkanHelper::endSingleTimeCommands(commandBuffer, renderContext);
+  Helper::VulkanHelper::EndSingleTimeCommands(commandBuffer, renderContext);
 
   renderContext.graphicsQueue.waitIdle();
   renderContext.device.destroyBuffer(stagingBuffer);
