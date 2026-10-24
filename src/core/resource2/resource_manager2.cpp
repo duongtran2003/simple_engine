@@ -28,6 +28,7 @@ ResourceManager2::ResourceManager2(ImagePool *imagePool,
   m_pContext = renderContext;
 
   InitTextureSlots();
+  InitMeshSlots();
 }
 
 void ResourceManager2::InitTextureSlots() {
@@ -47,7 +48,16 @@ void ResourceManager2::InitMeshSlots() {
 }
 
 ResourceManager2::~ResourceManager2() {
-  // TODO: Destructor
+  for (uint32_t i = 1; i < m_TextureSlots.size(); ++i) {
+    if (m_TextureSlots[i].RefCount > 0) {
+      FreeTextureSlot(i);
+    }
+  }
+  for (uint32_t i = 1; i < m_MeshSlots.size(); ++i) {
+    if (m_MeshSlots[i].RefCount > 0) {
+      FreeMeshSlot(i);
+    }
+  }
 }
 
 const Texture2 *ResourceManager2::Get(TextureHandle handle) {
@@ -81,8 +91,7 @@ ResourceManager2::AllocateTexture(const std::string &path,
                                   const TextureAllocateInfo &allocateInfo) {
   auto it = m_TextureCache.find(path);
   if (it != m_TextureCache.end()) {
-    m_TextureSlots[it->second.Id].RefCount++;
-    return it->second;
+    return AddRef(it->second);
   }
 
   if (m_TextureFreeList.size() == 0) {
@@ -184,8 +193,7 @@ ResourceManager2::AllocateMesh(const std::string &identifier,
                                const MeshAllocateInfo &allocateInfo) {
   auto it = m_MeshCache.find(identifier);
   if (it != m_MeshCache.end()) {
-    m_MeshSlots[it->second.Id].RefCount++;
-    return it->second;
+    return AddRef(it->second);
   }
 
   if (m_MeshFreeList.size() == 0) {
@@ -224,6 +232,76 @@ ResourceManager2::AllocateMesh(const std::string &identifier,
 
   MeshHandle handle{.Id = freeSlotIdx, .Generation = freeSlot.Generation};
   m_MeshCache[identifier] = handle;
+  return handle;
+}
+
+void ResourceManager2::ReleaseMesh(MeshHandle handle) {
+  if (handle.Id == 0 || handle.Id >= m_MeshSlots.size()) {
+    return;
+  }
+
+  MeshSlot &slot = m_MeshSlots[handle.Id];
+  if (slot.Generation != handle.Generation || slot.RefCount == 0) {
+    return;
+  }
+
+  slot.RefCount--;
+  if (slot.RefCount == 0) {
+    FreeMeshSlot(handle.Id);
+  }
+}
+
+void ResourceManager2::FreeMesh(MeshHandle handle) {
+  if (handle.Id == 0 || handle.Id >= m_MeshSlots.size()) {
+    return;
+  }
+
+  MeshSlot &slot = m_MeshSlots[handle.Id];
+  if (slot.Generation != handle.Generation || slot.RefCount == 0) {
+    return;
+  }
+
+  slot.RefCount = 0;
+  FreeMeshSlot(handle.Id);
+}
+
+void ResourceManager2::FreeMeshSlot(uint32_t slotIndex) {
+  MeshSlot &slot = m_MeshSlots[slotIndex];
+  std::string path = slot.Mesh.GetIdentifier();
+  m_MeshCache.erase(path);
+
+  slot.Generation++;
+  slot.RefCount = 0;
+  slot.Mesh = Mesh2();
+
+  m_MeshFreeList.push_back(slotIndex);
+}
+
+TextureHandle ResourceManager2::AddRef(TextureHandle handle) {
+  if (handle.Id == 0 || handle.Id >= m_TextureSlots.size()) {
+    return {0, 0};
+  }
+
+  auto &slot = m_TextureSlots[handle.Id];
+  if (slot.Generation != handle.Generation || slot.RefCount == 0) {
+    return {0, 0};
+  }
+
+  slot.RefCount++;
+  return handle;
+}
+
+MeshHandle ResourceManager2::AddRef(MeshHandle handle) {
+  if (handle.Id == 0 || handle.Id >= m_MeshSlots.size()) {
+    return {0, 0};
+  }
+
+  auto &slot = m_MeshSlots[handle.Id];
+  if (slot.Generation != handle.Generation || slot.RefCount == 0) {
+    return {0, 0};
+  }
+
+  slot.RefCount++;
   return handle;
 }
 } // namespace Core

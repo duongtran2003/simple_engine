@@ -42,6 +42,7 @@ public:
   const Texture2 *Get(TextureHandle handle);
   TextureHandle AllocateTexture(const std::string &path,
                                 const TextureAllocateInfo &allocateInfo);
+  TextureHandle AddRef(TextureHandle handle);
   // TODO: Implement deferred texture unloading
   void ReleaseTexture(TextureHandle handle);
 
@@ -51,6 +52,7 @@ public:
   const Mesh2 *Get(MeshHandle handle);
   MeshHandle AllocateMesh(const std::string &identifier,
                           const MeshAllocateInfo &allocateInfo);
+  MeshHandle AddRef(MeshHandle mesh);
   void ReleaseMesh(MeshHandle handle);
   void FreeMesh(MeshHandle handle);
 
