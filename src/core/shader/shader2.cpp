@@ -16,6 +16,8 @@ Shader2::Shader2(const std::string &path, vk::ShaderStageFlags shaderStage,
   m_Path = path;
   m_ShaderStage = shaderStage;
   m_pContext = pRenderContext;
+
+  CreateShader();
 }
 
 Shader2::~Shader2() {
